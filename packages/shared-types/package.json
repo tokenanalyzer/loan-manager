@@ -1,0 +1,20 @@
+{
+  "name": "@loan-manager/shared-types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared TypeScript types/interfaces consumed by the NestJS backend and React admin panel.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "lint": "eslint \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "@loan-manager/eslint-config": "workspace:*",
+    "typescript": "^5.5.4"
+  }
+}

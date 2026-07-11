@@ -1,0 +1,29 @@
+name: loan_manager_employee_app
+description: Loan Manager — Employee App (Flutter).
+version: 0.1.0+1
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+  flutter: '>=3.22.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_flutter:
+    path: ../../packages/shared-flutter
+
+  # Firebase (dependencies declared for Phase 2+ integration;
+  # not initialized or wired up in Phase 1)
+  firebase_core: ^3.3.0
+  firebase_auth: ^5.1.2
+  firebase_storage: ^12.1.1
+  firebase_messaging: ^15.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

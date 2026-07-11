@@ -1,0 +1,52 @@
+name: CI — Flutter Apps
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "apps/customer-app/**"
+      - "apps/employee-app/**"
+      - "packages/shared-flutter/**"
+      - "melos.yaml"
+      - ".github/workflows/ci-flutter.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "apps/customer-app/**"
+      - "apps/employee-app/**"
+      - "packages/shared-flutter/**"
+
+jobs:
+  analyze-format-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [apps/customer-app, apps/employee-app, packages/shared-flutter]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+          channel: stable
+
+      - name: Install Melos
+        run: dart pub global activate melos
+
+      - name: Bootstrap workspace
+        run: melos bootstrap
+
+      - name: Analyze (${{ matrix.package }})
+        working-directory: ${{ matrix.package }}
+        run: flutter analyze .
+
+      - name: Format check (${{ matrix.package }})
+        working-directory: ${{ matrix.package }}
+        run: dart format --set-exit-if-changed .
+
+      - name: Test (${{ matrix.package }})
+        working-directory: ${{ matrix.package }}
+        run: |
+          if [ -d "test" ]; then flutter test; else echo "No tests yet"; fi

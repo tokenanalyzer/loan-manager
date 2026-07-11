@@ -1,0 +1,16 @@
+# Local dev overrides — adds pgAdmin for database inspection.
+# Usage:
+#   docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml up -d
+
+services:
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: loan-manager-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: dev@loanmanager.local
+      PGADMIN_DEFAULT_PASSWORD: changeme
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres

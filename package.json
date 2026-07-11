@@ -1,0 +1,47 @@
+{
+  "name": "loan-manager-enterprise",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Loan Manager Enterprise monorepo — Flutter Customer App, Flutter Employee App, NestJS Backend, React Admin Panel.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "apps/backend",
+    "apps/admin-panel",
+    "packages/shared-types",
+    "packages/shared-config/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\" --ignore-unknown",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\" --ignore-unknown",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "typecheck": "turbo run typecheck",
+    "prepare": "husky || true"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.0",
+    "typescript": "^5.5.4",
+    "prettier": "^3.3.3",
+    "eslint": "^8.57.0",
+    "husky": "^9.1.4",
+    "lint-staged": "^15.2.9"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  }
+}

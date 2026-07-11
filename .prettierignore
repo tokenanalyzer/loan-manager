@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+coverage
+.turbo
+.next
+pubspec.lock
+**/*.g.dart
+**/*.freezed.dart
+android
+ios
+web/build
+pnpm-lock.yaml

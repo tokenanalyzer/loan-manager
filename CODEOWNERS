@@ -1,0 +1,9 @@
+# Default owners for everything in the repo
+* @tokenanalyzer/loan-manager-maintainers
+
+apps/backend/       @tokenanalyzer/backend-team
+apps/admin-panel/   @tokenanalyzer/frontend-team
+apps/customer-app/  @tokenanalyzer/mobile-team
+apps/employee-app/  @tokenanalyzer/mobile-team
+infra/              @tokenanalyzer/platform-team
+.github/            @tokenanalyzer/platform-team
