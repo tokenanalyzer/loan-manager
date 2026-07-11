@@ -1,6 +1,6 @@
 name: loan_manager_customer_app
 description: Loan Manager — Customer App (Flutter).
-version: 0.1.0+1
+version: 0.2.0+1
 publish_to: 'none'
 
 environment:
@@ -12,9 +12,29 @@ dependencies:
     sdk: flutter
   shared_flutter:
     path: ../../packages/shared-flutter
+  go_router: ^14.2.7
+  get_it: ^7.7.0
 
-  # Firebase (dependencies declared for Phase 2+ integration;
-  # not initialized or wired up in Phase 1)
+  # Phase 6: Riverpod is the reactive UI-state layer for new screens
+  # (controllers as StateNotifier/AsyncNotifier). It does not replace
+  # GetIt — Riverpod providers wrap the existing GetIt singletons
+  # (repositories, AuthController) rather than re-registering them.
+  # See lib/core/riverpod/ for the bridge.
+  flutter_riverpod: ^2.5.1
+
+  # Onboarding "seen" flag persistence.
+  shared_preferences: ^2.2.3
+
+  # Document capture (camera/gallery) for the Documents feature.
+  image_picker: ^1.1.2
+
+  # Contact Support: composes a real mailto: — no fake "ticket sent" screen.
+  url_launcher: ^6.3.0
+
+  # Firebase (initialization is guarded/no-op by default — see
+  # lib/core/firebase/firebase_bootstrap.dart. Storage/Messaging SDK
+  # usage is not implemented yet — Documents uses the backend's own
+  # storage endpoint, not the Firebase Storage SDK directly.)
   firebase_core: ^3.3.0
   firebase_auth: ^5.1.2
   firebase_storage: ^12.1.1

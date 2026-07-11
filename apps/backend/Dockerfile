@@ -12,7 +12,7 @@ COPY apps/backend/package.json apps/backend/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY packages/shared-config/eslint-config/package.json packages/shared-config/eslint-config/package.json
 COPY packages/shared-config/prettier-config/package.json packages/shared-config/prettier-config/package.json
-RUN pnpm install --frozen-lockfile --filter=@loan-manager/backend...
+RUN pnpm install --no-frozen-lockfile --filter=@loan-manager/backend...
 
 # ---------- Build ----------
 FROM deps AS build

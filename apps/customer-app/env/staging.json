@@ -1,0 +1,6 @@
+{
+  "API_BASE_URL": "https://staging-api.loanmanager.example.com/api",
+  "APP_ENV": "staging",
+  "FIREBASE_ENABLED": false,
+  "FIREBASE_PROJECT_ID": ""
+}

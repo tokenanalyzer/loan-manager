@@ -1,0 +1,6 @@
+{
+  "API_BASE_URL": "https://api.loanmanager.example.com/api",
+  "APP_ENV": "production",
+  "FIREBASE_ENABLED": false,
+  "FIREBASE_PROJECT_ID": ""
+}

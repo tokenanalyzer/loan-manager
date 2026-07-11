@@ -12,9 +12,12 @@ dependencies:
     sdk: flutter
   shared_flutter:
     path: ../../packages/shared-flutter
+  go_router: ^14.2.7
+  get_it: ^7.7.0
 
-  # Firebase (dependencies declared for Phase 2+ integration;
-  # not initialized or wired up in Phase 1)
+  # Firebase (initialization is guarded/no-op by default — see
+  # lib/core/firebase/firebase_bootstrap.dart. Auth/Storage/Messaging
+  # usage is not implemented until login/OTP/business features land.)
   firebase_core: ^3.3.0
   firebase_auth: ^5.1.2
   firebase_storage: ^12.1.1

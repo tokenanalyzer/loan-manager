@@ -1,20 +1,65 @@
 import { ConfigModule } from '@nestjs/config';
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+
+import configuration from './config/configuration';
+import { envValidationSchema } from './config/env.validation';
+import { AuthModule } from './auth/auth.module';
+import { CustomersModule } from './customers/customers.module';
+import { DatabaseModule } from './database/database.module';
+import { DocumentsModule } from './documents/documents.module';
+import { FirebaseAdminModule } from './firebase/firebase-admin.module';
+import { LoanApplicationsModule } from './loan-applications/loan-applications.module';
+import { LoggerModule } from './logger/logger.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { StorageModule } from './storage/storage.module';
 
 /**
  * Root application module.
  *
- * Intentionally minimal for Phase 1 — no controllers, providers, or
- * feature modules are registered yet. ConfigModule is included as
- * foundational wiring so environment variables load consistently
- * across future modules.
+ * Phase 7 adds global rate limiting (ThrottlerModule + a global
+ * ThrottlerGuard) — a production/security hardening gap identified by
+ * audit: this API previously had no request-rate protection anywhere,
+ * a real risk for a public-facing fintech API (brute-force against
+ * auth, storage exhaustion via repeated document uploads, etc.).
+ * Defaults are deliberately generous (60 req/min) since this guards
+ * every route globally; tighter, endpoint-specific limits can be
+ * layered on with `@Throttle()` where a specific route needs it.
  */
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
+      load: [configuration],
+      validationSchema: envValidationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 60,
+      },
+    ]),
+    LoggerModule,
+    DatabaseModule,
+    FirebaseAdminModule,
+    StorageModule,
+    AuthModule,
+    CustomersModule,
+    NotificationsModule,
+    LoanApplicationsModule,
+    DocumentsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

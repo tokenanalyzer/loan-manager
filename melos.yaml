@@ -35,3 +35,43 @@ scripts:
   get:
     run: melos exec -- "flutter pub get"
     description: Fetch dependencies across all Flutter packages.
+
+  run:customer:dev:
+    run: flutter run --dart-define-from-file=env/development.json
+    description: Run the Customer App against local development config.
+    packageFilters:
+      scope: 'loan_manager_customer_app'
+
+  run:customer:staging:
+    run: flutter run --dart-define-from-file=env/staging.json
+    description: Run the Customer App against staging config.
+    packageFilters:
+      scope: 'loan_manager_customer_app'
+
+  run:employee:dev:
+    run: flutter run --dart-define-from-file=env/development.json
+    description: Run the Employee App against local development config.
+    packageFilters:
+      scope: 'loan_manager_employee_app'
+
+  run:employee:staging:
+    run: flutter run --dart-define-from-file=env/staging.json
+    description: Run the Employee App against staging config.
+    packageFilters:
+      scope: 'loan_manager_employee_app'
+
+  build:customer:apk:
+    run: flutter build apk --dart-define-from-file=env/production.json
+    description: >-
+      Build a release APK for the Customer App. Requires platform folders
+      (run `flutter create .` once to generate android/) — see docs/architecture.md.
+    packageFilters:
+      scope: 'loan_manager_customer_app'
+
+  build:employee:apk:
+    run: flutter build apk --dart-define-from-file=env/production.json
+    description: >-
+      Build a release APK for the Employee App. Requires platform folders
+      (run `flutter create .` once to generate android/) — see docs/architecture.md.
+    packageFilters:
+      scope: 'loan_manager_employee_app'

@@ -33,6 +33,12 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-loanmanager}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-loan_manager_dev}
     ports:
       - "${BACKEND_PORT:-3000}:3000"
+    volumes:
+      # Persists uploaded documents across container restarts/redeploys
+      # — without this, LocalDiskStorageService's files would be lost
+      # every time the container is recreated. Matches UPLOADS_DIR's
+      # default (./uploads, resolved from the Dockerfile's /app WORKDIR).
+      - backend_uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,3 +56,4 @@ services:
 
 volumes:
   postgres_data:
+  backend_uploads:

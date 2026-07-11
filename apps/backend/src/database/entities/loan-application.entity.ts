@@ -1,0 +1,53 @@
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
+
+import { AbstractEntity } from './abstract.entity';
+import { LoanApplicationStatus } from './enums';
+import type { LoanEntity } from './loan.entity';
+import type { UserEntity } from './user.entity';
+
+/**
+ * LoanApplicationEntity — a customer's request for a loan, prior to
+ * approval/disbursement (which produces a LoanEntity).
+ *
+ * Phase 3 scope: schema only — no submission/review workflow logic,
+ * no validation rules on requested amounts, no notifications.
+ */
+@Entity('loan_applications')
+export class LoanApplicationEntity extends AbstractEntity {
+  @Index('idx_loan_applications_applicant')
+  @Column({ type: 'uuid' })
+  applicantId!: string;
+
+  @ManyToOne('UserEntity', { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'applicant_id', foreignKeyConstraintName: 'fk_loan_applications_applicant' })
+  applicant!: UserEntity;
+
+  @Column({ type: 'uuid', nullable: true })
+  reviewedById?: string | null;
+
+  @ManyToOne('UserEntity', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'reviewed_by_id', foreignKeyConstraintName: 'fk_loan_applications_reviewer' })
+  reviewedBy?: UserEntity | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  requestedAmount!: string;
+
+  @Column({ type: 'int' })
+  requestedTermMonths!: number;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  purpose?: string | null;
+
+  @Index('idx_loan_applications_status')
+  @Column({ type: 'enum', enum: LoanApplicationStatus, default: LoanApplicationStatus.SUBMITTED })
+  status!: LoanApplicationStatus;
+
+  @Column({ type: 'timestamptz', default: () => 'now()' })
+  submittedAt!: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  reviewedAt?: Date | null;
+
+  @OneToOne('LoanEntity', (loan: LoanEntity) => loan.application)
+  loan?: LoanEntity;
+}

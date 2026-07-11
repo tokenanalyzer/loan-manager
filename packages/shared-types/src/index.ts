@@ -1,10 +1,10 @@
 /**
  * @loan-manager/shared-types
  *
- * Placeholder entry point for shared TypeScript types/interfaces used
- * across the backend and admin panel (e.g. DTOs, domain models, enums).
- *
- * Intentionally empty for Phase 1 (repository foundation only).
- * Domain types will be added in a later phase alongside API/schema work.
+ * Shared TypeScript types/interfaces used across the backend and
+ * admin panel. Phase 2 adds generic API response/pagination shapes
+ * used by the shared API client architecture; domain-specific types
+ * (loans, users, documents, etc.) will be added once schema/API work
+ * begins in a later phase.
  */
-export {};
+export * from './api-response';
