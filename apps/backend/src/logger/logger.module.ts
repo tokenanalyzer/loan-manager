@@ -1,7 +1,8 @@
+import { randomUUID } from 'crypto';
+
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule as PinoLoggerModule } from 'nestjs-pino';
-import { randomUUID } from 'crypto';
 
 /**
  * LoggerModule — structured, request-correlated logging via Pino.

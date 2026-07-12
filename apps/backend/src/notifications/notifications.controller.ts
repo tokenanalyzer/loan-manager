@@ -3,6 +3,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
 import { UserEntity } from '../database/entities';
+
 import { NotificationResponseDto } from './dto/notification-response.dto';
 import { NotificationsService } from './notifications.service';
 

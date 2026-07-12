@@ -1,4 +1,4 @@
-import * as Joi from 'joi';
+import Joi from 'joi';
 
 /**
  * Joi schema used by ConfigModule to validate process.env at startup.

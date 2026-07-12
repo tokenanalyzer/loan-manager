@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/commo
 
 import { UserEntity } from '../../database/entities';
 import { AuthService } from '../auth.service';
+
 import { RequestWithFirebaseUser } from './firebase-auth.guard';
 
 export interface RequestWithAppUser extends RequestWithFirebaseUser {

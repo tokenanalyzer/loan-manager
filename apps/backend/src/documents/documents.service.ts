@@ -2,11 +2,12 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 
 import { DocumentEntity, UserEntity } from '../database/entities';
 import { StorageService } from '../storage/storage.service';
+
+import { DocumentRepository } from './document.repository';
 import { REQUIRED_CUSTOMER_DOCUMENT_TYPES } from './documents.constants';
 import { DocumentResponseDto } from './dto/document-response.dto';
 import { RequiredDocumentStatusDto } from './dto/required-document-status.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
-import { DocumentRepository } from './document.repository';
 
 /**
  * DocumentsService — Phase 6 scope: upload (with replace-on-reupload

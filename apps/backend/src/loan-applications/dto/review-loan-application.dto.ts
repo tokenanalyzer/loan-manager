@@ -1,4 +1,4 @@
-import { IsIn, IsNumber, IsOptional, IsPositive, ValidateIf } from 'class-validator';
+import { IsIn, IsNumber, IsPositive, ValidateIf } from 'class-validator';
 
 export type LoanApplicationDecision = 'approve' | 'reject';
 

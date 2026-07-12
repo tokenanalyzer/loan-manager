@@ -4,6 +4,7 @@ import { UserRole } from '../../database/entities';
 import { FirebaseAuthGuard } from '../guards/firebase-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { SyncUserGuard } from '../guards/sync-user.guard';
+
 import { Roles } from './roles.decorator';
 
 /**

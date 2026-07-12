@@ -11,6 +11,7 @@ import {
   UserRole,
 } from '../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
+
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import { LoanApplicationRepository } from './loan-application.repository';

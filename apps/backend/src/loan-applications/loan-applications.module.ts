@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { LoanApplicationEntity, LoanEntity } from '../database/entities';
 import { NotificationsModule } from '../notifications/notifications.module';
+
 import { LoanApplicationRepository } from './loan-application.repository';
 import { LoanApplicationsController } from './loan-applications.controller';
 import { LoanApplicationsService } from './loan-applications.service';

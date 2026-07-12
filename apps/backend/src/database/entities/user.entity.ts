@@ -1,9 +1,9 @@
 import { Column, Entity, Index, OneToOne, Unique } from 'typeorm';
 
 import { AbstractEntity } from './abstract.entity';
-import { UserRole } from './enums';
 import type { CustomerProfileEntity } from './customer-profile.entity';
 import type { EmployeeProfileEntity } from './employee-profile.entity';
+import { UserRole } from './enums';
 
 /**
  * UserEntity — shared identity record for every person in the system

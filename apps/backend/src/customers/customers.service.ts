@@ -1,10 +1,10 @@
-import { NotFoundException } from '@nestjs/common';
-import { Injectable } from '@nestjs/common';
+import { NotFoundException , Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { AuditLogEntity, CustomerProfileEntity, UserEntity, UserRole } from '../database/entities';
 import { UserRepository } from '../users/user.repository';
+
 import { CustomerProfileRepository } from './customer-profile.repository';
 import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 

@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/commo
 import { EntityManager } from 'typeorm';
 
 import { NotificationEntity } from '../database/entities';
+
 import { NotificationRepository } from './notification.repository';
 
 /**

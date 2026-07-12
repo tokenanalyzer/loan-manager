@@ -1,10 +1,11 @@
 import { Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 
+import { UserEntity } from '../database/entities';
+
 import { Auth } from './decorators/auth.decorator';
 import { CurrentAppUser } from './decorators/current-app-user.decorator';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto';
-import { UserEntity } from '../database/entities';
 
 /**
  * AuthController — the minimum API surface needed to make Firebase
