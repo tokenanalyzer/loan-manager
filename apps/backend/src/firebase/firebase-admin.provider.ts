@@ -47,7 +47,7 @@ export const firebaseAdminProvider: Provider = {
         }),
       });
 
-      logger.log('Firebase Admin initialized.');
+      logger.info('Firebase Admin initialized.');
       return app;
     } catch (error) {
       logger.error({ err: error }, 'Failed to initialize Firebase Admin.');
