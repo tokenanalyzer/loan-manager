@@ -12,7 +12,7 @@ COPY apps/admin-panel/package.json apps/admin-panel/package.json
 COPY packages/shared-types/package.json packages/shared-types/package.json
 COPY packages/shared-config/eslint-config/package.json packages/shared-config/eslint-config/package.json
 COPY packages/shared-config/prettier-config/package.json packages/shared-config/prettier-config/package.json
-RUN pnpm install --no-frozen-lockfile --filter=@loan-manager/admin-panel...
+RUN pnpm install --frozen-lockfile --filter=@loan-manager/admin-panel...
 
 # ---------- Build ----------
 FROM deps AS build
