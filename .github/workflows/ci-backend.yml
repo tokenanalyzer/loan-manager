@@ -9,6 +9,7 @@ on:
       - 'packages/shared-config/**'
       - 'pnpm-workspace.yaml'
       - 'package.json'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/ci-backend.yml'
   pull_request:
     branches: [main, develop]
@@ -16,6 +17,7 @@ on:
       - 'apps/backend/**'
       - 'packages/shared-types/**'
       - 'packages/shared-config/**'
+      - 'pnpm-lock.yaml'
 
 jobs:
   lint-build-test:
@@ -51,7 +53,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build shared-types
         run: pnpm --filter=@loan-manager/shared-types build

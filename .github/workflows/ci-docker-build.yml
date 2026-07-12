@@ -7,6 +7,7 @@ on:
       - 'apps/backend/**'
       - 'apps/admin-panel/**'
       - 'infra/docker/**'
+      - 'pnpm-lock.yaml'
   workflow_dispatch: {}
 
 jobs:
