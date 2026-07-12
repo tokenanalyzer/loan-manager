@@ -68,7 +68,7 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
               const SizedBox(height: 8),
               Text(
                 "We've recorded your account-deletion request. Our team will follow up before "
-                "anything is removed, since active loans and records may need to be resolved first.",
+                'anything is removed, since active loans and records may need to be resolved first.',
                 textAlign: TextAlign.center,
                 style: textTheme.bodyMedium,
               ),

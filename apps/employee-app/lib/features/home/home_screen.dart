@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/auth/employee_auth_repository.dart';
 import '../../core/config/env_config.dart';

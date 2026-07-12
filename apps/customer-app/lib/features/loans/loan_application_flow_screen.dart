@@ -149,8 +149,9 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
               ),
               validator: (value) {
                 final amount = double.tryParse(value ?? '');
-                if (amount == null || amount <= 0)
+                if (amount == null || amount <= 0) {
                   return 'Enter a valid amount.';
+                }
                 return null;
               },
             ),
@@ -164,8 +165,9 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
               ),
               validator: (value) {
                 final months = int.tryParse(value ?? '');
-                if (months == null || months <= 0)
+                if (months == null || months <= 0) {
                   return 'Enter a valid number of months.';
+                }
                 return null;
               },
             ),

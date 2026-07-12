@@ -4,8 +4,8 @@ import 'package:shared_flutter/shared_flutter.dart';
 import '../auth/customer_auth_repository.dart';
 import '../di/injection.dart';
 import '../network/customer_profile_repository.dart';
-import '../network/loan_application_repository.dart';
 import '../network/document_repository.dart';
+import '../network/loan_application_repository.dart';
 import '../network/notification_repository.dart';
 import '../network/user_repository.dart';
 
