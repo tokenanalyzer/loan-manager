@@ -29,13 +29,17 @@ export function LoginPage(): JSX.Element {
     );
   }
 
+  // Captured as a const so its non-null narrowing (from the guard above)
+  // survives into the handleSubmit closure below.
+  const auth = firebaseAuth;
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      await signInWithEmailAndPassword(firebaseAuth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       navigate('/', { replace: true });
     } catch {
       setError('Incorrect email or password.');
