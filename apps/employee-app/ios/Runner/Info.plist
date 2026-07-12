@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Take photos of customer documents while reviewing loan applications.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Attach document images from your photo library while reviewing loan applications.</string>
 </dict>
 </plist>
