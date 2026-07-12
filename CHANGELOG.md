@@ -3,6 +3,50 @@
 All notable changes to this project are documented in this file.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Phase 8] — Production Hardening & Release Path
+
+Continued the production-readiness work from Phase 7, focused on the
+last gaps that are genuinely fixable and verifiable inside the repo,
+plus an exact runbook for the toolchain-dependent Play Store steps.
+
+### Changed
+- **`LoanApplicationsService.review()` is now transactional.** The
+  approve path (create `Loan` → mark application `APPROVED` → create
+  notification) and the reject path (mark `REJECTED` → create
+  notification) each run inside a single `DataSource.transaction()`.
+  Previously these were separate, un-atomic writes — a failure between
+  them could leave an approved application with no loan row, or a loan
+  with the application still `SUBMITTED`. Existing repositories are
+  unchanged; only this orchestration method was wrapped, preserving the
+  repository-pattern architecture.
+- **`NotificationsService.createForUser` accepts an optional
+  `EntityManager`**, so notification creation joins the caller's
+  transaction instead of duplicating insert logic in the caller.
+- **Firebase bootstrap fails safe** in both Flutter apps: when
+  `FIREBASE_ENABLED=true` but the options are still empty placeholders,
+  it logs a clear, actionable error and skips initialization rather than
+  crashing opaquely on `Firebase.initializeApp` with blank credentials.
+
+### Added
+- **`.github/workflows/cd-customer-app.yml`** — CD/release pipeline:
+  builds a signed release App Bundle for the Customer App and can
+  optionally upload to Play's internal testing track. Guarded to fail
+  fast (with an actionable message) until native setup exists, so it is
+  safe to commit before the native folders are generated.
+- **`docs/native-setup.md`** — the exact, ordered runbook for the
+  production steps that require the Flutter toolchain, a real Firebase
+  project, and signing keys (native folder generation, permissions,
+  `flutterfire configure`, keystore, `.gitignore` hardening, CI secrets,
+  Play Console listing requirements).
+
+### Explicitly not done here (documented, not faked — Phase 9)
+Native `android`/`ios` folders (`flutter create`), real Firebase config
+(`flutterfire configure`), signing keys, and committed lockfiles — all
+require the Flutter SDK / a real Firebase project / network, none of
+which exist in the build environment. Hand-writing them would produce a
+broken build that only looks complete. They are captured as an exact
+runbook in `docs/native-setup.md` instead.
+
 ## [Phase 7] — Production Readiness Audit & Hardening
 
 Began with a full repository audit (10 categories — see

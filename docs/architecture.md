@@ -773,8 +773,100 @@ and flip the enabled flags.
   step (#4) is what will perform the real migration verification, the
   moment this is pushed.
 
+## Phase boundaries (Phase 7)
+
+Phase 7 stopped at audit + backend/infra fixes. Native platform setup
+and CD remained open.
+
+## Phase 8 — Production Hardening & Release Path
+
+Phase 8 closed the remaining gaps that are genuinely fixable and
+verifiable inside the repository, and turned the toolchain-dependent
+blockers into an exact runbook rather than hand-written (and
+unverifiable) files.
+
+### Atomic loan-review decisions
+
+`LoanApplicationsService.review()` previously performed the decision as
+several independent writes with no atomicity. On approval that was three
+writes — insert `Loan`, update the application to `APPROVED`, insert the
+notification — any of which could fail after an earlier one succeeded,
+leaving inconsistent state (an `APPROVED` application with no `Loan`, or
+a `Loan` whose application is still `SUBMITTED`). For a fintech ledger
+this is the single highest-value correctness fix available.
+
+**Design decision:** rather than change `BaseRepository` or the concrete
+repositories (which would ripple across the codebase and risk the
+working architecture), the fix injects the default TypeORM `DataSource`
+into the *service* and wraps only the decision path in
+`dataSource.transaction(async (manager) => { ... })`. All mutations use
+the transactional `manager`; a throw anywhere rolls the whole decision
+back. The pre-transaction reads and the `ConflictException` guards stay
+outside the transaction (they don't mutate). This keeps the
+repository-pattern intact — the repositories are untouched — while
+making the one multi-write operation atomic.
+
+`NotificationsService.createForUser` gained an optional `EntityManager`
+parameter. When the review transaction passes its `manager`, the
+notification insert joins that transaction; otherwise the service falls
+back to its own repository. This keeps notification-creation logic in
+one place (no duplicated insert in the caller) *and* makes it
+transaction-aware — the better production design than inlining the
+insert at the call site.
+
+### Fail-safe Firebase bootstrap
+
+Both apps' `initializeFirebase` now distinguish three states rather than
+two: disabled (no-op, as before), enabled-but-unconfigured (empty
+placeholder options → log an actionable error and skip), and
+enabled-and-configured (initialize normally). Previously the middle
+state would call `Firebase.initializeApp` with blank credentials and
+fail with an opaque platform exception. The check is a simple
+`apiKey/appId/projectId .isNotEmpty` guard — the placeholder ships empty,
+a real FlutterFire config never is.
+
+### CD/release pipeline
+
+`.github/workflows/cd-customer-app.yml` builds a signed release `.aab`
+and can publish to Play's internal track. Two deliberate design choices:
+it triggers only on a version tag or manual dispatch (releasing is an
+intentional act, not a push side effect), and a `guard-native-setup`
+job fails fast with an actionable message if `apps/customer-app/android`
+doesn't exist yet. That guard is what makes it safe to commit the
+workflow *now*, before the native folders are generated — it explains
+itself instead of failing cryptically.
+
+### Why native folders / Firebase config are a runbook, not code
+
+`flutter create` generates Gradle wrappers, `local.properties`, native
+runners, and build files pinned to the local SDK/Gradle versions;
+`flutterfire configure` generates credentials from a real Firebase
+project. Neither can be produced or verified without the respective
+toolchain, and hand-writing them would yield a build that looks complete
+but breaks on the first real `flutter build`. `docs/native-setup.md`
+captures every command instead — real, ordered, and runnable by the
+maintainer, with the CD workflow already wired to activate once those
+steps are done.
+
+### Verification performed (Phase 8)
+
+TypeScript transpile-syntax check across all 74 backend files; Dart
+brace/paren balance across all 90 Dart files; YAML validity for the new
+CD workflow and all others; JSON validity across the repo; manual
+review of the TypeORM `DataSource`/`EntityManager` API usage against the
+0.3.x signatures (`transaction`, `manager.create(Entity, data)`,
+`manager.save`, `manager.update(Entity, id, partial)`) and confirmation
+that `@nestjs/typeorm` (`InjectDataSource`) + `typeorm` are already
+dependencies and the default `DataSource` is globally injectable via the
+existing `DatabaseModule`. **Not verifiable here** (no Flutter/Dart/pnpm
+SDK, no network, no live Postgres): `flutter analyze`/`dart format`/
+`flutter test`, real `tsc` type-checking, actual transaction rollback
+behavior against a database, and the CD workflow's build steps. The
+repo's own CI runs the Flutter and backend checks on push.
+
 ## Phase boundaries
 
-Phase 7 stops at audit + the fixes listed above. Native platform setup
-and CD remain explicitly open — see the README's Roadmap section for
-Phase 8 candidates.
+Phase 8 stops at in-repo hardening + the release runbook/CD scaffolding.
+Actually running the native-setup runbook, backend deployment, and the
+Phase 9 candidates (admin provisioning, Firebase Storage, FCM) remain
+open — see the README's Roadmap section.

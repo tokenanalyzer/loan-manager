@@ -1,0 +1,131 @@
+name: CD — Customer App (Android Release)
+
+# Builds a signed Android App Bundle (.aab) for the Customer App and,
+# optionally, uploads it to the Google Play internal testing track.
+#
+# This workflow is deliberately NOT triggered on every push. It runs
+# only on a version tag (customer-app-v*) or manual dispatch, because
+# producing and publishing a release artifact is an intentional act,
+# not a side effect of merging.
+#
+# PREREQUISITES (see docs/native-setup.md for the full runbook):
+#   1. `apps/customer-app/android/` must exist (run `flutter create .`
+#      once inside apps/customer-app — it is intentionally NOT committed
+#      yet because it can't be generated/verified without the Flutter
+#      toolchain). The "guard-native-setup" job below fails early with a
+#      clear message if it's missing, so this workflow can be committed
+#      now and will simply no-op-with-explanation until you've done that.
+#   2. A real firebase_options.dart + google-services.json (via
+#      `flutterfire configure`).
+#   3. The following repository secrets, all required for signing:
+#        ANDROID_KEYSTORE_BASE64   — base64 of your upload keystore (.jks)
+#        ANDROID_KEYSTORE_PASSWORD — keystore password
+#        ANDROID_KEY_ALIAS         — key alias
+#        ANDROID_KEY_PASSWORD      — key password
+#   4. For Play upload (optional job): PLAY_SERVICE_ACCOUNT_JSON — a
+#      Google Play service-account key with the "Release to testing
+#      tracks" permission.
+
+on:
+  push:
+    tags:
+      - "customer-app-v*"
+  workflow_dispatch:
+    inputs:
+      publish_to_play:
+        description: "Upload the AAB to Play internal testing?"
+        required: true
+        default: "false"
+        type: choice
+        options: ["false", "true"]
+
+concurrency:
+  group: cd-customer-app-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Fails fast, with an actionable message, if the native folder that
+  # `flutter create` produces hasn't been committed yet. This lets the
+  # workflow live in the repo from Phase 8 onward without breaking.
+  guard-native-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify native Android project exists
+        run: |
+          if [ ! -d "apps/customer-app/android" ]; then
+            echo "::error::apps/customer-app/android/ is missing. Run 'flutter create .' inside apps/customer-app and commit the result before releasing. See docs/native-setup.md."
+            exit 1
+          fi
+          echo "Native Android project present."
+
+  build-release:
+    needs: guard-native-setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java (required by Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+          channel: stable
+
+      - name: Install Melos
+        run: dart pub global activate melos
+
+      - name: Bootstrap workspace
+        run: melos bootstrap
+
+      - name: Decode upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is not set. See docs/native-setup.md."
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > apps/customer-app/android/app/upload-keystore.jks
+
+      - name: Write signing key.properties
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          cat > apps/customer-app/android/key.properties <<EOF
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Build release App Bundle
+        working-directory: apps/customer-app
+        run: flutter build appbundle --release --dart-define-from-file=env/production.json
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-app-release-aab
+          path: apps/customer-app/build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+
+      - name: Upload to Google Play (internal track)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_to_play == 'true' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.loanmanager.customer
+          releaseFiles: apps/customer-app/build/app/outputs/bundle/release/app-release.aab
+          track: internal
+          status: completed

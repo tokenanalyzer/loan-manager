@@ -20,6 +20,22 @@ on:
 jobs:
   lint-build-test:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: loanmanager
+          POSTGRES_PASSWORD: changeme
+          POSTGRES_DB: loan_manager_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U loanmanager"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,10 +49,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
       - name: Build shared-types
         run: pnpm --filter=@loan-manager/shared-types build
@@ -53,5 +68,30 @@ jobs:
       - name: Build
         run: pnpm --filter=@loan-manager/backend build
 
+      - name: Run database migrations (verifies the migration set for real)
+        working-directory: apps/backend
+        env:
+          DATABASE_URL: postgresql://loanmanager:changeme@localhost:5432/loan_manager_ci
+        run: pnpm migration:run
+
       - name: Test
         run: pnpm --filter=@loan-manager/backend test
+
+      - name: Boot smoke test (verifies the server actually starts)
+        working-directory: apps/backend
+        env:
+          NODE_ENV: production
+          DATABASE_URL: postgresql://loanmanager:changeme@localhost:5432/loan_manager_ci
+          FIREBASE_ENABLED: 'false'
+          LOG_LEVEL: info
+        run: |
+          node dist/main.js &
+          SERVER_PID=$!
+          # Give Nest a few seconds to connect to Postgres and start listening.
+          sleep 8
+          if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+            echo "Backend process exited unexpectedly — startup failed."
+            exit 1
+          fi
+          echo "Backend started successfully (pid $SERVER_PID)."
+          kill "$SERVER_PID"

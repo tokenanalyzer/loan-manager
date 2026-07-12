@@ -4,16 +4,21 @@ Enterprise monorepo for the Loan Manager platform: two Flutter client
 apps, a NestJS backend, and a React admin panel, sharing common
 tooling and infrastructure.
 
-> **Status: Phase 7 — Production Readiness Audit & Hardening.**
-> Phases 1-6 built the foundation through a complete Customer App.
-> Phase 7 is a full repository audit (see below and
-> `docs/architecture.md`) followed by fixing what the audit found:
-> a real CORS misconfiguration, missing rate limiting, missing file-
-> upload validation, missing upload persistence in Docker, and CI that
-> never actually verified the migration set against a live database.
-> **Play Store blockers remain open and are explicitly not fixed here**
-> (native `android`/`ios` folders, app icons, signing config) — see
-> the audit for why.
+> **Status: Phase 8 — Production Hardening & Release Path.**
+> Phases 1-6 built the foundation through a complete Customer App;
+> Phase 7 audited and hardened the backend/infra. Phase 8 closes the
+> last verifiable-in-repo gaps: the loan-review decision path now runs
+> in a single **database transaction** (no more half-applied
+> approvals), the Firebase bootstrap **fails safe** when enabled but
+> unconfigured (instead of an opaque crash), and a real **CD/release
+> workflow** for the Customer App ships alongside an exact
+> **native-setup runbook** (`docs/native-setup.md`).
+> **The toolchain-dependent Play Store blockers** (native
+> `android`/`ios` folders via `flutter create`, real Firebase config
+> via `flutterfire configure`, signing keys) **are documented as an
+> exact runbook rather than hand-written**, because they cannot be
+> generated or verified without the Flutter SDK and your Firebase
+> project — see `docs/native-setup.md`.
 
 ## Tech stack
 
@@ -316,14 +321,34 @@ conventions, and the pre-PR checklist. Review ownership is defined in
 
 Proprietary — see [`LICENSE`](./LICENSE).
 
-## Roadmap (Phase 8 only)
+## What Phase 8 added
 
-Candidates, to be confirmed against the project plan: native
-`android`/`ios` platform folders (run `flutter create .` in a real
-Flutter environment — the single biggest unlock, since it also enables
-camera/photo permissions, real device builds, and eventually Play
-Store submission), an admin-invite/provisioning flow for employee/admin
-accounts, Firebase Storage swap-in for Documents (replacing local
-disk), push notification delivery (FCM), a committed
-`pnpm-lock.yaml`, and a CD (deployment) pipeline — CI currently only
-lints/builds/tests, nothing deploys anywhere yet.
+- **Atomic loan decisions.** `LoanApplicationsService.review()` now
+  wraps its approve/reject writes (create loan, update application,
+  create notification) in a single TypeORM transaction via the injected
+  `DataSource`. A failure mid-decision can no longer leave an APPROVED
+  application with no Loan row (or vice versa). `NotificationsService.
+  createForUser` gained an optional `EntityManager` parameter so it
+  participates in the caller's transaction — no duplicated insert logic.
+- **Fail-safe Firebase bootstrap.** Both Flutter apps now detect the
+  empty placeholder Firebase config and log a clear, actionable error
+  instead of calling `Firebase.initializeApp` with blank credentials
+  and crashing opaquely. `FIREBASE_ENABLED=false` still no-ops as before.
+- **CD/release workflow** (`.github/workflows/cd-customer-app.yml`):
+  builds a signed release App Bundle and can publish to Play's internal
+  track. Guarded to fail fast with an actionable message until native
+  setup exists, so it's safe to commit now.
+- **`docs/native-setup.md`**: the exact, ordered runbook for the
+  toolchain-dependent production steps (native folders, permissions,
+  Firebase config, signing, Play Console listing).
+
+## Roadmap (Phase 9 candidates)
+
+To be confirmed against the project plan: run the `docs/native-setup.md`
+runbook to generate native folders + Firebase config + signing (the
+prerequisite for any real device build or Play submission), an
+admin-invite/provisioning flow for employee/admin accounts, Firebase
+Storage swap-in for Documents (replacing local disk), push notification
+delivery (FCM — the in-app notifications already exist), a committed
+`pnpm-lock.yaml`, and a backend deployment pipeline (the Customer App
+CD exists now; the NestJS API still has no deploy target).

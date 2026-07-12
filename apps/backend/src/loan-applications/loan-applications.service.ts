@@ -1,6 +1,15 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectDataSource } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 
-import { LoanApplicationEntity, LoanApplicationStatus, LoanStatus, UserEntity, UserRole } from '../database/entities';
+import {
+  LoanApplicationEntity,
+  LoanApplicationStatus,
+  LoanEntity,
+  LoanStatus,
+  UserEntity,
+  UserRole,
+} from '../database/entities';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
@@ -16,6 +25,16 @@ import { LoanRepository } from './loan.repository';
  * business rules and state transitions. Phase 6 adds a real
  * notification on every decision (see `review`), consumed by the
  * Customer App's notifications list.
+ *
+ * Phase 8 hardening: the review() decision path now runs inside a
+ * single database transaction (via the injected DataSource). Approving
+ * previously performed three separate writes — create loan, update
+ * application, create notification — with no atomicity; a failure
+ * between them could leave an APPROVED application with no Loan row, or
+ * a Loan with the application still SUBMITTED. All decision-path writes
+ * now commit together or not at all. The existing repositories are
+ * unchanged — only this orchestration method was wrapped, so the
+ * repository-pattern architecture is preserved.
  */
 @Injectable()
 export class LoanApplicationsService {
@@ -23,6 +42,7 @@ export class LoanApplicationsService {
     private readonly loanApplicationRepository: LoanApplicationRepository,
     private readonly loanRepository: LoanRepository,
     private readonly notificationsService: NotificationsService,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async submit(
@@ -89,55 +109,66 @@ export class LoanApplicationsService {
       );
     }
 
-    if (dto.decision === 'approve') {
-      if (dto.interestRate === undefined) {
-        // Also enforced by ReviewLoanApplicationDto's @ValidateIf, kept
-        // here too as a defensive guard against the DTO changing later.
-        throw new ConflictException('interestRate is required to approve an application.');
-      }
-
-      const loan = await this.loanRepository.create({
-        loanNumber: this.loanRepository.generateLoanNumber(),
-        applicationId: application.id,
-        customerId: application.applicantId,
-        createdById: reviewer.id,
-        principalAmount: application.requestedAmount,
-        interestRate: dto.interestRate.toFixed(3),
-        termMonths: application.requestedTermMonths,
-        status: LoanStatus.PENDING,
-      });
-
-      await this.loanApplicationRepository.update(application.id, {
-        status: LoanApplicationStatus.APPROVED,
-        reviewedById: reviewer.id,
-        reviewedAt: new Date(),
-      });
-
-      const updated = await this.loanApplicationRepository.findOneWithLoan(application.id);
-
-      await this.notificationsService.createForUser({
-        userId: application.applicantId,
-        title: 'Loan application approved',
-        body: `Your application for $${application.requestedAmount} has been approved.`,
-        relatedEntityType: 'loan_application',
-        relatedEntityId: application.id,
-      });
-
-      return updated ?? { ...application, loan, status: LoanApplicationStatus.APPROVED };
+    if (dto.decision === 'approve' && dto.interestRate === undefined) {
+      // Also enforced by ReviewLoanApplicationDto's @ValidateIf, kept
+      // here too as a defensive guard against the DTO changing later.
+      throw new ConflictException('interestRate is required to approve an application.');
     }
 
-    await this.loanApplicationRepository.update(application.id, {
-      status: LoanApplicationStatus.REJECTED,
-      reviewedById: reviewer.id,
-      reviewedAt: new Date(),
-    });
+    // All decision-path writes run atomically. If any step throws, the
+    // whole decision rolls back — no half-applied approvals (Loan
+    // created but application not marked APPROVED, or vice versa).
+    await this.dataSource.transaction(async (manager) => {
+      const now = new Date();
 
-    await this.notificationsService.createForUser({
-      userId: application.applicantId,
-      title: 'Loan application update',
-      body: `Your application for $${application.requestedAmount} was not approved this time.`,
-      relatedEntityType: 'loan_application',
-      relatedEntityId: application.id,
+      if (dto.decision === 'approve') {
+        const loan = manager.create(LoanEntity, {
+          loanNumber: this.loanRepository.generateLoanNumber(),
+          applicationId: application.id,
+          customerId: application.applicantId,
+          createdById: reviewer.id,
+          principalAmount: application.requestedAmount,
+          interestRate: dto.interestRate!.toFixed(3),
+          termMonths: application.requestedTermMonths,
+          status: LoanStatus.PENDING,
+        });
+        await manager.save(loan);
+
+        await manager.update(LoanApplicationEntity, application.id, {
+          status: LoanApplicationStatus.APPROVED,
+          reviewedById: reviewer.id,
+          reviewedAt: now,
+        });
+
+        await this.notificationsService.createForUser(
+          {
+            userId: application.applicantId,
+            title: 'Loan application approved',
+            body: `Your application for $${application.requestedAmount} has been approved.`,
+            relatedEntityType: 'loan_application',
+            relatedEntityId: application.id,
+          },
+          manager,
+        );
+        return;
+      }
+
+      await manager.update(LoanApplicationEntity, application.id, {
+        status: LoanApplicationStatus.REJECTED,
+        reviewedById: reviewer.id,
+        reviewedAt: now,
+      });
+
+      await this.notificationsService.createForUser(
+        {
+          userId: application.applicantId,
+          title: 'Loan application update',
+          body: `Your application for $${application.requestedAmount} was not approved this time.`,
+          relatedEntityType: 'loan_application',
+          relatedEntityId: application.id,
+        },
+        manager,
+      );
     });
 
     const updated = await this.loanApplicationRepository.findOneWithLoan(application.id);

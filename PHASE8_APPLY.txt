@@ -1,0 +1,28 @@
+Phase 8 — how to apply this ZIP over your existing clone
+=========================================================
+This ZIP contains the FULL repository (all tracked files, every phase),
+with Phase 8 changes included. The .git folder is intentionally excluded
+so it will NOT overwrite your local git history.
+
+1. Extract this folder OVER your existing local clone (merge/replace files):
+     unzip -o loan-manager-phase8-complete.zip -d /path/to/parent-of-your-clone
+
+2. Review what changed:
+     cd loan-manager
+     git status
+     git diff
+
+   Phase 8 touches exactly these 9 files:
+     .github/workflows/cd-customer-app.yml        (new)
+     docs/native-setup.md                         (new)
+     CHANGELOG.md
+     README.md
+     apps/backend/src/loan-applications/loan-applications.service.ts
+     apps/backend/src/notifications/notifications.service.ts
+     apps/customer-app/lib/core/firebase/firebase_bootstrap.dart
+     apps/employee-app/lib/core/firebase/firebase_bootstrap.dart
+     docs/architecture.md
+
+   (You can delete this PHASE8_APPLY.txt file; it is not part of the repo.)
+
+3. Commit and push (see the exact commands in the chat response).
