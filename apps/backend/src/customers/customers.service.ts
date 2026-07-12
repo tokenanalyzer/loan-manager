@@ -1,4 +1,4 @@
-import { NotFoundException , Injectable } from '@nestjs/common';
+import { NotFoundException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -22,7 +22,8 @@ export class CustomersService {
   constructor(
     private readonly customerProfileRepository: CustomerProfileRepository,
     private readonly userRepository: UserRepository,
-    @InjectRepository(AuditLogEntity) private readonly auditLogRepository: Repository<AuditLogEntity>,
+    @InjectRepository(AuditLogEntity)
+    private readonly auditLogRepository: Repository<AuditLogEntity>,
   ) {}
 
   async getOwnProfile(user: UserEntity): Promise<CustomerProfileEntity | null> {

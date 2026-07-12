@@ -28,7 +28,10 @@ export class DocumentEntity extends AbstractEntity {
   loanApplicationId?: string | null;
 
   @ManyToOne('LoanApplicationEntity', { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'loan_application_id', foreignKeyConstraintName: 'fk_documents_loan_application' })
+  @JoinColumn({
+    name: 'loan_application_id',
+    foreignKeyConstraintName: 'fk_documents_loan_application',
+  })
   loanApplication?: LoanApplicationEntity | null;
 
   @Column({ type: 'uuid', nullable: true })

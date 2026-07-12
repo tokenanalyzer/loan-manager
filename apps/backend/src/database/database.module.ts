@@ -25,9 +25,7 @@ import { ALL_ENTITIES } from './entities';
       useFactory: (config: ConfigService) => ({
         type: 'postgres' as const,
         url: config.get<string>('database.url'),
-        ssl: config.get<boolean>('database.ssl')
-          ? { rejectUnauthorized: false }
-          : false,
+        ssl: config.get<boolean>('database.ssl') ? { rejectUnauthorized: false } : false,
         logging: config.get<boolean>('database.logging'),
         extra: {
           max: config.get<number>('database.maxConnections'),

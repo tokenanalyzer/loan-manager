@@ -24,9 +24,7 @@ export class CreateNotificationsTable1783771463327 implements MigrationInterface
           REFERENCES "users" ("id") ON DELETE CASCADE
       )
     `);
-    await queryRunner.query(
-      `CREATE INDEX "idx_notifications_user" ON "notifications" ("user_id")`,
-    );
+    await queryRunner.query(`CREATE INDEX "idx_notifications_user" ON "notifications" ("user_id")`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

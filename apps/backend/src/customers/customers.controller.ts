@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
@@ -61,9 +71,7 @@ export class CustomersController {
 
   @Get(':id')
   @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
-  async getCustomer(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<CustomerSummaryResponseDto> {
+  async getCustomer(@Param('id', ParseUUIDPipe) id: string): Promise<CustomerSummaryResponseDto> {
     const customer = await this.customersService.getCustomerById(id);
     return CustomerSummaryResponseDto.fromEntity(customer);
   }

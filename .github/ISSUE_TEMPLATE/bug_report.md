@@ -1,7 +1,7 @@
 ---
 name: Bug report
 about: Report a problem in the Loan Manager Enterprise monorepo
-title: "[Bug] "
+title: '[Bug] '
 labels: bug
 ---
 
@@ -10,14 +10,11 @@ labels: bug
 
 **Description**
 
-
-**Steps to reproduce**
-1.
-2.
+**Steps to reproduce** 1. 2.
 
 **Expected behavior**
 
-
 **Environment**
+
 - OS:
 - Node/Flutter version:

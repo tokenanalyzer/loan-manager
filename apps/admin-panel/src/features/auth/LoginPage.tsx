@@ -53,7 +53,10 @@ export function LoginPage(): JSX.Element {
       <h1>Loan Manager — Admin Panel</h1>
       <p>Sign in with your work email and password.</p>
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+      >
         <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
           Work email
           <input

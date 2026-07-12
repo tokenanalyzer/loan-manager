@@ -18,8 +18,5 @@ import { Roles } from './roles.decorator';
  * `@Auth(UserRole.EMPLOYEE, UserRole.ADMIN)` restricts to those roles.
  */
 export function Auth(...roles: UserRole[]): MethodDecorator & ClassDecorator {
-  return applyDecorators(
-    UseGuards(FirebaseAuthGuard, SyncUserGuard, RolesGuard),
-    Roles(...roles),
-  );
+  return applyDecorators(UseGuards(FirebaseAuthGuard, SyncUserGuard, RolesGuard), Roles(...roles));
 }

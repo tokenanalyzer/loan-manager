@@ -29,15 +29,15 @@ name: CD — Customer App (Android Release)
 on:
   push:
     tags:
-      - "customer-app-v*"
+      - 'customer-app-v*'
   workflow_dispatch:
     inputs:
       publish_to_play:
-        description: "Upload the AAB to Play internal testing?"
+        description: 'Upload the AAB to Play internal testing?'
         required: true
-        default: "false"
+        default: 'false'
         type: choice
-        options: ["false", "true"]
+        options: ['false', 'true']
 
 concurrency:
   group: cd-customer-app-${{ github.ref }}
@@ -72,12 +72,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.0"
+          flutter-version: '3.24.0'
           channel: stable
 
       - name: Install Melos

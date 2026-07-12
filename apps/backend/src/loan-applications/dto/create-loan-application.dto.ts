@@ -1,4 +1,13 @@
-import { IsInt, IsNumber, IsOptional, IsPositive, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 import { LOAN_APPLICATION_RULES } from '../loan-application.constants';
 

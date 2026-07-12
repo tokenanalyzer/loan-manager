@@ -1,4 +1,12 @@
-import { IsBoolean, IsDateString, IsNumber, IsOptional, IsPositive, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 /**
  * All fields optional — this is a partial update (PATCH semantics).

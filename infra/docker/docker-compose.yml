@@ -11,12 +11,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
       POSTGRES_DB: ${POSTGRES_DB:-loan_manager_dev}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-loanmanager}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-loanmanager}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-loanmanager}:${POSTGRES_PASSWORD:-changeme}@postgres:5432/${POSTGRES_DB:-loan_manager_dev}
     ports:
-      - "${BACKEND_PORT:-3000}:3000"
+      - '${BACKEND_PORT:-3000}:3000'
     volumes:
       # Persists uploaded documents across container restarts/redeploys
       # — without this, LocalDiskStorageService's files would be lost
@@ -50,7 +50,7 @@ services:
     container_name: loan-manager-admin-panel
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - '8080:80'
     depends_on:
       - backend
 

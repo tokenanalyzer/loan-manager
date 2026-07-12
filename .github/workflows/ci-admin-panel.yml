@@ -4,18 +4,18 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "apps/admin-panel/**"
-      - "packages/shared-types/**"
-      - "packages/shared-config/**"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/ci-admin-panel.yml"
+      - 'apps/admin-panel/**'
+      - 'packages/shared-types/**'
+      - 'packages/shared-config/**'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.github/workflows/ci-admin-panel.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - "apps/admin-panel/**"
-      - "packages/shared-types/**"
-      - "packages/shared-config/**"
+      - 'apps/admin-panel/**'
+      - 'packages/shared-types/**'
+      - 'packages/shared-config/**'
 
 jobs:
   lint-build-test:

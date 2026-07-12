@@ -4,5 +4,7 @@
   "private": true,
   "description": "Shared Prettier configuration for Loan Manager Enterprise.",
   "main": "index.json",
-  "files": ["index.json"]
+  "files": [
+    "index.json"
+  ]
 }

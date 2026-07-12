@@ -15,6 +15,6 @@ analyzer:
     strict-inference: true
     strict-raw-types: true
   exclude:
-    - "**/*.g.dart"
-    - "**/*.freezed.dart"
-    - "build/**"
+    - '**/*.g.dart'
+    - '**/*.freezed.dart'
+    - 'build/**'

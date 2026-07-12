@@ -10,6 +10,7 @@ last gaps that are genuinely fixable and verifiable inside the repo,
 plus an exact runbook for the toolchain-dependent Play Store steps.
 
 ### Changed
+
 - **`LoanApplicationsService.review()` is now transactional.** The
   approve path (create `Loan` → mark application `APPROVED` → create
   notification) and the reject path (mark `REJECTED` → create
@@ -28,6 +29,7 @@ plus an exact runbook for the toolchain-dependent Play Store steps.
   crashing opaquely on `Firebase.initializeApp` with blank credentials.
 
 ### Added
+
 - **`.github/workflows/cd-customer-app.yml`** — CD/release pipeline:
   builds a signed release App Bundle for the Customer App and can
   optionally upload to Play's internal testing track. Guarded to fail
@@ -40,6 +42,7 @@ plus an exact runbook for the toolchain-dependent Play Store steps.
   Play Console listing requirements).
 
 ### Explicitly not done here (documented, not faked — Phase 9)
+
 Native `android`/`ios` folders (`flutter create`), real Firebase config
 (`flutterfire configure`), signing keys, and committed lockfiles — all
 require the Flutter SDK / a real Firebase project / network, none of
@@ -56,6 +59,7 @@ what wasn't (native platform folders, a lockfile, a live-database
 migration run outside CI).
 
 ### Fixed
+
 - **CORS**: removed `credentials: true` with `origin: '*'` (an invalid
   combination browsers reject, and unnecessary since auth uses Bearer
   tokens, not cookies) → `credentials: false`.
@@ -76,6 +80,7 @@ migration run outside CI).
   cleanly, closing a caveat repeated since Phase 3.
 
 ### Audited, not changed (see architecture.md for full reasoning)
+
 - Native `android`/`ios` platform folders — deliberately not
   hand-created; `flutter create .` in a real Flutter environment is
   the correct, safe way to generate these.
@@ -93,6 +98,7 @@ Scoped to the Flutter Customer App only — Employee App and Admin Panel
 untouched.
 
 ### Added — Backend
+
 - `StorageModule`/`StorageService` (abstract) + `LocalDiskStorageService`
   — a real, working file storage default (`UPLOADS_DIR`), swappable
   for Firebase Storage later behind the same interface.
@@ -113,6 +119,7 @@ untouched.
 - `@types/multer` devDependency for typed file uploads.
 
 ### Added — Customer App
+
 - **Auth**: `SplashScreen` (session restoration), `OnboardingScreen`
   (shown once via `shared_preferences`), router `redirect` rewritten
   to gate both alongside the existing login flow.
@@ -139,6 +146,7 @@ untouched.
   `image_picker`, `url_launcher`.
 
 ### Resolved conflicts (documented in `docs/architecture.md`)
+
 1. Riverpod (required) vs. existing GetIt DI (must not duplicate) →
    Riverpod providers wrap GetIt singletons rather than re-registering them.
 2. Screens needing non-existent backend support vs. "no new modules
@@ -146,6 +154,7 @@ untouched.
    instead of fake buttons.
 
 ### Explicitly not implemented (by design — Phase 7+)
+
 Admin-invite/provisioning flow, Firebase Storage swap-in, push
 notification delivery (FCM), native `android`/`ios` platform folders
 (and the camera/photo permissions that depend on them).
@@ -153,6 +162,7 @@ notification delivery (FCM), native `android`/`ios` platform folders
 ## [Phase 5] — CRM & Loan-Form Business Logic
 
 ### Added
+
 - **Backend RBAC**: `SyncUserGuard` (attaches the synced `UserEntity`
   as `request.appUser`), `RolesGuard` + `@Roles(...)`, the convenience
   `@Auth(...roles)` decorator (composes `FirebaseAuthGuard` →
@@ -185,6 +195,7 @@ notification delivery (FCM), native `android`/`ios` platform folders
   `HomeScreen` is now a navigation hub.
 
 ### Explicitly not implemented (by design — Phase 6+)
+
 Pagination/search, document upload (Firebase Storage), notifications
 (FCM), payments/disbursement workflow, admin panel features, and an
 admin-invite/provisioning flow for employee/admin accounts.
@@ -192,6 +203,7 @@ admin-invite/provisioning flow for employee/admin accounts.
 ## [Phase 4] — Firebase Authentication (Login/OTP)
 
 ### Added
+
 - **Backend**: `FirebaseAuthGuard` (verifies Firebase ID tokens, 503 if
   Firebase Admin isn't configured), `@CurrentUser()` decorator,
   `AuthService.syncFromFirebaseToken` (find-or-create; always creates
@@ -217,6 +229,7 @@ admin-invite/provisioning flow for employee/admin accounts.
   `UserEntity` and `UserProfileResponseDto` updated to match.
 
 ### Explicitly not implemented (by design — Phase 5+)
+
 Admin-invite/seeding flow for employee/admin accounts, OTP rate-limiting,
 profile-completion UI, CRM/loan-form business logic, general-purpose
 API endpoints, and admin panel features.
@@ -224,6 +237,7 @@ API endpoints, and admin panel features.
 ## [Phase 3] — Database Schema & Migrations
 
 ### Added
+
 - Eight TypeORM entities in `apps/backend/src/database/entities/`:
   `UserEntity`, `CustomerProfileEntity`, `EmployeeProfileEntity`,
   `LoanApplicationEntity`, `LoanEntity`, `PaymentEntity`,
@@ -246,6 +260,7 @@ API endpoints, and admin panel features.
   and applies the naming strategy; `data-source.ts` updated to match.
 
 ### Explicitly not implemented (by design — Phase 4+)
+
 Concrete repositories per entity, API endpoints/controllers, Firebase
 Authentication (login/OTP), CRM/loan-form business logic, admin
 features, and application UI beyond the Phase 2 placeholder screens.
@@ -253,6 +268,7 @@ features, and application UI beyond the Phase 2 placeholder screens.
 ## [Phase 2] — Core Development Environment
 
 ### Added
+
 - **Backend**: typed/validated environment config (Joi), PostgreSQL
   connection module (TypeORM, zero entities), standalone TypeORM
   `DataSource` for future migrations, structured Pino logger with
@@ -276,6 +292,7 @@ features, and application UI beyond the Phase 2 placeholder screens.
 - Docs: this changelog, updated README and `docs/architecture.md`.
 
 ### Fixed
+
 - CI: removed `--frozen-lockfile` (no `pnpm-lock.yaml` is committed
   yet) and `cache: pnpm` in `actions/setup-node` (fails without a
   lockfile to hash) from `ci-backend.yml`, `ci-admin-panel.yml`, and
@@ -285,6 +302,7 @@ features, and application UI beyond the Phase 2 placeholder screens.
   the process stays alive.
 
 ### Explicitly not implemented (by design — Phase 3+)
+
 Login/OTP, CRM features, loan forms, admin features, business logic,
 database models/schema, API endpoints, and application screens beyond
 the minimum needed to verify each app runs.

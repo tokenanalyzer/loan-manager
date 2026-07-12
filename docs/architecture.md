@@ -28,17 +28,17 @@ loan-manager/
 
 ## Workspace tooling
 
-| Concern                          | Tool                                 |
-|-----------------------------------|----------------------------------------|
-| JS/TS package management          | pnpm workspaces                        |
-| JS/TS task orchestration/caching  | Turborepo                              |
-| Flutter/Dart workspace             | Melos                                  |
-| Linting (TS)                      | ESLint (shared config package)         |
-| Linting (Dart)                    | flutter_lints                          |
-| Formatting (TS/JS/JSON/MD)        | Prettier                               |
-| Formatting (Dart)                  | `dart format`                          |
-| Local infra                       | Docker Compose (Postgres, services)    |
-| CI                                 | GitHub Actions                         |
+| Concern                          | Tool                                |
+| -------------------------------- | ----------------------------------- |
+| JS/TS package management         | pnpm workspaces                     |
+| JS/TS task orchestration/caching | Turborepo                           |
+| Flutter/Dart workspace           | Melos                               |
+| Linting (TS)                     | ESLint (shared config package)      |
+| Linting (Dart)                   | flutter_lints                       |
+| Formatting (TS/JS/JSON/MD)       | Prettier                            |
+| Formatting (Dart)                | `dart format`                       |
+| Local infra                      | Docker Compose (Postgres, services) |
+| CI                               | GitHub Actions                      |
 
 ## Phase 1 — Foundation (recap)
 
@@ -71,7 +71,7 @@ Docker, and CI. See git history / CHANGELOG for the full file list.
 - **Global error handling** (`src/common/filters/all-exceptions.filter.ts`):
   catches every unhandled exception, logs it once with context, and
   returns a consistent JSON error shape to clients.
-- **Firebase Admin placeholder** (`src/firebase/`): wires up *how*
+- **Firebase Admin placeholder** (`src/firebase/`): wires up _how_
   Firebase Admin will initialize (project id / client email / private
   key from env), but resolves to `null` and logs a warning instead of
   throwing when `FIREBASE_ENABLED=false` or credentials are missing —
@@ -121,7 +121,7 @@ env/
   these via `String.fromEnvironment`/`bool.fromEnvironment` with sane
   defaults, so the app builds and runs correctly even with zero flags.
 - **Dependency injection**: a manually-wired `GetIt` container
-  (`configureDependencies()`). Deliberately *not* using code-generated
+  (`configureDependencies()`). Deliberately _not_ using code-generated
   DI (e.g. `injectable` + `build_runner`) yet, so the app compiles
   without a codegen step being run first.
 - **Firebase placeholder**: `firebase_options_placeholder.dart` mirrors
@@ -221,7 +221,7 @@ hand-editing the initial one, once the database is reachable.
 - The initial migration needs to be run against a real Postgres
   instance at least once to confirm it applies cleanly — see above.
 - No concrete repositories exist yet (e.g. `UserRepository extends
-  BaseRepository<UserEntity>`) — only the generic `BaseRepository<T>`
+BaseRepository<UserEntity>`) — only the generic `BaseRepository<T>`
   base and the entities themselves. Deferred so this phase stays
   scoped to schema/models, not data-access code.
 - No indexes/constraints beyond what's listed above have been
@@ -246,10 +246,10 @@ constraints, indexes, and the migration that creates them.
   internal staff/admin users, unlike the self-service Customer App.
 - **The backend never lets a client self-assign a role.** This is the
   single most important security decision in this phase. `AuthService.
-  syncFromFirebaseToken` always creates first-time sign-ins as
+syncFromFirebaseToken` always creates first-time sign-ins as
   `UserRole.CUSTOMER`. An Employee or Admin's Firebase sign-in only
-  resolves to their real role if a `users` row with that role *already
-  exists* for their `firebaseUid` — provisioned by some process outside
+  resolves to their real role if a `users` row with that role _already
+  exists_ for their `firebaseUid` — provisioned by some process outside
   this endpoint (an admin-invite/seeding flow is explicitly future
   work). Without this, anyone with a merely-valid Firebase token could
   hit the sync endpoint and receive an employee/admin-level account.
@@ -259,7 +259,7 @@ constraints, indexes, and the migration that creates them.
 - **Every surface stays optional.** `FIREBASE_ENABLED=false` (backend),
   `EnvConfig.firebaseEnabled` (Flutter), and `env.firebase.enabled`
   (admin panel) all default to false. Every login screen checks this
-  *before* touching the Firebase SDK, showing a "not configured" state
+  _before_ touching the Firebase SDK, showing a "not configured" state
   instead — preserving the "builds and runs without a real Firebase
   project" property established in Phase 2.
 
@@ -460,12 +460,12 @@ literally rewriting the DI layer for Riverpod would satisfy the first
 requirement while violating the other two.
 
 **Resolution:** `core/riverpod/providers.dart` defines Riverpod
-providers that simply return the *same* GetIt singleton
+providers that simply return the _same_ GetIt singleton
 (`Provider<ApiClient>((ref) => getIt<ApiClient>())`, etc.) rather than
 constructing new instances. Riverpod becomes the reactive
 UI-consumption layer (new screens/controllers use
 `ConsumerWidget`/`StateNotifier`/`AsyncNotifier`); GetIt remains the
-single source of truth for *construction*. There is exactly one
+single source of truth for _construction_. There is exactly one
 `ApiClient`, one `AuthController`, etc., regardless of which layer
 reads them.
 
@@ -477,6 +477,7 @@ unless absolutely required" was also a stated constraint, and none of
 that backend surface existed before this phase.
 
 **Resolution, screen by screen:**
+
 - **Documents** — genuinely new `DocumentsModule`, justified because
   `DocumentEntity` already existed (built in Phase 3 for exactly this
   purpose) and was otherwise unused. Real file storage via a
@@ -487,12 +488,12 @@ that backend surface existed before this phase.
   implementing the same interface is a clean future swap.
 - **Notifications** — a small, genuinely new `NotificationsModule`
   (one entity, one migration), populated by a real hook into the
-  *existing* `LoanApplicationsService.review()` — approving/rejecting
+  _existing_ `LoanApplicationsService.review()` — approving/rejecting
   an application creates a real notification row, not a canned one.
 - **Consent / Privacy / Account deletion** — additive fields on the
-  *existing* `CustomerProfileEntity` (`marketingConsent`,
+  _existing_ `CustomerProfileEntity` (`marketingConsent`,
   `dataConsentAcceptedAt`) and `UserEntity` (`deletionRequestedAt`),
-  exposed via new endpoints on the *existing* `CustomersController` —
+  exposed via new endpoints on the _existing_ `CustomersController` —
   not new modules. Account deletion is a request only (audit-logged via
   the existing `AuditLogEntity`) — no automated hard-delete job reads
   it, since immediately deleting a financial/loan customer record
@@ -565,7 +566,7 @@ lib/
 
 ### Session restoration & onboarding — how they actually work
 
-- **Session restoration** isn't new code so much as newly-*visible*
+- **Session restoration** isn't new code so much as newly-_visible_
   behavior: Firebase Auth's SDK already persists sessions locally and
   `AuthController` (Phase 4) already listens to `authStateChanges()`.
   What Phase 6 adds is `SplashScreen` and a `redirect` rewrite so the
@@ -798,7 +799,7 @@ this is the single highest-value correctness fix available.
 **Design decision:** rather than change `BaseRepository` or the concrete
 repositories (which would ripple across the codebase and risk the
 working architecture), the fix injects the default TypeORM `DataSource`
-into the *service* and wraps only the decision path in
+into the _service_ and wraps only the decision path in
 `dataSource.transaction(async (manager) => { ... })`. All mutations use
 the transactional `manager`; a throw anywhere rolls the whole decision
 back. The pre-transaction reads and the `ConflictException` guards stay
@@ -810,7 +811,7 @@ making the one multi-write operation atomic.
 parameter. When the review transaction passes its `manager`, the
 notification insert joins that transaction; otherwise the service falls
 back to its own repository. This keeps notification-creation logic in
-one place (no duplicated insert in the caller) *and* makes it
+one place (no duplicated insert in the caller) _and_ makes it
 transaction-aware — the better production design than inlining the
 insert at the call site.
 
@@ -833,7 +834,7 @@ it triggers only on a version tag or manual dispatch (releasing is an
 intentional act, not a push side effect), and a `guard-native-setup`
 job fails fast with an actionable message if `apps/customer-app/android`
 doesn't exist yet. That guard is what makes it safe to commit the
-workflow *now*, before the native folders are generated — it explains
+workflow _now_, before the native folders are generated — it explains
 itself instead of failing cryptically.
 
 ### Why native folders / Firebase config are a runbook, not code

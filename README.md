@@ -22,16 +22,16 @@ tooling and infrastructure.
 
 ## Tech stack
 
-| Layer              | Technology                          |
-|---------------------|--------------------------------------|
-| Customer app        | Flutter                              |
-| Employee app        | Flutter                              |
-| Backend             | NestJS (Node.js / TypeScript)        |
-| Admin panel         | React + Vite (TypeScript)            |
-| Database            | PostgreSQL                           |
-| Authentication      | Firebase Authentication *(planned)*  |
-| File storage        | Firebase Storage *(planned)*         |
-| Push notifications  | Firebase Cloud Messaging *(planned)* |
+| Layer              | Technology                           |
+| ------------------ | ------------------------------------ |
+| Customer app       | Flutter                              |
+| Employee app       | Flutter                              |
+| Backend            | NestJS (Node.js / TypeScript)        |
+| Admin panel        | React + Vite (TypeScript)            |
+| Database           | PostgreSQL                           |
+| Authentication     | Firebase Authentication _(planned)_  |
+| File storage       | Firebase Storage _(planned)_         |
+| Push notifications | Firebase Cloud Messaging _(planned)_ |
 
 ## Repository structure
 
@@ -57,18 +57,18 @@ See [`docs/architecture.md`](./docs/architecture.md) for details.
 
 ## What Phase 2 added
 
-| Area | Backend (NestJS) | Admin Panel (React) | Flutter apps |
-|---|---|---|---|
-| Server config | Helmet, CORS, global `ValidationPipe`, URI versioning, graceful shutdown | Vite dev server config | Guarded Firebase bootstrap |
-| Config | Typed `ConfigService` namespaces + Joi validation (fails fast on boot) | Typed `import.meta.env` wrapper | Compile-time `--dart-define-from-file` (`env/*.json`) |
-| Logging | Structured Pino logger, request-correlated, header-redacted | Lightweight console logger wrapper | Shared `AppLogger` (in `shared_flutter`) |
-| Error handling | Global `AllExceptionsFilter` → consistent JSON error shape | Axios response interceptor | `NetworkException` + `ApiResult<T>` sealed class |
-| Database | `DatabaseModule` (TypeORM connection only, zero entities, `synchronize: false`) | — | — |
-| API client | — | Axios instance w/ interceptors | Shared `ApiClient` (Dio-based) |
-| Repository pattern | Generic `BaseRepository<T>` (no concrete entities yet) | — | Shared `BaseRepository` (in `shared_flutter`) |
-| DI | Nest's built-in DI | — | Manual `GetIt` setup (no codegen required) |
-| Routing | — (no controllers yet — no APIs in scope) | `react-router-dom`, one placeholder route | `go_router`, one placeholder route |
-| Theme | — | — | Shared `AppTheme` (light/dark, in `shared_flutter`) |
+| Area               | Backend (NestJS)                                                                | Admin Panel (React)                       | Flutter apps                                          |
+| ------------------ | ------------------------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------- |
+| Server config      | Helmet, CORS, global `ValidationPipe`, URI versioning, graceful shutdown        | Vite dev server config                    | Guarded Firebase bootstrap                            |
+| Config             | Typed `ConfigService` namespaces + Joi validation (fails fast on boot)          | Typed `import.meta.env` wrapper           | Compile-time `--dart-define-from-file` (`env/*.json`) |
+| Logging            | Structured Pino logger, request-correlated, header-redacted                     | Lightweight console logger wrapper        | Shared `AppLogger` (in `shared_flutter`)              |
+| Error handling     | Global `AllExceptionsFilter` → consistent JSON error shape                      | Axios response interceptor                | `NetworkException` + `ApiResult<T>` sealed class      |
+| Database           | `DatabaseModule` (TypeORM connection only, zero entities, `synchronize: false`) | —                                         | —                                                     |
+| API client         | —                                                                               | Axios instance w/ interceptors            | Shared `ApiClient` (Dio-based)                        |
+| Repository pattern | Generic `BaseRepository<T>` (no concrete entities yet)                          | —                                         | Shared `BaseRepository` (in `shared_flutter`)         |
+| DI                 | Nest's built-in DI                                                              | —                                         | Manual `GetIt` setup (no codegen required)            |
+| Routing            | — (no controllers yet — no APIs in scope)                                       | `react-router-dom`, one placeholder route | `go_router`, one placeholder route                    |
+| Theme              | —                                                                               | —                                         | Shared `AppTheme` (light/dark, in `shared_flutter`)   |
 
 Run the local dev environment with:
 
@@ -80,6 +80,7 @@ melos run run:employee:dev     # Employee App, local dev config
 ```
 
 **Known follow-up work** (see [`docs/architecture.md`](./docs/architecture.md)):
+
 - No native `android/`/`ios/`/`web/` platform folders exist yet for either
   Flutter app — run `flutter create .` inside each app once to generate
   them before attempting `flutter build apk`/`ios`/`web`. `flutter analyze`,
@@ -98,16 +99,16 @@ melos run run:employee:dev     # Employee App, local dev config
 Eight TypeORM entities modeling the loan domain, plus one hand-written
 initial migration (see the caveat below) that creates every table:
 
-| Entity | Table | Purpose |
-|---|---|---|
-| `UserEntity` | `users` | Shared identity for customers/employees/admins, keyed to Firebase Auth via `firebaseUid` |
-| `CustomerProfileEntity` | `customer_profiles` | Customer-only fields (1:1 with `users`) |
-| `EmployeeProfileEntity` | `employee_profiles` | Employee-only fields (1:1 with `users`) |
-| `LoanApplicationEntity` | `loan_applications` | A request for a loan, prior to approval |
-| `LoanEntity` | `loans` | An approved/active loan |
-| `PaymentEntity` | `payments` | Scheduled/made repayments against a loan |
-| `DocumentEntity` | `documents` | Metadata for files in Firebase Storage |
-| `AuditLogEntity` | `audit_logs` | Generic, append-only audit trail |
+| Entity                  | Table               | Purpose                                                                                  |
+| ----------------------- | ------------------- | ---------------------------------------------------------------------------------------- |
+| `UserEntity`            | `users`             | Shared identity for customers/employees/admins, keyed to Firebase Auth via `firebaseUid` |
+| `CustomerProfileEntity` | `customer_profiles` | Customer-only fields (1:1 with `users`)                                                  |
+| `EmployeeProfileEntity` | `employee_profiles` | Employee-only fields (1:1 with `users`)                                                  |
+| `LoanApplicationEntity` | `loan_applications` | A request for a loan, prior to approval                                                  |
+| `LoanEntity`            | `loans`             | An approved/active loan                                                                  |
+| `PaymentEntity`         | `payments`          | Scheduled/made repayments against a loan                                                 |
+| `DocumentEntity`        | `documents`         | Metadata for files in Firebase Storage                                                   |
+| `AuditLogEntity`        | `audit_logs`        | Generic, append-only audit trail                                                         |
 
 - All entities extend a shared `AbstractEntity` (UUID PK, timestamps,
   soft delete) except `AuditLogEntity`, which is append-only.
@@ -134,13 +135,13 @@ pnpm migration:run
 
 Real, working login — verified end-to-end through the whole stack:
 
-| Surface | Method | What was built |
-|---|---|---|
-| Backend | Token verification | `FirebaseAuthGuard` (verifies Firebase ID tokens), `@CurrentUser()` decorator, `POST /v1/auth/session` + `GET /v1/auth/me`, `AuthService` (find-or-create — **never** lets a client self-assign a role), `UserRepository` (first concrete repo extending Phase 2's `BaseRepository`) |
-| Customer App | Phone + OTP | `CustomerAuthRepository` (wraps `verifyPhoneNumber`/`signInWithCredential`), `PhoneEntryScreen`, `OtpVerificationScreen` |
-| Employee App | Email + password | `EmployeeAuthRepository`, `LoginScreen` (sign-in + password reset; no self-service sign-up) |
-| Admin Panel | Email + password | Firebase JS SDK, `AuthProvider`/`useAuth()`, `LoginPage`, `ProtectedRoute` |
-| Shared (Flutter) | — | `AuthState` (sealed class), `AuthController` (reacts to Firebase's auth-state stream, syncs the session) — shared by both apps |
+| Surface          | Method             | What was built                                                                                                                                                                                                                                                                       |
+| ---------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Backend          | Token verification | `FirebaseAuthGuard` (verifies Firebase ID tokens), `@CurrentUser()` decorator, `POST /v1/auth/session` + `GET /v1/auth/me`, `AuthService` (find-or-create — **never** lets a client self-assign a role), `UserRepository` (first concrete repo extending Phase 2's `BaseRepository`) |
+| Customer App     | Phone + OTP        | `CustomerAuthRepository` (wraps `verifyPhoneNumber`/`signInWithCredential`), `PhoneEntryScreen`, `OtpVerificationScreen`                                                                                                                                                             |
+| Employee App     | Email + password   | `EmployeeAuthRepository`, `LoginScreen` (sign-in + password reset; no self-service sign-up)                                                                                                                                                                                          |
+| Admin Panel      | Email + password   | Firebase JS SDK, `AuthProvider`/`useAuth()`, `LoginPage`, `ProtectedRoute`                                                                                                                                                                                                           |
+| Shared (Flutter) | —                  | `AuthState` (sealed class), `AuthController` (reacts to Firebase's auth-state stream, syncs the session) — shared by both apps                                                                                                                                                       |
 
 **Security note:** a brand-new Firebase sign-in is always created as
 `UserRole.CUSTOMER` (the lowest-privilege default). Employee/admin
@@ -166,13 +167,13 @@ the property established in Phase 2.
 The first real business logic in the project — role-based access
 control, the loan-application workflow, and CRM:
 
-| Area | What was built |
-|---|---|
-| Backend RBAC | `@Auth(...roles)` (combines `FirebaseAuthGuard` → `SyncUserGuard` → `RolesGuard`), `@CurrentAppUser()` — the synced `UserEntity`, not just the raw Firebase token |
+| Area              | What was built                                                                                                                                                                                                              |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend RBAC      | `@Auth(...roles)` (combines `FirebaseAuthGuard` → `SyncUserGuard` → `RolesGuard`), `@CurrentAppUser()` — the synced `UserEntity`, not just the raw Firebase token                                                           |
 | Loan applications | `POST /v1/loan-applications` (submit), `GET /v1/loan-applications` (role-scoped list), `GET /v1/loan-applications/:id`, `PATCH /v1/loan-applications/:id/review` (approve creates a real `Loan`; reject just closes it out) |
-| CRM | `GET`/`PATCH /v1/customers/me` (self-service profile), `GET /v1/customers` + `GET /v1/customers/:id` + `GET /v1/customers/:id/profile` (employee/admin-only lookup) |
-| Customer App | Loan application form, my-applications list/detail, profile view/edit — `HomeScreen` is now a navigation hub |
-| Employee App | Customer list/detail (CRM), application review queue + approve/reject screen |
+| CRM               | `GET`/`PATCH /v1/customers/me` (self-service profile), `GET /v1/customers` + `GET /v1/customers/:id` + `GET /v1/customers/:id/profile` (employee/admin-only lookup)                                                         |
+| Customer App      | Loan application form, my-applications list/detail, profile view/edit — `HomeScreen` is now a navigation hub                                                                                                                |
+| Employee App      | Customer list/detail (CRM), application review queue + approve/reject screen                                                                                                                                                |
 
 **Business rules enforced server-side, not client-side:** requested
 amount ($500–$50,000) and term (3–60 months) bounds, application
@@ -183,7 +184,7 @@ returns — no duplicate validation logic to keep in sync.
 
 **Role scoping, not just role gating:** `GET /v1/loan-applications`
 and `.../customers/:id` don't just check "is this role allowed at
-all" — the service layer scopes *which rows* come back (a customer's
+all" — the service layer scopes _which rows_ come back (a customer's
 own applications only; a customer's profile lookup restricted to
 users who are actually customers).
 
@@ -197,7 +198,7 @@ silently picking a side — both documented in full in
 1. **Riverpod vs. the existing GetIt DI.** Riverpod is now the
    reactive UI-state layer (new screens use `ConsumerWidget`/
    `StateNotifier`/`AsyncNotifier`), but every Riverpod provider in
-   `core/riverpod/providers.dart` wraps the *same* GetIt singleton —
+   `core/riverpod/providers.dart` wraps the _same_ GetIt singleton —
    nothing was re-registered or duplicated.
 2. **Screens needing backend support that didn't exist.** Rather than
    fake buttons, small real backend additions were made: a
@@ -205,23 +206,23 @@ silently picking a side — both documented in full in
    this in Phase 3, with a real — if local-disk-by-default — file
    storage layer), a `NotificationsModule` (populated by real events
    from the existing loan-review flow), and additive consent/
-   deletion-request fields on the *existing* `CustomersController` —
+   deletion-request fields on the _existing_ `CustomersController` —
    no fake "ticket submitted" screens; Contact Support opens a real
    `mailto:`.
 
-| Feature | What was built |
-|---|---|
-| Auth | `SplashScreen` (session restoration), `OnboardingScreen` (shown once, via `shared_preferences`), enhanced router `redirect` gating all of it |
-| Home | Real dashboard: user greeting, active applications, loan category quick-links, quick actions, notifications summary — all backed by a `HomeController` (Riverpod `AsyncNotifier`) |
-| Loan journey | Category selection → details/eligibility (static, honestly-framed guidance — no fake eligibility engine) → multi-step form (amount/term → purpose → review) → submit → success, driven by `LoanApplicationFlowController` |
-| Applications | `MyApplicationsScreen`, `ApplicationDetailScreen` with a real `StatusTimeline` translating backend status into customer-visible messages |
-| Documents | Required-documents list with missing indicators, upload via camera/gallery (`image_picker`) with live progress, replace-on-reupload, preview — backed by a genuinely new `DocumentsModule` |
-| Profile | Split into View / Edit (per the explicit requirement), Privacy Settings (consent toggles + data-consent acceptance), Account Deletion (a real, audit-logged *request* — not an immediate hard delete) |
-| Support | Help Center, static FAQ, Contact Support (real `mailto:` composer via `url_launcher`) |
-| Notifications | List with read/unread state, deep links straight into the related loan application |
+| Feature       | What was built                                                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth          | `SplashScreen` (session restoration), `OnboardingScreen` (shown once, via `shared_preferences`), enhanced router `redirect` gating all of it                                                                              |
+| Home          | Real dashboard: user greeting, active applications, loan category quick-links, quick actions, notifications summary — all backed by a `HomeController` (Riverpod `AsyncNotifier`)                                         |
+| Loan journey  | Category selection → details/eligibility (static, honestly-framed guidance — no fake eligibility engine) → multi-step form (amount/term → purpose → review) → submit → success, driven by `LoanApplicationFlowController` |
+| Applications  | `MyApplicationsScreen`, `ApplicationDetailScreen` with a real `StatusTimeline` translating backend status into customer-visible messages                                                                                  |
+| Documents     | Required-documents list with missing indicators, upload via camera/gallery (`image_picker`) with live progress, replace-on-reupload, preview — backed by a genuinely new `DocumentsModule`                                |
+| Profile       | Split into View / Edit (per the explicit requirement), Privacy Settings (consent toggles + data-consent acceptance), Account Deletion (a real, audit-logged _request_ — not an immediate hard delete)                     |
+| Support       | Help Center, static FAQ, Contact Support (real `mailto:` composer via `url_launcher`)                                                                                                                                     |
+| Notifications | List with read/unread state, deep links straight into the related loan application                                                                                                                                        |
 
 **Structural note:** the app keeps the flat `lib/features/<feature>/`
-organization established since Phase 4 (this already *is* feature-first
+organization established since Phase 4 (this already _is_ feature-first
 structure) rather than adding extra `data/domain/presentation`
 sub-nesting per feature — the data layer (repositories/models) stays
 centralized under `core/`, unchanged in kind from Phases 2-5, just
@@ -235,14 +236,14 @@ blockers, security issues, native setup, Firebase config, CI/CD gaps).
 Full findings are in `docs/architecture.md`; the real, fixable issues
 found were fixed:
 
-| Finding | Fix |
-|---|---|
-| `credentials: true` + `origin: '*'` CORS — an invalid combination browsers reject, and unnecessary since auth uses Bearer tokens, not cookies | `credentials: false` |
-| No rate limiting anywhere on a public-facing fintech API | `@nestjs/throttler`, global 60 req/min default + a tighter 10 req/min limit on `POST /v1/auth/session` |
-| Document upload accepted **any** file type, only size was limited | MIME-type allowlist (`fileFilter`) rejecting anything but images/PDF |
-| Document preview interpolated the stored filename into a `Content-Disposition` header unsanitized | strips quotes/CR/LF before use |
-| Uploaded documents had no persistent volume in Docker — lost on every container recreation | `backend_uploads` named volume |
-| CI never actually ran the migration set against a live database — every phase's docs said "unverified" | `pnpm migration:run` added as a real CI step, against the same Postgres service the boot smoke test uses |
+| Finding                                                                                                                                       | Fix                                                                                                      |
+| --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `credentials: true` + `origin: '*'` CORS — an invalid combination browsers reject, and unnecessary since auth uses Bearer tokens, not cookies | `credentials: false`                                                                                     |
+| No rate limiting anywhere on a public-facing fintech API                                                                                      | `@nestjs/throttler`, global 60 req/min default + a tighter 10 req/min limit on `POST /v1/auth/session`   |
+| Document upload accepted **any** file type, only size was limited                                                                             | MIME-type allowlist (`fileFilter`) rejecting anything but images/PDF                                     |
+| Document preview interpolated the stored filename into a `Content-Disposition` header unsanitized                                             | strips quotes/CR/LF before use                                                                           |
+| Uploaded documents had no persistent volume in Docker — lost on every container recreation                                                    | `backend_uploads` named volume                                                                           |
+| CI never actually ran the migration set against a live database — every phase's docs said "unverified"                                        | `pnpm migration:run` added as a real CI step, against the same Postgres service the boot smoke test uses |
 
 **Explicitly NOT fixed, with reasons** (see the audit for full detail):
 Play Store blockers (native `android`/`ios` folders, app icons, release
@@ -286,16 +287,16 @@ melos run get   # fetch Flutter deps if not already done
 
 ## Common commands
 
-| Command                | Description                                      |
-|--------------------------|---------------------------------------------------|
-| `pnpm lint`              | Lint all TS/JS packages                           |
-| `pnpm format:check`      | Check Prettier formatting across the repo          |
-| `pnpm test`              | Run tests for all TS/JS packages                   |
-| `melos run analyze`      | Static analysis across all Flutter packages         |
-| `melos run format`       | Check Dart formatting across all Flutter packages   |
-| `melos run test`         | Run tests across all Flutter packages               |
-| `make docker-up`         | Start Postgres, backend, and admin panel in Docker |
-| `make docker-down`       | Stop the Docker stack                              |
+| Command             | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `pnpm lint`         | Lint all TS/JS packages                            |
+| `pnpm format:check` | Check Prettier formatting across the repo          |
+| `pnpm test`         | Run tests for all TS/JS packages                   |
+| `melos run analyze` | Static analysis across all Flutter packages        |
+| `melos run format`  | Check Dart formatting across all Flutter packages  |
+| `melos run test`    | Run tests across all Flutter packages              |
+| `make docker-up`    | Start Postgres, backend, and admin panel in Docker |
+| `make docker-down`  | Stop the Docker stack                              |
 
 ## Environment variables
 
@@ -328,7 +329,7 @@ Proprietary — see [`LICENSE`](./LICENSE).
   create notification) in a single TypeORM transaction via the injected
   `DataSource`. A failure mid-decision can no longer leave an APPROVED
   application with no Loan row (or vice versa). `NotificationsService.
-  createForUser` gained an optional `EntityManager` parameter so it
+createForUser` gained an optional `EntityManager` parameter so it
   participates in the caller's transaction — no duplicated insert logic.
 - **Fail-safe Firebase bootstrap.** Both Flutter apps now detect the
   empty placeholder Firebase config and log a clear, actionable error

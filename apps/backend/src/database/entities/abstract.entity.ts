@@ -1,4 +1,9 @@
-import { CreateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  CreateDateColumn,
+  DeleteDateColumn,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 /**
  * AbstractEntity — shared columns for every table in the schema.

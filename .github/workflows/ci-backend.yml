@@ -4,18 +4,18 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "apps/backend/**"
-      - "packages/shared-types/**"
-      - "packages/shared-config/**"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/ci-backend.yml"
+      - 'apps/backend/**'
+      - 'packages/shared-types/**'
+      - 'packages/shared-config/**'
+      - 'pnpm-workspace.yaml'
+      - 'package.json'
+      - '.github/workflows/ci-backend.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - "apps/backend/**"
-      - "packages/shared-types/**"
-      - "packages/shared-config/**"
+      - 'apps/backend/**'
+      - 'packages/shared-types/**'
+      - 'packages/shared-config/**'
 
 jobs:
   lint-build-test:
