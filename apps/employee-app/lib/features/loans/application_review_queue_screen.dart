@@ -13,10 +13,12 @@ class ApplicationReviewQueueScreen extends StatefulWidget {
   const ApplicationReviewQueueScreen({super.key});
 
   @override
-  State<ApplicationReviewQueueScreen> createState() => _ApplicationReviewQueueScreenState();
+  State<ApplicationReviewQueueScreen> createState() =>
+      _ApplicationReviewQueueScreenState();
 }
 
-class _ApplicationReviewQueueScreenState extends State<ApplicationReviewQueueScreen> {
+class _ApplicationReviewQueueScreenState
+    extends State<ApplicationReviewQueueScreen> {
   late Future<List<LoanApplication>> _future;
 
   @override
@@ -26,8 +28,10 @@ class _ApplicationReviewQueueScreenState extends State<ApplicationReviewQueueScr
   }
 
   Future<List<LoanApplication>> _load() async {
-    final result = await getIt<LoanApplicationRepository>().getAllApplications();
-    return result.when(success: (data) => data, failure: (error) => throw error);
+    final result =
+        await getIt<LoanApplicationRepository>().getAllApplications();
+    return result.when(
+        success: (data) => data, failure: (error) => throw error);
   }
 
   @override
@@ -41,7 +45,8 @@ class _ApplicationReviewQueueScreenState extends State<ApplicationReviewQueueScr
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Could not load applications: ${snapshot.error}'));
+            return Center(
+                child: Text('Could not load applications: ${snapshot.error}'));
           }
 
           final applications = snapshot.data ?? [];
@@ -55,7 +60,8 @@ class _ApplicationReviewQueueScreenState extends State<ApplicationReviewQueueScr
             itemBuilder: (context, index) {
               final application = applications[index];
               return ListTile(
-                title: Text('\$${application.requestedAmount} · ${application.requestedTermMonths} mo'),
+                title: Text(
+                    '\$${application.requestedAmount} · ${application.requestedTermMonths} mo'),
                 subtitle: Text(application.status),
                 onTap: () async {
                   await context.push('/applications/${application.id}');

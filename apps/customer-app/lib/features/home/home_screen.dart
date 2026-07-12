@@ -67,7 +67,9 @@ class _DashboardContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final name = data.userProfile?.fullName;
-    final greeting = (name != null && name.isNotEmpty) ? 'Hello, ${name.split(' ').first}!' : 'Hello!';
+    final greeting = (name != null && name.isNotEmpty)
+        ? 'Hello, ${name.split(' ').first}!'
+        : 'Hello!';
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -86,7 +88,8 @@ class _DashboardContent extends StatelessWidget {
           onTap: () => context.push('/notifications'),
           child: Row(
             children: [
-              Icon(Icons.notifications_outlined, color: Theme.of(context).colorScheme.primary),
+              Icon(Icons.notifications_outlined,
+                  color: Theme.of(context).colorScheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -109,7 +112,8 @@ class _DashboardContent extends StatelessWidget {
           AppCard(
             child: Row(
               children: [
-                const Expanded(child: Text('No active applications right now.')),
+                const Expanded(
+                    child: Text('No active applications right now.')),
                 TextButton(
                   onPressed: () => context.push('/loans/categories'),
                   child: const Text('Apply now'),
@@ -167,7 +171,9 @@ class _DashboardContent extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(category.icon, color: Theme.of(context).colorScheme.primary, size: 28),
+                      Icon(category.icon,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 28),
                       const SizedBox(height: 8),
                       Text(
                         category.title,
@@ -233,7 +239,8 @@ class _DashboardContent extends StatelessWidget {
 }
 
 class _QuickAction extends StatelessWidget {
-  const _QuickAction({required this.icon, required this.label, required this.onTap});
+  const _QuickAction(
+      {required this.icon, required this.label, required this.onTap});
 
   final IconData icon;
   final String label;

@@ -27,7 +27,8 @@ class SplashScreen extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
               ),
-              child: const Icon(Icons.account_balance, size: 44, color: AppColors.primary),
+              child: const Icon(Icons.account_balance,
+                  size: 44, color: AppColors.primary),
             ),
             const SizedBox(height: 24),
             Text(
@@ -41,7 +42,8 @@ class SplashScreen extends StatelessWidget {
             const SizedBox(
               width: 28,
               height: 28,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+              child: CircularProgressIndicator(
+                  strokeWidth: 2.5, color: Colors.white),
             ),
           ],
         ),

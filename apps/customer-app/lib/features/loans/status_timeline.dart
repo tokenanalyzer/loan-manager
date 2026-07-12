@@ -32,7 +32,9 @@ class StatusTimeline extends StatelessWidget {
       children: List.generate(steps.length, (index) {
         final step = steps[index];
         final isLast = index == steps.length - 1;
-        final color = step.isComplete ? theme.colorScheme.primary : theme.colorScheme.outlineVariant;
+        final color = step.isComplete
+            ? theme.colorScheme.primary
+            : theme.colorScheme.outlineVariant;
 
         return IntrinsicHeight(
           child: Row(
@@ -43,12 +45,14 @@ class StatusTimeline extends StatelessWidget {
                   Container(
                     width: 20,
                     height: 20,
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    decoration:
+                        BoxDecoration(color: color, shape: BoxShape.circle),
                     child: step.isComplete
                         ? const Icon(Icons.check, size: 14, color: Colors.white)
                         : null,
                   ),
-                  if (!isLast) Expanded(child: Container(width: 2, color: color)),
+                  if (!isLast)
+                    Expanded(child: Container(width: 2, color: color)),
                 ],
               ),
               const SizedBox(width: 12),
@@ -62,7 +66,9 @@ class StatusTimeline extends StatelessWidget {
                         step.label,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: step.isComplete ? null : theme.colorScheme.onSurfaceVariant,
+                          color: step.isComplete
+                              ? null
+                              : theme.colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 2),

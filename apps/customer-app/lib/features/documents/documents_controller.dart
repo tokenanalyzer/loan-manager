@@ -7,7 +7,8 @@ import '../../core/riverpod/providers.dart';
 /// currently uploading — kept separate from the overview `AsyncValue`
 /// so a re-upload doesn't blank the existing list while it's in flight.
 class DocumentsUploadState {
-  const DocumentsUploadState({this.documentTypeInProgress, this.progress, this.errorMessage});
+  const DocumentsUploadState(
+      {this.documentTypeInProgress, this.progress, this.errorMessage});
 
   final String? documentTypeInProgress;
   final double? progress;
@@ -17,9 +18,11 @@ class DocumentsUploadState {
 }
 
 final documentsUploadStateProvider =
-    StateProvider.autoDispose<DocumentsUploadState>((ref) => const DocumentsUploadState());
+    StateProvider.autoDispose<DocumentsUploadState>(
+        (ref) => const DocumentsUploadState());
 
-final documentsOverviewProvider = FutureProvider.autoDispose<DocumentsOverview>((ref) async {
+final documentsOverviewProvider =
+    FutureProvider.autoDispose<DocumentsOverview>((ref) async {
   final repository = ref.read(documentRepositoryProvider);
   final result = await repository.getMyDocuments();
   return result.when(success: (data) => data, failure: (error) => throw error);
@@ -34,7 +37,8 @@ class DocumentsUploadController {
 
   final Ref _ref;
 
-  Future<void> upload({required String documentType, required String filePath}) async {
+  Future<void> upload(
+      {required String documentType, required String filePath}) async {
     _ref.read(documentsUploadStateProvider.notifier).state =
         DocumentsUploadState(documentTypeInProgress: documentType, progress: 0);
 
@@ -44,7 +48,8 @@ class DocumentsUploadController {
       filePath: filePath,
       onProgress: (sent, total) {
         if (total <= 0) return;
-        _ref.read(documentsUploadStateProvider.notifier).state = DocumentsUploadState(
+        _ref.read(documentsUploadStateProvider.notifier).state =
+            DocumentsUploadState(
           documentTypeInProgress: documentType,
           progress: sent / total,
         );
@@ -53,7 +58,8 @@ class DocumentsUploadController {
 
     result.when(
       success: (_) {
-        _ref.read(documentsUploadStateProvider.notifier).state = const DocumentsUploadState();
+        _ref.read(documentsUploadStateProvider.notifier).state =
+            const DocumentsUploadState();
         _ref.invalidate(documentsOverviewProvider);
       },
       failure: (error) {
@@ -64,6 +70,7 @@ class DocumentsUploadController {
   }
 }
 
-final documentsUploadControllerProvider = Provider.autoDispose<DocumentsUploadController>(
+final documentsUploadControllerProvider =
+    Provider.autoDispose<DocumentsUploadController>(
   (ref) => DocumentsUploadController(ref),
 );

@@ -94,7 +94,8 @@ class ApiClient {
         ...?fields,
         fieldName: await MultipartFile.fromFile(filePath, filename: fileName),
       });
-      final response = await _dio.post(path, data: formData, onSendProgress: onSendProgress);
+      final response =
+          await _dio.post(path, data: formData, onSendProgress: onSendProgress);
       return ApiSuccess(mapper(response.data));
     } on DioException catch (error) {
       return ApiFailure(_mapDioException(error));

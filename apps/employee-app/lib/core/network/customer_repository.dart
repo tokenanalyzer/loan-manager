@@ -30,8 +30,9 @@ class CustomerRepository extends BaseRepository {
   Future<ApiResult<CustomerProfile?>> getCustomerProfile(String id) {
     return get<CustomerProfile?>(
       '/v1/customers/$id/profile',
-      mapper: (data) =>
-          data == null ? null : CustomerProfile.fromJson(data as Map<String, dynamic>),
+      mapper: (data) => data == null
+          ? null
+          : CustomerProfile.fromJson(data as Map<String, dynamic>),
     );
   }
 }

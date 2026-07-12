@@ -42,10 +42,12 @@ class ErrorView extends StatelessWidget {
           children: [
             Icon(Icons.error_outline, color: theme.colorScheme.error, size: 40),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+            Text(message,
+                textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              OutlinedButton(onPressed: onRetry, child: const Text('Try again')),
+              OutlinedButton(
+                  onPressed: onRetry, child: const Text('Try again')),
             ],
           ],
         ),
@@ -81,7 +83,8 @@ class EmptyView extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+            Text(message,
+                textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
             if (actionLabel != null && onAction != null) ...[
               const SizedBox(height: 16),
               FilledButton(onPressed: onAction, child: Text(actionLabel!)),

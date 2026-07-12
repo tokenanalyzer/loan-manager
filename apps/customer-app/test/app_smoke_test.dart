@@ -11,15 +11,19 @@ import 'package:loan_manager_customer_app/features/home/home_controller.dart';
 class _FakeHomeController extends HomeController {
   @override
   Future<HomeDashboardData> build() async {
-    return const HomeDashboardData(userProfile: null, applications: [], unreadNotificationCount: 0);
+    return const HomeDashboardData(
+        userProfile: null, applications: [], unreadNotificationCount: 0);
   }
 }
 
 void main() {
-  testWidgets('CustomerApp builds and shows the Home dashboard', (tester) async {
+  testWidgets('CustomerApp builds and shows the Home dashboard',
+      (tester) async {
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [homeControllerProvider.overrideWith(_FakeHomeController.new)],
+        overrides: [
+          homeControllerProvider.overrideWith(_FakeHomeController.new)
+        ],
         child: const CustomerApp(),
       ),
     );

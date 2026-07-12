@@ -14,11 +14,12 @@ class NetworkException implements Exception {
   final int? statusCode;
   final Object? cause;
 
-  factory NetworkException.timeout() =>
-      const NetworkException(message: 'The request timed out. Please try again.');
+  factory NetworkException.timeout() => const NetworkException(
+      message: 'The request timed out. Please try again.');
 
   factory NetworkException.noConnection() => const NetworkException(
-        message: 'No internet connection. Please check your network and try again.',
+        message:
+            'No internet connection. Please check your network and try again.',
       );
 
   factory NetworkException.unexpected([Object? cause]) => NetworkException(
@@ -27,5 +28,6 @@ class NetworkException implements Exception {
       );
 
   @override
-  String toString() => 'NetworkException(statusCode: $statusCode, message: $message)';
+  String toString() =>
+      'NetworkException(statusCode: $statusCode, message: $message)';
 }

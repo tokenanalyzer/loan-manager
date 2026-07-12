@@ -60,8 +60,10 @@ abstract final class AppTheme {
         surface: AppColors.surfaceDark,
       ),
       textTheme: TextTheme(
-        headlineLarge: AppTextStyles.headlineLarge.copyWith(color: Colors.white),
-        headlineMedium: AppTextStyles.headlineMedium.copyWith(color: Colors.white),
+        headlineLarge:
+            AppTextStyles.headlineLarge.copyWith(color: Colors.white),
+        headlineMedium:
+            AppTextStyles.headlineMedium.copyWith(color: Colors.white),
         bodyLarge: AppTextStyles.bodyLarge.copyWith(color: Colors.white),
         bodyMedium: AppTextStyles.bodyMedium.copyWith(color: Colors.white70),
         labelSmall: AppTextStyles.labelSmall.copyWith(color: Colors.white70),

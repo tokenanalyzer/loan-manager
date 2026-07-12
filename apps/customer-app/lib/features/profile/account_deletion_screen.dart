@@ -15,7 +15,8 @@ class AccountDeletionScreen extends ConsumerStatefulWidget {
   const AccountDeletionScreen({super.key});
 
   @override
-  ConsumerState<AccountDeletionScreen> createState() => _AccountDeletionScreenState();
+  ConsumerState<AccountDeletionScreen> createState() =>
+      _AccountDeletionScreenState();
 }
 
 class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
@@ -29,7 +30,9 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
       _errorMessage = null;
     });
 
-    final result = await ref.read(customerProfileRepositoryProvider).requestAccountDeletion();
+    final result = await ref
+        .read(customerProfileRepositoryProvider)
+        .requestAccountDeletion();
 
     if (!mounted) return;
 
@@ -57,9 +60,11 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.check_circle_outline, size: 56, color: Colors.green),
+              const Icon(Icons.check_circle_outline,
+                  size: 56, color: Colors.green),
               const SizedBox(height: 16),
-              Text('Request received', style: textTheme.headlineSmall, textAlign: TextAlign.center),
+              Text('Request received',
+                  style: textTheme.headlineSmall, textAlign: TextAlign.center),
               const SizedBox(height: 8),
               Text(
                 "We've recorded your account-deletion request. Our team will follow up before "
@@ -68,7 +73,9 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
                 style: textTheme.bodyMedium,
               ),
               const SizedBox(height: 24),
-              TextButton(onPressed: () => context.go('/'), child: const Text('Back to home')),
+              TextButton(
+                  onPressed: () => context.go('/'),
+                  child: const Text('Back to home')),
             ],
           ),
         ),
@@ -92,7 +99,8 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
-              Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(_errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
             const Spacer(),
             PrimaryButton(

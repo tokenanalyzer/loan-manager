@@ -16,10 +16,12 @@ class ApplicationReviewDetailScreen extends StatefulWidget {
   final String applicationId;
 
   @override
-  State<ApplicationReviewDetailScreen> createState() => _ApplicationReviewDetailScreenState();
+  State<ApplicationReviewDetailScreen> createState() =>
+      _ApplicationReviewDetailScreenState();
 }
 
-class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailScreen> {
+class _ApplicationReviewDetailScreenState
+    extends State<ApplicationReviewDetailScreen> {
   late Future<LoanApplication> _future;
   final _interestRateController = TextEditingController(text: '5.0');
   bool _isSubmitting = false;
@@ -38,8 +40,10 @@ class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailS
   }
 
   Future<LoanApplication> _load() async {
-    final result = await getIt<LoanApplicationRepository>().getApplication(widget.applicationId);
-    return result.when(success: (data) => data, failure: (error) => throw error);
+    final result = await getIt<LoanApplicationRepository>()
+        .getApplication(widget.applicationId);
+    return result.when(
+        success: (data) => data, failure: (error) => throw error);
   }
 
   Future<void> _approve() async {
@@ -78,7 +82,8 @@ class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailS
       _errorMessage = null;
     });
 
-    final result = await getIt<LoanApplicationRepository>().reject(widget.applicationId);
+    final result =
+        await getIt<LoanApplicationRepository>().reject(widget.applicationId);
 
     if (!mounted) return;
     result.when(
@@ -106,28 +111,35 @@ class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailS
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Could not load application: ${snapshot.error}'));
+            return Center(
+                child: Text('Could not load application: ${snapshot.error}'));
           }
 
           final application = snapshot.data!;
-          final isDecided = application.status != 'submitted' && application.status != 'under_review';
+          final isDecided = application.status != 'submitted' &&
+              application.status != 'under_review';
 
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('\$${application.requestedAmount}', style: textTheme.headlineMedium),
+                Text('\$${application.requestedAmount}',
+                    style: textTheme.headlineMedium),
                 const SizedBox(height: 8),
-                Text('Term: ${application.requestedTermMonths} months', style: textTheme.bodyMedium),
-                Text('Status: ${application.status}', style: textTheme.bodyMedium),
+                Text('Term: ${application.requestedTermMonths} months',
+                    style: textTheme.bodyMedium),
+                Text('Status: ${application.status}',
+                    style: textTheme.bodyMedium),
                 if (application.purpose != null)
-                  Text('Purpose: ${application.purpose}', style: textTheme.bodyMedium),
+                  Text('Purpose: ${application.purpose}',
+                      style: textTheme.bodyMedium),
                 const SizedBox(height: 24),
                 if (!isDecided) ...[
                   TextField(
                     controller: _interestRateController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                     decoration: const InputDecoration(
                       labelText: 'Interest rate (%) — required to approve',
                       border: OutlineInputBorder(),
@@ -135,7 +147,9 @@ class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailS
                   ),
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 8),
-                    Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                    Text(_errorMessage!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error)),
                   ],
                   const SizedBox(height: 16),
                   Row(
@@ -154,7 +168,8 @@ class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailS
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Text('Approve'),
                         ),
@@ -162,7 +177,8 @@ class _ApplicationReviewDetailScreenState extends State<ApplicationReviewDetailS
                     ],
                   ),
                 ] else
-                  Text('This application has already been decided.', style: textTheme.bodyMedium),
+                  Text('This application has already been decided.',
+                      style: textTheme.bodyMedium),
               ],
             ),
           );

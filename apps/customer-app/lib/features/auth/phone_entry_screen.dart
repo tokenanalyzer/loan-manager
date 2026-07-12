@@ -74,7 +74,8 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
             children: [
               Text('Enter your phone number', style: textTheme.headlineMedium),
               const SizedBox(height: 8),
-              Text("We'll text you a code to verify it's you.", style: textTheme.bodyMedium),
+              Text("We'll text you a code to verify it's you.",
+                  style: textTheme.bodyMedium),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _phoneController,

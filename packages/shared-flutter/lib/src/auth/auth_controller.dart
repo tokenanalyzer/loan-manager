@@ -24,7 +24,8 @@ class AuthController extends ChangeNotifier {
   })  : _firebaseAuth = firebaseAuth,
         _apiClient = apiClient,
         _logger = logger {
-    _subscription = _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
+    _subscription =
+        _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
   }
 
   final FirebaseAuth _firebaseAuth;
@@ -46,7 +47,8 @@ class AuthController extends ChangeNotifier {
     try {
       final idToken = await user.getIdToken();
       if (idToken == null) {
-        throw StateError('Firebase returned a null ID token for a signed-in user.');
+        throw StateError(
+            'Firebase returned a null ID token for a signed-in user.');
       }
 
       _apiClient.setAuthTokenProvider(() async => user.getIdToken());

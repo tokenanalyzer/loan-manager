@@ -20,7 +20,8 @@ import 'firebase_options_placeholder.dart';
 /// mysteriously on first launch.
 Future<void> initializeFirebase(AppLogger logger) async {
   if (!EnvConfig.firebaseEnabled) {
-    logger.info('Firebase disabled (FIREBASE_ENABLED=false) — skipping initialization.');
+    logger.info(
+        'Firebase disabled (FIREBASE_ENABLED=false) — skipping initialization.');
     return;
   }
 

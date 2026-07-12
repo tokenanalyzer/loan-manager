@@ -14,11 +14,13 @@ import 'notifications_controller.dart';
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
-  void _handleTap(BuildContext context, WidgetRef ref, AppNotification notification) {
+  void _handleTap(
+      BuildContext context, WidgetRef ref, AppNotification notification) {
     if (!notification.isRead) {
       ref.read(notificationsActionsProvider).markAsRead(notification.id);
     }
-    if (notification.relatedEntityType == 'loan_application' && notification.relatedEntityId != null) {
+    if (notification.relatedEntityType == 'loan_application' &&
+        notification.relatedEntityId != null) {
       context.push('/loans/${notification.relatedEntityId}');
     }
   }
@@ -75,13 +77,19 @@ class NotificationsScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 notification.title,
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                      fontWeight:
-                                          notification.isRead ? FontWeight.normal : FontWeight.bold,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(
+                                      fontWeight: notification.isRead
+                                          ? FontWeight.normal
+                                          : FontWeight.bold,
                                     ),
                               ),
                               const SizedBox(height: 2),
-                              Text(notification.body, style: Theme.of(context).textTheme.bodyMedium),
+                              Text(notification.body,
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium),
                               const SizedBox(height: 4),
                               Text(
                                 Formatters.relativeTime(notification.createdAt),

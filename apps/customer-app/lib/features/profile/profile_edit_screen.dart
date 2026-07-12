@@ -52,12 +52,16 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
     final income = double.tryParse(_monthlyIncomeController.text);
 
-    final result = await ref.read(customerProfileRepositoryProvider).updateMyProfile({
-      if (_addressController.text.isNotEmpty) 'addressLine1': _addressController.text,
+    final result =
+        await ref.read(customerProfileRepositoryProvider).updateMyProfile({
+      if (_addressController.text.isNotEmpty)
+        'addressLine1': _addressController.text,
       if (_cityController.text.isNotEmpty) 'city': _cityController.text,
       if (_stateController.text.isNotEmpty) 'state': _stateController.text,
-      if (_postalCodeController.text.isNotEmpty) 'postalCode': _postalCodeController.text,
-      if (_countryController.text.isNotEmpty) 'country': _countryController.text,
+      if (_postalCodeController.text.isNotEmpty)
+        'postalCode': _postalCodeController.text,
+      if (_countryController.text.isNotEmpty)
+        'country': _countryController.text,
       if (_employmentStatusController.text.isNotEmpty)
         'employmentStatus': _employmentStatusController.text,
       if (income != null) 'monthlyIncome': income,
@@ -88,7 +92,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       appBar: AppBar(title: const Text('Edit profile')),
       body: overviewAsync.when(
         loading: () => const LoadingView(),
-        error: (error, _) => ErrorView(message: 'Could not load your profile: $error'),
+        error: (error, _) =>
+            ErrorView(message: 'Could not load your profile: $error'),
         data: (overview) {
           if (!_initialized) {
             final profile = overview.customerProfile;
@@ -107,29 +112,32 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             children: [
               TextField(
                 controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Address', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Address', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _cityController,
-                decoration: const InputDecoration(labelText: 'City', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'City', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _stateController,
-                decoration:
-                    const InputDecoration(labelText: 'State/Province', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'State/Province', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _postalCodeController,
-                decoration:
-                    const InputDecoration(labelText: 'Postal code', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Postal code', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _countryController,
-                decoration: const InputDecoration(labelText: 'Country', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Country', border: OutlineInputBorder()),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -142,7 +150,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
               const SizedBox(height: 12),
               TextField(
                 controller: _monthlyIncomeController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Monthly income',
                   prefixText: '\$ ',
@@ -154,7 +163,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                 Text(_message!, style: Theme.of(context).textTheme.bodyMedium),
               ],
               const SizedBox(height: 24),
-              PrimaryButton(label: 'Save', isLoading: _isSaving, onPressed: _save),
+              PrimaryButton(
+                  label: 'Save', isLoading: _isSaving, onPressed: _save),
             ],
           );
         },

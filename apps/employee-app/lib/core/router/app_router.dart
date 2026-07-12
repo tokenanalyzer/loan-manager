@@ -63,8 +63,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/applications/:id',
       name: 'application-review-detail',
-      builder: (context, state) =>
-          ApplicationReviewDetailScreen(applicationId: state.pathParameters['id']!),
+      builder: (context, state) => ApplicationReviewDetailScreen(
+          applicationId: state.pathParameters['id']!),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

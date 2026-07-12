@@ -17,7 +17,8 @@ class CustomerProfileRepository extends BaseRepository {
     );
   }
 
-  Future<ApiResult<CustomerProfile>> updateMyProfile(Map<String, dynamic> fields) {
+  Future<ApiResult<CustomerProfile>> updateMyProfile(
+      Map<String, dynamic> fields) {
     return _patch<CustomerProfile>(
       '/v1/customers/me',
       body: fields,
@@ -30,8 +31,8 @@ class CustomerProfileRepository extends BaseRepository {
   Future<ApiResult<DateTime>> requestAccountDeletion() {
     return apiClient.request<DateTime>(
       (dio) => dio.post('/v1/customers/me/deletion-request'),
-      mapper: (data) =>
-          DateTime.parse((data as Map<String, dynamic>)['deletionRequestedAt'] as String),
+      mapper: (data) => DateTime.parse(
+          (data as Map<String, dynamic>)['deletionRequestedAt'] as String),
     );
   }
 

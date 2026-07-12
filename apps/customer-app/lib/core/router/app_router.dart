@@ -65,7 +65,10 @@ final GoRouter appRouter = GoRouter(
     return isAuthRoute ? null : '/login';
   },
   routes: [
-    GoRoute(path: '/splash', name: 'splash', builder: (context, state) => const SplashScreen()),
+    GoRoute(
+        path: '/splash',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen()),
     GoRoute(
       path: '/onboarding',
       name: 'onboarding',
@@ -79,7 +82,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login/verify',
       name: 'login-verify',
-      builder: (context, state) => OtpVerificationScreen(verificationId: state.extra as String),
+      builder: (context, state) =>
+          OtpVerificationScreen(verificationId: state.extra as String),
     ),
     GoRoute(
       path: '/',
@@ -107,8 +111,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/loans/apply',
       name: 'loan-application-flow',
-      builder: (context, state) =>
-          LoanApplicationFlowScreen(categoryId: state.uri.queryParameters['categoryId']),
+      builder: (context, state) => LoanApplicationFlowScreen(
+          categoryId: state.uri.queryParameters['categoryId']),
     ),
     GoRoute(
       path: '/loans/apply/success',
@@ -132,7 +136,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/documents/:id',
       name: 'document-preview',
-      builder: (context, state) => DocumentPreviewScreen(documentId: state.pathParameters['id']!),
+      builder: (context, state) =>
+          DocumentPreviewScreen(documentId: state.pathParameters['id']!),
     ),
 
     // Profile.
@@ -163,7 +168,10 @@ final GoRouter appRouter = GoRouter(
       name: 'help-center',
       builder: (context, state) => const HelpCenterScreen(),
     ),
-    GoRoute(path: '/support/faq', name: 'faq', builder: (context, state) => const FaqScreen()),
+    GoRoute(
+        path: '/support/faq',
+        name: 'faq',
+        builder: (context, state) => const FaqScreen()),
     GoRoute(
       path: '/support/contact',
       name: 'contact-support',

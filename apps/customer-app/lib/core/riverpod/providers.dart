@@ -39,7 +39,8 @@ final notificationRepositoryProvider = Provider<NotificationRepository>(
   (ref) => getIt<NotificationRepository>(),
 );
 
-final userRepositoryProvider = Provider<UserRepository>((ref) => getIt<UserRepository>());
+final userRepositoryProvider =
+    Provider<UserRepository>((ref) => getIt<UserRepository>());
 
 /// `AuthController` is only registered in GetIt when
 /// `EnvConfig.firebaseEnabled` is true (see `core/di/injection.dart`).
@@ -50,5 +51,7 @@ final authControllerProvider = ChangeNotifierProvider<AuthController?>((ref) {
 });
 
 final customerAuthRepositoryProvider = Provider<CustomerAuthRepository?>((ref) {
-  return getIt.isRegistered<CustomerAuthRepository>() ? getIt<CustomerAuthRepository>() : null;
+  return getIt.isRegistered<CustomerAuthRepository>()
+      ? getIt<CustomerAuthRepository>()
+      : null;
 });

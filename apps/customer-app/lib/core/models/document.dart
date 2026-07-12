@@ -63,7 +63,8 @@ class DocumentsOverview {
   factory DocumentsOverview.fromJson(Map<String, dynamic> json) {
     return DocumentsOverview(
       required: (json['required'] as List<dynamic>)
-          .map((item) => RequiredDocumentStatus.fromJson(item as Map<String, dynamic>))
+          .map((item) =>
+              RequiredDocumentStatus.fromJson(item as Map<String, dynamic>))
           .toList(),
       documents: (json['documents'] as List<dynamic>)
           .map((item) => AppDocument.fromJson(item as Map<String, dynamic>))

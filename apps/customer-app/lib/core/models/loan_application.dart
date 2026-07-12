@@ -38,7 +38,9 @@ class LoanApplication {
       purpose: json['purpose'] as String?,
       status: json['status'] as String,
       submittedAt: DateTime.parse(json['submittedAt'] as String),
-      reviewedAt: json['reviewedAt'] != null ? DateTime.parse(json['reviewedAt'] as String) : null,
+      reviewedAt: json['reviewedAt'] != null
+          ? DateTime.parse(json['reviewedAt'] as String)
+          : null,
       loanId: json['loanId'] as String?,
     );
   }

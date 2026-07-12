@@ -24,7 +24,8 @@ Future<void> main() async {
 
   await initializeFirebase(logger);
 
-  AppBootstrapState.hasSeenOnboarding = await OnboardingRepository().hasSeenOnboarding();
+  AppBootstrapState.hasSeenOnboarding =
+      await OnboardingRepository().hasSeenOnboarding();
 
   logger.info('Loan Manager — Customer App starting.');
 

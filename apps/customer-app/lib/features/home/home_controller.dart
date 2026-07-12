@@ -31,9 +31,11 @@ class HomeController extends AsyncNotifier<HomeDashboardData> {
 
     final userResult = await userRepository.getMe();
     final applicationsResult = await loanRepository.getMyApplications();
-    final notificationsResult = await notificationRepository.getMyNotifications();
+    final notificationsResult =
+        await notificationRepository.getMyNotifications();
 
-    final userProfile = userResult.when(success: (data) => data, failure: (_) => null);
+    final userProfile =
+        userResult.when(success: (data) => data, failure: (_) => null);
     final applications = applicationsResult.when(
       success: (data) => data,
       failure: (error) => throw error,
@@ -56,6 +58,7 @@ class HomeController extends AsyncNotifier<HomeDashboardData> {
   }
 }
 
-final homeControllerProvider = AsyncNotifierProvider<HomeController, HomeDashboardData>(
+final homeControllerProvider =
+    AsyncNotifierProvider<HomeController, HomeDashboardData>(
   HomeController.new,
 );

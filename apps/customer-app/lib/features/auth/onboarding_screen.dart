@@ -6,7 +6,8 @@ import '../../core/widgets/primary_button.dart';
 import 'onboarding_repository.dart';
 
 class _OnboardingPage {
-  const _OnboardingPage({required this.icon, required this.title, required this.description});
+  const _OnboardingPage(
+      {required this.icon, required this.title, required this.description});
 
   final IconData icon;
   final String title;
@@ -17,17 +18,20 @@ const _pages = [
   _OnboardingPage(
     icon: Icons.bolt_outlined,
     title: 'Apply in minutes',
-    description: 'Submit a loan application from your phone — no paperwork, no branch visit.',
+    description:
+        'Submit a loan application from your phone — no paperwork, no branch visit.',
   ),
   _OnboardingPage(
     icon: Icons.visibility_outlined,
     title: 'Track every step',
-    description: 'See exactly where your application stands, from submission to decision.',
+    description:
+        'See exactly where your application stands, from submission to decision.',
   ),
   _OnboardingPage(
     icon: Icons.verified_user_outlined,
     title: 'Your data, protected',
-    description: 'Bank-grade security and full control over your privacy settings, always.',
+    description:
+        'Bank-grade security and full control over your privacy settings, always.',
   ),
 ];
 
@@ -85,7 +89,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(page.icon, size: 96, color: theme.colorScheme.primary),
+                        Icon(page.icon,
+                            size: 96, color: theme.colorScheme.primary),
                         const SizedBox(height: 32),
                         Text(
                           page.title,
@@ -116,7 +121,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: BoxDecoration(
                     color: isActive
                         ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        : Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.2),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 );

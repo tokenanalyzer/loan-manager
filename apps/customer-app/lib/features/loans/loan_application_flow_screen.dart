@@ -43,7 +43,8 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
                   controller: controller,
                   state: state,
                 ),
-              LoanApplicationStep.purpose => _PurposeStep(controller: controller, state: state),
+              LoanApplicationStep.purpose =>
+                _PurposeStep(controller: controller, state: state),
               LoanApplicationStep.review => _ReviewStep(
                   category: category,
                   controller: controller,
@@ -74,7 +75,8 @@ class _StepIndicator extends StatelessWidget {
           final isActive = index <= activeIndex;
           return Expanded(
             child: Container(
-              margin: EdgeInsets.only(right: index == labels.length - 1 ? 0 : 6),
+              margin:
+                  EdgeInsets.only(right: index == labels.length - 1 ? 0 : 6),
               height: 4,
               decoration: BoxDecoration(
                 color: isActive
@@ -91,7 +93,8 @@ class _StepIndicator extends StatelessWidget {
 }
 
 class _AmountAndTermStep extends StatefulWidget {
-  const _AmountAndTermStep({required this.category, required this.controller, required this.state});
+  const _AmountAndTermStep(
+      {required this.category, required this.controller, required this.state});
 
   final LoanCategory? category;
   final LoanApplicationFlowController controller;
@@ -132,11 +135,13 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
         key: _formKey,
         child: ListView(
           children: [
-            Text('How much do you need?', style: Theme.of(context).textTheme.headlineSmall),
+            Text('How much do you need?',
+                style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 16),
             TextFormField(
               controller: _amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Requested amount',
                 prefixText: '\$ ',
@@ -144,7 +149,8 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
               ),
               validator: (value) {
                 final amount = double.tryParse(value ?? '');
-                if (amount == null || amount <= 0) return 'Enter a valid amount.';
+                if (amount == null || amount <= 0)
+                  return 'Enter a valid amount.';
                 return null;
               },
             ),
@@ -158,7 +164,8 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
               ),
               validator: (value) {
                 final months = int.tryParse(value ?? '');
-                if (months == null || months <= 0) return 'Enter a valid number of months.';
+                if (months == null || months <= 0)
+                  return 'Enter a valid number of months.';
                 return null;
               },
             ),
@@ -182,7 +189,8 @@ class _PurposeStep extends StatefulWidget {
 }
 
 class _PurposeStepState extends State<_PurposeStep> {
-  late final _purposeController = TextEditingController(text: widget.state.purpose ?? '');
+  late final _purposeController =
+      TextEditingController(text: widget.state.purpose ?? '');
 
   @override
   void dispose() {
@@ -196,7 +204,8 @@ class _PurposeStepState extends State<_PurposeStep> {
       padding: const EdgeInsets.all(16),
       child: ListView(
         children: [
-          Text("What's this for?", style: Theme.of(context).textTheme.headlineSmall),
+          Text("What's this for?",
+              style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
             'Optional, but helps us review your application faster.',
@@ -226,7 +235,8 @@ class _PurposeStepState extends State<_PurposeStep> {
 }
 
 class _ReviewStep extends StatelessWidget {
-  const _ReviewStep({required this.category, required this.controller, required this.state});
+  const _ReviewStep(
+      {required this.category, required this.controller, required this.state});
 
   final LoanCategory? category;
   final LoanApplicationFlowController controller;
@@ -253,7 +263,8 @@ class _ReviewStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ReviewRow(label: 'Loan type', value: category?.title ?? 'General'),
+                _ReviewRow(
+                    label: 'Loan type', value: category?.title ?? 'General'),
                 _ReviewRow(
                   label: 'Amount',
                   value: Formatters.currency(state.amount!.toStringAsFixed(2)),
@@ -266,7 +277,8 @@ class _ReviewStep extends StatelessWidget {
           ),
           if (state.errorMessage != null) ...[
             const SizedBox(height: 16),
-            Text(state.errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            Text(state.errorMessage!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
           const SizedBox(height: 24),
           PrimaryButton(
@@ -293,8 +305,11 @@ class _ReviewRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 100, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
-          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodyLarge)),
+          SizedBox(
+              width: 100,
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
+          Expanded(
+              child: Text(value, style: Theme.of(context).textTheme.bodyLarge)),
         ],
       ),
     );

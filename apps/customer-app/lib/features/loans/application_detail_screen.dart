@@ -18,7 +18,8 @@ class ApplicationDetailScreen extends StatefulWidget {
   final String applicationId;
 
   @override
-  State<ApplicationDetailScreen> createState() => _ApplicationDetailScreenState();
+  State<ApplicationDetailScreen> createState() =>
+      _ApplicationDetailScreenState();
 }
 
 class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
@@ -31,8 +32,10 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
   }
 
   Future<LoanApplication> _load() async {
-    final result = await getIt<LoanApplicationRepository>().getApplication(widget.applicationId);
-    return result.when(success: (data) => data, failure: (error) => throw error);
+    final result = await getIt<LoanApplicationRepository>()
+        .getApplication(widget.applicationId);
+    return result.when(
+        success: (data) => data, failure: (error) => throw error);
   }
 
   @override
@@ -75,7 +78,8 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                             style: textTheme.bodyMedium,
                           ),
                           if (application.purpose != null)
-                            Text(application.purpose!, style: textTheme.bodySmall),
+                            Text(application.purpose!,
+                                style: textTheme.bodySmall),
                         ],
                       ),
                     ),
@@ -100,7 +104,8 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                 AppCard(
                   child: Row(
                     children: [
-                      const Icon(Icons.celebration_outlined, color: Colors.green),
+                      const Icon(Icons.celebration_outlined,
+                          color: Colors.green),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(

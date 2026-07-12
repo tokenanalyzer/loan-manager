@@ -14,7 +14,8 @@ class PrivacySettingsScreen extends ConsumerStatefulWidget {
   const PrivacySettingsScreen({super.key});
 
   @override
-  ConsumerState<PrivacySettingsScreen> createState() => _PrivacySettingsScreenState();
+  ConsumerState<PrivacySettingsScreen> createState() =>
+      _PrivacySettingsScreenState();
 }
 
 class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
@@ -55,7 +56,8 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
       appBar: AppBar(title: const Text('Privacy settings')),
       body: overviewAsync.when(
         loading: () => const LoadingView(),
-        error: (error, _) => ErrorView(message: 'Could not load privacy settings: $error'),
+        error: (error, _) =>
+            ErrorView(message: 'Could not load privacy settings: $error'),
         data: (overview) {
           final profile = overview.customerProfile;
 
@@ -66,7 +68,8 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
                 child: SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Marketing communications'),
-                  subtitle: const Text('Receive occasional product updates and offers.'),
+                  subtitle: const Text(
+                      'Receive occasional product updates and offers.'),
                   value: profile?.marketingConsent ?? false,
                   onChanged: _isSaving ? null : _setMarketingConsent,
                 ),
@@ -76,7 +79,8 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Data processing consent', style: textTheme.titleSmall),
+                    Text('Data processing consent',
+                        style: textTheme.titleSmall),
                     const SizedBox(height: 4),
                     Text(
                       profile?.dataConsentAcceptedAt != null
@@ -95,14 +99,16 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              Text('Danger zone', style: textTheme.titleSmall?.copyWith(color: Colors.red)),
+              Text('Danger zone',
+                  style: textTheme.titleSmall?.copyWith(color: Colors.red)),
               const SizedBox(height: 8),
               AppCard(
                 onTap: () => context.push('/profile/delete-account'),
                 child: const ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.delete_outline, color: Colors.red),
-                  title: Text('Request account deletion', style: TextStyle(color: Colors.red)),
+                  title: Text('Request account deletion',
+                      style: TextStyle(color: Colors.red)),
                   trailing: Icon(Icons.chevron_right),
                 ),
               ),

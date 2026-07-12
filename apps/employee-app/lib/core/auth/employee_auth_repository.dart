@@ -11,7 +11,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// initial password issued out-of-band) — this repository has no
 /// self-service sign-up method, only sign-in.
 class EmployeeAuthRepository {
-  EmployeeAuthRepository({required FirebaseAuth firebaseAuth}) : _firebaseAuth = firebaseAuth;
+  EmployeeAuthRepository({required FirebaseAuth firebaseAuth})
+      : _firebaseAuth = firebaseAuth;
 
   final FirebaseAuth _firebaseAuth;
 
@@ -19,7 +20,8 @@ class EmployeeAuthRepository {
   /// caller (LoginScreen) is responsible for presenting a
   /// human-readable message.
   Future<void> signIn({required String email, required String password}) {
-    return _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+    return _firebaseAuth.signInWithEmailAndPassword(
+        email: email, password: password);
   }
 
   Future<void> sendPasswordResetEmail(String email) {

@@ -24,7 +24,8 @@ class LoanApplicationFormState {
   final bool isSubmitting;
   final String? errorMessage;
 
-  bool get canProceedFromAmountStep => amount != null && amount! > 0 && termMonths != null && termMonths! > 0;
+  bool get canProceedFromAmountStep =>
+      amount != null && amount! > 0 && termMonths != null && termMonths! > 0;
 
   LoanApplicationFormState copyWith({
     LoanApplicationStep? step,
@@ -50,19 +51,23 @@ class LoanApplicationFormState {
 /// Drives the multi-step loan application wizard. Kept as a single
 /// controller/state object (rather than one route per step) so
 /// wizard state survives step transitions without extra plumbing.
-class LoanApplicationFlowController extends StateNotifier<LoanApplicationFormState> {
+class LoanApplicationFlowController
+    extends StateNotifier<LoanApplicationFormState> {
   LoanApplicationFlowController(this._repository, {String? categoryId})
       : super(LoanApplicationFormState(categoryId: categoryId));
 
   final LoanApplicationRepository _repository;
 
-  void setAmount(double amount) => state = state.copyWith(amount: amount, clearError: true);
+  void setAmount(double amount) =>
+      state = state.copyWith(amount: amount, clearError: true);
 
-  void setTerm(int termMonths) => state = state.copyWith(termMonths: termMonths, clearError: true);
+  void setTerm(int termMonths) =>
+      state = state.copyWith(termMonths: termMonths, clearError: true);
 
   void setPurpose(String purpose) => state = state.copyWith(purpose: purpose);
 
-  void goToStep(LoanApplicationStep step) => state = state.copyWith(step: step, clearError: true);
+  void goToStep(LoanApplicationStep step) =>
+      state = state.copyWith(step: step, clearError: true);
 
   void nextStep() {
     final next = switch (state.step) {
@@ -99,7 +104,8 @@ class LoanApplicationFlowController extends StateNotifier<LoanApplicationFormSta
         return application.id;
       },
       failure: (error) {
-        state = state.copyWith(isSubmitting: false, errorMessage: error.message);
+        state =
+            state.copyWith(isSubmitting: false, errorMessage: error.message);
         return null;
       },
     );
@@ -107,7 +113,8 @@ class LoanApplicationFlowController extends StateNotifier<LoanApplicationFormSta
 }
 
 final loanApplicationFlowControllerProvider = StateNotifierProvider.autoDispose
-    .family<LoanApplicationFlowController, LoanApplicationFormState, String?>((ref, categoryId) {
+    .family<LoanApplicationFlowController, LoanApplicationFormState, String?>(
+        (ref, categoryId) {
   return LoanApplicationFlowController(
     ref.read(loanApplicationRepositoryProvider),
     categoryId: categoryId,

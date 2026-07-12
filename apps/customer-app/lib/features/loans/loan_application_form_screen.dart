@@ -13,7 +13,8 @@ class LoanApplicationFormScreen extends StatefulWidget {
   const LoanApplicationFormScreen({super.key});
 
   @override
-  State<LoanApplicationFormScreen> createState() => _LoanApplicationFormScreenState();
+  State<LoanApplicationFormScreen> createState() =>
+      _LoanApplicationFormScreenState();
 }
 
 class _LoanApplicationFormScreenState extends State<LoanApplicationFormScreen> {
@@ -45,7 +46,9 @@ class _LoanApplicationFormScreenState extends State<LoanApplicationFormScreen> {
     final result = await getIt<LoanApplicationRepository>().submit(
       requestedAmount: double.parse(_amountController.text),
       requestedTermMonths: int.parse(_termController.text),
-      purpose: _purposeController.text.trim().isEmpty ? null : _purposeController.text.trim(),
+      purpose: _purposeController.text.trim().isEmpty
+          ? null
+          : _purposeController.text.trim(),
     );
 
     if (!mounted) return;
@@ -80,7 +83,8 @@ class _LoanApplicationFormScreenState extends State<LoanApplicationFormScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _amountController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Requested amount',
                   prefixText: '\$ ',
@@ -120,7 +124,9 @@ class _LoanApplicationFormScreenState extends State<LoanApplicationFormScreen> {
               ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 12),
-                Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(_errorMessage!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
               ],
               const SizedBox(height: 24),
               ElevatedButton(

@@ -7,7 +7,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// change and handles backend session sync — this repository never
 /// calls the backend directly.
 class CustomerAuthRepository {
-  CustomerAuthRepository({required FirebaseAuth firebaseAuth}) : _firebaseAuth = firebaseAuth;
+  CustomerAuthRepository({required FirebaseAuth firebaseAuth})
+      : _firebaseAuth = firebaseAuth;
 
   final FirebaseAuth _firebaseAuth;
 
@@ -43,7 +44,8 @@ class CustomerAuthRepository {
 
   /// Completes sign-in with the OTP [smsCode] and the `verificationId`
   /// obtained from [sendOtp]'s `onCodeSent` callback.
-  Future<void> verifyOtp({required String verificationId, required String smsCode}) async {
+  Future<void> verifyOtp(
+      {required String verificationId, required String smsCode}) async {
     final credential = PhoneAuthProvider.credential(
       verificationId: verificationId,
       smsCode: smsCode,

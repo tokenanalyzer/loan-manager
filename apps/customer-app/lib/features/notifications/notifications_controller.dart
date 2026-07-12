@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/app_notification.dart';
 import '../../core/riverpod/providers.dart';
 
-final notificationsProvider = FutureProvider.autoDispose<List<AppNotification>>((ref) async {
+final notificationsProvider =
+    FutureProvider.autoDispose<List<AppNotification>>((ref) async {
   final repository = ref.read(notificationRepositoryProvider);
   final result = await repository.getMyNotifications();
   return result.when(success: (data) => data, failure: (error) => throw error);

@@ -13,7 +13,8 @@ class DocumentRepository extends BaseRepository {
   Future<ApiResult<DocumentsOverview>> getMyDocuments() {
     return get<DocumentsOverview>(
       '/v1/documents',
-      mapper: (data) => DocumentsOverview.fromJson(data as Map<String, dynamic>),
+      mapper: (data) =>
+          DocumentsOverview.fromJson(data as Map<String, dynamic>),
     );
   }
 

@@ -42,7 +42,8 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text('Environment: ${EnvConfig.appEnv}', style: textTheme.bodyMedium),
-          Text('API base URL: ${EnvConfig.apiBaseUrl}', style: textTheme.bodyMedium),
+          Text('API base URL: ${EnvConfig.apiBaseUrl}',
+              style: textTheme.bodyMedium),
           const SizedBox(height: 32),
           Card(
             child: ListTile(

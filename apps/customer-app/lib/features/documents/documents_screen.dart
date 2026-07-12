@@ -18,7 +18,8 @@ import 'documents_controller.dart';
 class DocumentsScreen extends ConsumerWidget {
   const DocumentsScreen({super.key});
 
-  Future<void> _pickAndUpload(BuildContext context, WidgetRef ref, String documentType) async {
+  Future<void> _pickAndUpload(
+      BuildContext context, WidgetRef ref, String documentType) async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (context) => SafeArea(
@@ -41,7 +42,8 @@ class DocumentsScreen extends ConsumerWidget {
     );
     if (source == null) return;
 
-    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
+    final picked =
+        await ImagePicker().pickImage(source: source, imageQuality: 85);
     if (picked == null) return;
 
     await ref
@@ -81,7 +83,8 @@ class DocumentsScreen extends ConsumerWidget {
                   isUploading: uploadState.isUploading &&
                       uploadState.documentTypeInProgress == status.documentType,
                   uploadProgress: uploadState.progress,
-                  onUpload: () => _pickAndUpload(context, ref, status.documentType),
+                  onUpload: () =>
+                      _pickAndUpload(context, ref, status.documentType),
                   onPreview: status.document != null
                       ? () => context.push('/documents/${status.document!.id}')
                       : null,
@@ -128,7 +131,9 @@ class _RequiredDocumentTile extends StatelessWidget {
               children: [
                 Text(status.label, style: theme.textTheme.titleSmall),
                 Text(
-                  status.isUploaded ? status.document!.originalFileName : 'Missing — required',
+                  status.isUploaded
+                      ? status.document!.originalFileName
+                      : 'Missing — required',
                   style: theme.textTheme.bodySmall,
                 ),
                 if (isUploading) ...[

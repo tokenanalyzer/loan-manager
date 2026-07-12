@@ -43,9 +43,12 @@ class ProfileViewScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user.fullName ?? 'Add your name', style: textTheme.titleLarge),
-                    if (user.email != null) Text(user.email!, style: textTheme.bodyMedium),
-                    if (user.email == null) Text('No email on file', style: textTheme.bodySmall),
+                    Text(user.fullName ?? 'Add your name',
+                        style: textTheme.titleLarge),
+                    if (user.email != null)
+                      Text(user.email!, style: textTheme.bodyMedium),
+                    if (user.email == null)
+                      Text('No email on file', style: textTheme.bodySmall),
                   ],
                 ),
               ),
@@ -63,7 +66,8 @@ class ProfileViewScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                     Text('Employment', style: textTheme.labelSmall),
-                    Text(profile?.employmentStatus ?? 'Not provided yet', style: textTheme.bodyMedium),
+                    Text(profile?.employmentStatus ?? 'Not provided yet',
+                        style: textTheme.bodyMedium),
                   ],
                 ),
               ),

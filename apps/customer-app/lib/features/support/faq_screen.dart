@@ -50,12 +50,16 @@ class FaqScreen extends StatelessWidget {
         itemBuilder: (context, index) {
           final item = _faqItems[index];
           return Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: ExpansionTile(
-              title: Text(item.question, style: Theme.of(context).textTheme.titleSmall),
+              title: Text(item.question,
+                  style: Theme.of(context).textTheme.titleSmall),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               expandedCrossAxisAlignment: CrossAxisAlignment.start,
-              children: [Text(item.answer, style: Theme.of(context).textTheme.bodyMedium)],
+              children: [
+                Text(item.answer, style: Theme.of(context).textTheme.bodyMedium)
+              ],
             ),
           );
         },

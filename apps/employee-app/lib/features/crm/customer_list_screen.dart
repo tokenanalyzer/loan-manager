@@ -26,7 +26,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
 
   Future<List<CustomerSummary>> _load() async {
     final result = await getIt<CustomerRepository>().listCustomers();
-    return result.when(success: (data) => data, failure: (error) => throw error);
+    return result.when(
+        success: (data) => data, failure: (error) => throw error);
   }
 
   @override
@@ -40,7 +41,8 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Could not load customers: ${snapshot.error}'));
+            return Center(
+                child: Text('Could not load customers: ${snapshot.error}'));
           }
 
           final customers = snapshot.data ?? [];

@@ -32,7 +32,8 @@ const List<LoanCategory> kLoanCategories = [
     id: 'personal',
     title: 'Personal Loan',
     icon: Icons.person_outline,
-    description: 'For everyday needs — from unexpected bills to a well-earned vacation.',
+    description:
+        'For everyday needs — from unexpected bills to a well-earned vacation.',
     minAmount: 500,
     maxAmount: 20000,
     eligibilityNotes: [
@@ -45,7 +46,8 @@ const List<LoanCategory> kLoanCategories = [
     id: 'auto',
     title: 'Auto Loan',
     icon: Icons.directions_car_outlined,
-    description: 'Finance a new or used vehicle with a structured repayment plan.',
+    description:
+        'Finance a new or used vehicle with a structured repayment plan.',
     minAmount: 2000,
     maxAmount: 50000,
     eligibilityNotes: [

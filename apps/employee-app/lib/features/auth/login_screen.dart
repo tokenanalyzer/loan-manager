@@ -64,13 +64,15 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _forgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      setState(() => _errorMessage = 'Enter your email above first, then tap "Forgot password?".');
+      setState(() => _errorMessage =
+          'Enter your email above first, then tap "Forgot password?".');
       return;
     }
     await getIt<EmployeeAuthRepository>().sendPasswordResetEmail(email);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password reset email sent, if that account exists.')),
+      const SnackBar(
+          content: Text('Password reset email sent, if that account exists.')),
     );
   }
 
@@ -94,12 +96,14 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Text('Employee sign in', style: textTheme.headlineMedium),
               const SizedBox(height: 8),
-              Text('Use your company email and password.', style: textTheme.bodyMedium),
+              Text('Use your company email and password.',
+                  style: textTheme.bodyMedium),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Work email', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Work email', border: OutlineInputBorder()),
                 validator: (value) {
                   if (value == null || !value.contains('@')) {
                     return 'Enter a valid email address.';
@@ -111,7 +115,8 @@ class _LoginScreenState extends State<LoginScreen> {
               TextFormField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'Password', border: OutlineInputBorder()),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Enter your password.';
@@ -128,7 +133,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               if (_errorMessage != null) ...[
                 const SizedBox(height: 8),
-                Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                Text(_errorMessage!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error)),
               ],
               const SizedBox(height: 16),
               ElevatedButton(

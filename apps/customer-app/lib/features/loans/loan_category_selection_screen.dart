@@ -29,7 +29,8 @@ class LoanCategorySelectionScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(category.icon, size: 36, color: Theme.of(context).colorScheme.primary),
+                Icon(category.icon,
+                    size: 36, color: Theme.of(context).colorScheme.primary),
                 const SizedBox(height: 12),
                 Text(
                   category.title,

@@ -28,7 +28,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
 
   Future<List<LoanApplication>> _load() async {
     final result = await getIt<LoanApplicationRepository>().getMyApplications();
-    return result.when(success: (data) => data, failure: (error) => throw error);
+    return result.when(
+        success: (data) => data, failure: (error) => throw error);
   }
 
   @override
@@ -85,7 +86,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                Formatters.currency(application.requestedAmount),
+                                Formatters.currency(
+                                    application.requestedAmount),
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                               Text(

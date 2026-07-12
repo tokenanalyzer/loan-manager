@@ -76,7 +76,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             children: [
               Text('Enter the 6-digit code', style: textTheme.headlineMedium),
               const SizedBox(height: 8),
-              Text('We sent a verification code by text message.', style: textTheme.bodyMedium),
+              Text('We sent a verification code by text message.',
+                  style: textTheme.bodyMedium),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _codeController,

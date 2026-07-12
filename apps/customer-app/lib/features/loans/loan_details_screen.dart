@@ -34,7 +34,8 @@ class LoanDetailsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Icon(category.icon, size: 56, color: Theme.of(context).colorScheme.primary),
+          Icon(category.icon,
+              size: 56, color: Theme.of(context).colorScheme.primary),
           const SizedBox(height: 16),
           Text(category.title, style: textTheme.headlineMedium),
           const SizedBox(height: 8),
@@ -74,7 +75,8 @@ class LoanDetailsScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.check_circle_outline, size: 18),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(note, style: textTheme.bodyMedium)),
+                        Expanded(
+                            child: Text(note, style: textTheme.bodyMedium)),
                       ],
                     ),
                   ),
@@ -88,7 +90,8 @@ class LoanDetailsScreen extends StatelessWidget {
           const SizedBox(height: 24),
           PrimaryButton(
             label: 'Start application',
-            onPressed: () => context.push('/loans/apply?categoryId=${category.id}'),
+            onPressed: () =>
+                context.push('/loans/apply?categoryId=${category.id}'),
           ),
         ],
       ),

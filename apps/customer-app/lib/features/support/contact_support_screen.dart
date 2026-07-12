@@ -30,7 +30,8 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
   }
 
   Future<void> _send() async {
-    if (_subjectController.text.trim().isEmpty || _messageController.text.trim().isEmpty) {
+    if (_subjectController.text.trim().isEmpty ||
+        _messageController.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Enter a subject and a message.');
       return;
     }
@@ -46,7 +47,8 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
 
     final launched = await launchUrl(uri);
     if (!launched && mounted) {
-      setState(() => _errorMessage = 'Could not open your email app. Please email $_supportEmail directly.');
+      setState(() => _errorMessage =
+          'Could not open your email app. Please email $_supportEmail directly.');
     }
   }
 
@@ -69,20 +71,26 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _subjectController,
-              decoration: const InputDecoration(labelText: 'Subject', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Subject', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _messageController,
               maxLines: 6,
-              decoration: const InputDecoration(labelText: 'Message', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Message', border: OutlineInputBorder()),
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
-              Text(_errorMessage!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              Text(_errorMessage!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error)),
             ],
             const SizedBox(height: 20),
-            PrimaryButton(label: 'Send via email', icon: Icons.email_outlined, onPressed: _send),
+            PrimaryButton(
+                label: 'Send via email',
+                icon: Icons.email_outlined,
+                onPressed: _send),
           ],
         ),
       ),
