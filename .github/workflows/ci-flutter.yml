@@ -33,7 +33,7 @@ jobs:
           channel: stable
 
       - name: Install Melos
-        run: dart pub global activate melos
+        run: dart pub global activate melos 2.9.0
 
       - name: Bootstrap workspace
         run: melos bootstrap

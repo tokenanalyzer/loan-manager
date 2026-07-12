@@ -1,4 +1,5 @@
 name: loan_manager_flutter_workspace
+repository: https://github.com/tokenanalyzer/loan-manager
 
 packages:
   - apps/customer-app
