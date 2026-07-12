@@ -41,6 +41,12 @@ module.exports = {
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-explicit-any': 'warn',
 
+    // Disabled: unreliable with esModuleInterop + `export =`-typed CJS
+    // packages (e.g. react, react-dom) under eslint-import-resolver-typescript,
+    // and redundant with the separate `tsc`/typecheck step, which already
+    // verifies these imports correctly.
+    'import/default': 'off',
+
     'import/order': [
       'warn',
       {
