@@ -1,23 +1,21 @@
 import 'package:firebase_core/firebase_core.dart';
 
-/// Firebase placeholder configuration.
+/// Firebase configuration.
 ///
-/// Phase 2 scope: mirrors the shape FlutterFire CLI generates
-/// (`firebase_options.dart`), but with empty placeholder values. Run
-/// `flutterfire configure` for this app once a real Firebase project
-/// exists, which will generate a proper platform-specific file to
-/// replace this one — no Authentication/Storage/Messaging usage is
-/// implemented yet regardless.
+/// Android values below are taken directly from `android/app/google-services.json`
+/// (the same values `flutterfire configure` would generate for Android).
+/// No iOS/web client has been registered in the Firebase project yet, so
+/// this returns the Android config unconditionally.
 class DefaultFirebaseOptions {
   const DefaultFirebaseOptions._();
 
   static FirebaseOptions get currentPlatform {
     return const FirebaseOptions(
-      apiKey: '',
-      appId: '',
-      messagingSenderId: '',
-      projectId: '',
-      storageBucket: '',
+      apiKey: 'AIzaSyBJozwyZKkZUYba_y6yVhUQ9Wkj57hxSCk',
+      appId: '1:660520519709:android:21ebd181c8625fdc8edef4',
+      messagingSenderId: '660520519709',
+      projectId: 'loan-manager-india',
+      storageBucket: 'loan-manager-india.firebasestorage.app',
     );
   }
 }

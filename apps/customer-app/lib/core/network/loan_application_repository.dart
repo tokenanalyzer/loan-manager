@@ -15,6 +15,7 @@ class LoanApplicationRepository extends BaseRepository {
     required double requestedAmount,
     required int requestedTermMonths,
     String? purpose,
+    String? categoryId,
   }) {
     return post<LoanApplication>(
       '/v1/loan-applications',
@@ -22,6 +23,7 @@ class LoanApplicationRepository extends BaseRepository {
         'requestedAmount': requestedAmount,
         'requestedTermMonths': requestedTermMonths,
         if (purpose != null && purpose.isNotEmpty) 'purpose': purpose,
+        if (categoryId != null) 'categoryId': categoryId,
       },
       mapper: (data) => LoanApplication.fromJson(data as Map<String, dynamic>),
     );

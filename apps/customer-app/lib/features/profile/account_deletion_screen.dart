@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/riverpod/providers.dart';
+import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/primary_button.dart';
 
 /// Confirmation screen for requesting account deletion.
@@ -43,7 +44,7 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
       }),
       failure: (error) => setState(() {
         _isSubmitting = false;
-        _errorMessage = error.message;
+        _errorMessage = friendlyMessage(error);
       }),
     );
   }

@@ -66,5 +66,13 @@ void configureDependencies() {
         logger: getIt<AppLogger>(),
       ),
     );
+
+    // A genuine 401 (expired/invalid Firebase session) signs the user
+    // out so the router's existing redirect sends them cleanly back to
+    // `/login`, instead of leaving whatever screen made the request
+    // stuck on a dead error state.
+    getIt<ApiClient>().setUnauthorizedHandler(
+      () => getIt<CustomerAuthRepository>().signOut(),
+    );
   }
 }

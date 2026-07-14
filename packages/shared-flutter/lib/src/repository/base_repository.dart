@@ -36,4 +36,15 @@ abstract class BaseRepository {
       mapper: mapper,
     );
   }
+
+  Future<ApiResult<T>> patch<T>(
+    String path, {
+    required T Function(dynamic data) mapper,
+    Object? body,
+  }) {
+    return apiClient.request<T>(
+      (dio) => dio.patch(path, data: body),
+      mapper: mapper,
+    );
+  }
 }

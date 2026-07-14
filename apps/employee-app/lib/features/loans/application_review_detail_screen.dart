@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
@@ -23,7 +24,7 @@ class ApplicationReviewDetailScreen extends StatefulWidget {
 class _ApplicationReviewDetailScreenState
     extends State<ApplicationReviewDetailScreen> {
   late Future<LoanApplication> _future;
-  final _interestRateController = TextEditingController(text: '5.0');
+  final _interestRateController = TextEditingController();
   bool _isSubmitting = false;
   String? _errorMessage;
 
@@ -118,19 +119,25 @@ class _ApplicationReviewDetailScreenState
           final application = snapshot.data!;
           final isDecided = application.status != 'submitted' &&
               application.status != 'under_review';
+          final category = application.categoryId != null
+              ? findLoanCategory(application.categoryId!)
+              : null;
 
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('\$${application.requestedAmount}',
+                Text(Formatters.currency(application.requestedAmount),
                     style: textTheme.headlineMedium),
                 const SizedBox(height: 8),
                 Text('Term: ${application.requestedTermMonths} months',
                     style: textTheme.bodyMedium),
                 Text('Status: ${application.status}',
                     style: textTheme.bodyMedium),
+                if (category != null)
+                  Text('Loan type: ${category.title}',
+                      style: textTheme.bodyMedium),
                 if (application.purpose != null)
                   Text('Purpose: ${application.purpose}',
                       style: textTheme.bodyMedium),
@@ -140,9 +147,13 @@ class _ApplicationReviewDetailScreenState
                     controller: _interestRateController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Interest rate (%) — required to approve',
-                      border: OutlineInputBorder(),
+                      helperText: category != null
+                          ? 'Indicative range for ${category.title}: '
+                              '${category.indicativeRateMin}–${category.indicativeRateMax}% p.a.'
+                          : null,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   if (_errorMessage != null) ...[

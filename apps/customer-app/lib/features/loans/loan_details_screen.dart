@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
-import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/loan_cost_breakdown_card.dart';
 import '../../core/widgets/primary_button.dart';
-import 'loan_categories.dart';
 
 /// Loan details + eligibility information for one category.
 ///
@@ -54,11 +54,28 @@ class LoanDetailsScreen extends StatelessWidget {
                         '${Formatters.currency(category.maxAmount.toStringAsFixed(2))}',
                         style: textTheme.titleMedium,
                       ),
+                      Text(
+                        '${category.minTermMonths}–${category.maxTermMonths} months tenure',
+                        style: textTheme.bodySmall,
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 12),
+          LoanCostBreakdownCard(
+            title: 'Estimated cost (at minimum amount)',
+            breakdown: computeLoanCostBreakdown(
+              principal: category.minAmount,
+              annualRatePercent: category.indicativeRateMidpoint,
+              tenureMonths: category.maxTermMonths,
+              processingFeePercent: category.processingFeePercent,
+            ),
+            tenureMonths: category.maxTermMonths,
+            rateLabel:
+                '${category.indicativeRateMin}–${category.indicativeRateMax}% p.a.',
           ),
           const SizedBox(height: 20),
           Text('General eligibility guidance', style: textTheme.titleMedium),

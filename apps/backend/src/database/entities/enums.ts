@@ -41,5 +41,20 @@ export enum DocumentType {
   INCOME_PROOF = 'income_proof',
   ADDRESS_PROOF = 'address_proof',
   LOAN_AGREEMENT = 'loan_agreement',
+  PAN_CARD = 'pan_card',
+  AADHAAR_CARD = 'aadhaar_card',
   OTHER = 'other',
+}
+
+/**
+ * KYC (Know Your Customer) verification status — self-attested PAN +
+ * Aadhaar capture, reviewed manually by staff (no live NSDL/UIDAI
+ * vendor integration; see docs/architecture-review-2026-07.md for
+ * that as a future integration point).
+ */
+export enum KycStatus {
+  NOT_SUBMITTED = 'not_submitted',
+  PENDING_REVIEW = 'pending_review',
+  VERIFIED = 'verified',
+  REJECTED = 'rejected',
 }

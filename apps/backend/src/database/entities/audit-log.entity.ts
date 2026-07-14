@@ -14,8 +14,9 @@ import type { UserEntity } from './user.entity';
  * AuditLogEntity — a generic, append-only audit trail record.
  *
  * Intentionally does *not* extend AbstractEntity: audit log rows are
- * immutable (no `updatedAt`/soft-delete). Phase 3 scope: schema only
- * — nothing writes to this table yet.
+ * immutable (no `updatedAt`/soft-delete). Written to by
+ * `CustomersService` (account-deletion requests, KYC review
+ * decisions) — see those services for the actual write sites.
  */
 @Entity('audit_logs')
 @Index('idx_audit_logs_entity', ['entityName', 'entityId'])

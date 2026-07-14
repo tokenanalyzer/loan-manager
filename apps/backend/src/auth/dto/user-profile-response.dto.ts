@@ -10,6 +10,7 @@ export class UserProfileResponseDto {
   id!: string;
   firebaseUid!: string;
   email!: string | null;
+  phone!: string | null;
   fullName!: string | null;
   role!: UserRole;
   isActive!: boolean;
@@ -18,6 +19,7 @@ export class UserProfileResponseDto {
     id: string;
     firebaseUid: string;
     email?: string | null;
+    phone?: string | null;
     fullName?: string | null;
     role: UserRole;
     isActive: boolean;
@@ -26,6 +28,7 @@ export class UserProfileResponseDto {
     dto.id = entity.id;
     dto.firebaseUid = entity.firebaseUid;
     dto.email = entity.email ?? null;
+    dto.phone = entity.phone ?? null;
     dto.fullName = entity.fullName ?? null;
     dto.role = entity.role;
     dto.isActive = entity.isActive;

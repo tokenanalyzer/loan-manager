@@ -38,6 +38,15 @@ export class LoanApplicationEntity extends AbstractEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   purpose?: string | null;
 
+  /**
+   * Matches a `LoanCategory.id` from the shared Flutter catalog (see
+   * `LOAN_CATEGORY_BOUNDS` in `loan-application.constants.ts`).
+   * Nullable — older applications and any submission without a
+   * category (falls back to the global bounds) have no value here.
+   */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  categoryId?: string | null;
+
   @Index('idx_loan_applications_status')
   @Column({ type: 'enum', enum: LoanApplicationStatus, default: LoanApplicationStatus.SUBMITTED })
   status!: LoanApplicationStatus;

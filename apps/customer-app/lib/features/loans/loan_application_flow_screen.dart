@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
-import '../../core/utils/formatters.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/loan_cost_breakdown_card.dart';
 import '../../core/widgets/primary_button.dart';
+import '../../core/widgets/state_views.dart';
+import '../profile/profile_providers.dart';
 import 'loan_application_flow_controller.dart';
-import 'loan_categories.dart';
 
 /// Steps 2-4 of the loan journey: the multi-step application form,
 /// review & confirmation, and submission. See
@@ -22,6 +24,46 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
     final state = ref.watch(provider);
     final controller = ref.read(provider.notifier);
     final category = categoryId != null ? findLoanCategory(categoryId!) : null;
+
+    final overviewAsync = ref.watch(profileOverviewProvider);
+    final isKycComplete =
+        overviewAsync.valueOrNull?.customerProfile?.isKycComplete ?? false;
+
+    if (overviewAsync.isLoading) {
+      return const Scaffold(body: LoadingView());
+    }
+
+    if (!isKycComplete) {
+      return Scaffold(
+        appBar: AppBar(title: Text(category?.title ?? 'Loan application')),
+        body: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.badge_outlined, size: 56),
+              const SizedBox(height: 16),
+              Text(
+                'Complete your KYC to apply',
+                style: Theme.of(context).textTheme.titleLarge,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add your PAN and Aadhaar details in your profile before applying for a loan.',
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              PrimaryButton(
+                label: 'Complete KYC',
+                onPressed: () => context.push('/profile/edit'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -144,7 +186,7 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
                   const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Requested amount',
-                prefixText: '\$ ',
+                prefixText: '₹ ',
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
@@ -169,6 +211,35 @@ class _AmountAndTermStepState extends State<_AmountAndTermStep> {
                   return 'Enter a valid number of months.';
                 }
                 return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            AnimatedBuilder(
+              animation: Listenable.merge([_amountController, _termController]),
+              builder: (context, _) {
+                final amount = double.tryParse(_amountController.text);
+                final months = int.tryParse(_termController.text);
+                if (amount == null || amount <= 0 || months == null || months <= 0) {
+                  return const SizedBox.shrink();
+                }
+
+                final category = widget.category;
+                final rate = category?.indicativeRateMidpoint ?? 16;
+                final breakdown = computeLoanCostBreakdown(
+                  principal: amount,
+                  annualRatePercent: rate,
+                  tenureMonths: months,
+                  processingFeePercent: category?.processingFeePercent ?? 0.02,
+                );
+
+                return LoanCostBreakdownCard(
+                  title: 'Estimated cost',
+                  breakdown: breakdown,
+                  tenureMonths: months,
+                  rateLabel: category != null
+                      ? '${category.indicativeRateMin}–${category.indicativeRateMax}% p.a.'
+                      : '~$rate% p.a.',
+                );
               },
             ),
             const SizedBox(height: 24),
@@ -276,6 +347,20 @@ class _ReviewStep extends StatelessWidget {
                   _ReviewRow(label: 'Purpose', value: state.purpose!),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          LoanCostBreakdownCard(
+            title: 'Estimated cost',
+            breakdown: computeLoanCostBreakdown(
+              principal: state.amount!,
+              annualRatePercent: category?.indicativeRateMidpoint ?? 16,
+              tenureMonths: state.termMonths!,
+              processingFeePercent: category?.processingFeePercent ?? 0.02,
+            ),
+            tenureMonths: state.termMonths!,
+            rateLabel: category != null
+                ? '${category!.indicativeRateMin}–${category!.indicativeRateMax}% p.a.'
+                : '~${category?.indicativeRateMidpoint ?? 16}% p.a.',
           ),
           if (state.errorMessage != null) ...[
             const SizedBox(height: 16),

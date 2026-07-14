@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_flutter/shared_flutter.dart';
+
 import '../../core/models/app_notification.dart';
-import '../../core/utils/formatters.dart';
+import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import 'notifications_controller.dart';
@@ -34,7 +36,7 @@ class NotificationsScreen extends ConsumerWidget {
       body: notificationsAsync.when(
         loading: () => const LoadingView(),
         error: (error, _) => ErrorView(
-          message: 'Could not load notifications: $error',
+          message: friendlyMessage(error),
           onRetry: () => ref.invalidate(notificationsProvider),
         ),
         data: (notifications) {

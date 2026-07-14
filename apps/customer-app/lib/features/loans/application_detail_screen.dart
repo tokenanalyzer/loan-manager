@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import 'package:shared_flutter/shared_flutter.dart';
+
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
 import '../../core/network/loan_application_repository.dart';
-import '../../core/utils/formatters.dart';
+import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/loan_cost_breakdown_card.dart';
 import '../../core/widgets/state_views.dart';
-import '../../core/widgets/status_badge.dart';
 import 'status_timeline.dart';
 
 /// Detail view for a single loan application — now with a
@@ -52,7 +54,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           }
           if (snapshot.hasError) {
             return ErrorView(
-              message: 'Could not load application: ${snapshot.error}',
+              message: friendlyMessage(snapshot.error!),
               onRetry: () => setState(() => _future = _load()),
             );
           }
@@ -69,6 +71,13 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (application.categoryId != null)
+                            Text(
+                              findLoanCategory(application.categoryId!)
+                                      ?.title ??
+                                  'Loan application',
+                              style: textTheme.labelMedium,
+                            ),
                           Text(
                             Formatters.currency(application.requestedAmount),
                             style: textTheme.headlineMedium,
@@ -99,23 +108,50 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                   ),
                 ),
               ),
-              if (application.loanId != null) ...[
-                const SizedBox(height: 16),
-                AppCard(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.celebration_outlined,
-                          color: Colors.green),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'A loan has been created from this application.',
-                          style: textTheme.bodyMedium,
-                        ),
+              if (application.loan != null) ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Icon(Icons.celebration_outlined, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Your loan · ${application.loan!.loanNumber}',
+                        style: textTheme.titleMedium,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+                Builder(builder: (context) {
+                  final loan = application.loan!;
+                  final category = application.categoryId != null
+                      ? findLoanCategory(application.categoryId!)
+                      : null;
+                  final principal = double.parse(loan.principalAmount);
+                  final feePercent = category?.processingFeePercent ?? 0.02;
+                  final processingFee = principal * feePercent;
+                  final gst = processingFee * kProcessingFeeGstRate;
+
+                  return LoanCostBreakdownCard(
+                    title: 'Your EMI',
+                    isIndicative: false,
+                    footnote: loan.maturityDate != null
+                        ? 'Matures on ${Formatters.date(DateTime.parse(loan.maturityDate!))}.'
+                        : null,
+                    breakdown: LoanCostBreakdown(
+                      principal: principal,
+                      monthlyInstallment: loan.monthlyInstallment,
+                      totalInterest: loan.totalInterest,
+                      totalPayable: loan.totalPayable,
+                      processingFee: processingFee,
+                      gstOnFee: gst,
+                      netDisbursed: principal - processingFee - gst,
+                    ),
+                    tenureMonths: loan.termMonths,
+                    rateLabel: '${loan.interestRate}% p.a.',
+                  );
+                }),
               ],
             ],
           );

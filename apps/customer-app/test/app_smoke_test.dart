@@ -12,7 +12,12 @@ class _FakeHomeController extends HomeController {
   @override
   Future<HomeDashboardData> build() async {
     return const HomeDashboardData(
-        userProfile: null, applications: [], unreadNotificationCount: 0);
+      userProfile: null,
+      customerProfile: null,
+      applications: [],
+      notifications: [],
+      documentsComplete: false,
+    );
   }
 }
 
@@ -29,9 +34,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.text('Phase 2 development environment is running.'),
-      findsOneWidget,
-    );
+    // The greeting itself is time-of-day-dependent ("Good
+    // morning/afternoon/evening") — assert on a stable, always-present
+    // section instead of the exact greeting text.
+    expect(find.text('Credit profile'), findsOneWidget);
   });
 }

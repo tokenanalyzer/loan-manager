@@ -19,7 +19,7 @@ class CustomerProfileRepository extends BaseRepository {
 
   Future<ApiResult<CustomerProfile>> updateMyProfile(
       Map<String, dynamic> fields) {
-    return _patch<CustomerProfile>(
+    return patch<CustomerProfile>(
       '/v1/customers/me',
       body: fields,
       mapper: (data) => CustomerProfile.fromJson(data as Map<String, dynamic>),
@@ -33,17 +33,6 @@ class CustomerProfileRepository extends BaseRepository {
       (dio) => dio.post('/v1/customers/me/deletion-request'),
       mapper: (data) => DateTime.parse(
           (data as Map<String, dynamic>)['deletionRequestedAt'] as String),
-    );
-  }
-
-  Future<ApiResult<T>> _patch<T>(
-    String path, {
-    required Object body,
-    required T Function(dynamic data) mapper,
-  }) {
-    return apiClient.request<T>(
-      (dio) => dio.patch(path, data: body),
-      mapper: mapper,
     );
   }
 }

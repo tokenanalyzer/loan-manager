@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/widgets/app_card.dart';
-import 'loan_categories.dart';
 
 /// Step 1 of the loan journey: pick a category. Maps to the existing
-/// `purpose` field on submission — see `loan_categories.dart`.
+/// `purpose` field on submission — see `LoanCategory` in
+/// `package:shared_flutter`.
 class LoanCategorySelectionScreen extends StatelessWidget {
   const LoanCategorySelectionScreen({super.key});
 

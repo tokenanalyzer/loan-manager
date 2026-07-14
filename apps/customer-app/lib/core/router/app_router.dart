@@ -23,6 +23,7 @@ import '../../features/profile/profile_view_screen.dart';
 import '../../features/support/contact_support_screen.dart';
 import '../../features/support/faq_screen.dart';
 import '../../features/support/help_center_screen.dart';
+import '../../features/tools/emi_calculator_screen.dart';
 import '../bootstrap/app_bootstrap_state.dart';
 import '../config/env_config.dart';
 import '../di/injection.dart';
@@ -183,6 +184,13 @@ final GoRouter appRouter = GoRouter(
       path: '/notifications',
       name: 'notifications',
       builder: (context, state) => const NotificationsScreen(),
+    ),
+
+    // Tools.
+    GoRoute(
+      path: '/tools/emi-calculator',
+      name: 'emi-calculator',
+      builder: (context, state) => const EmiCalculatorScreen(),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

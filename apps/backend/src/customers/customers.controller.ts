@@ -17,6 +17,7 @@ import { UserEntity, UserRole } from '../database/entities';
 import { CustomersService } from './customers.service';
 import { CustomerProfileResponseDto } from './dto/customer-profile-response.dto';
 import { CustomerSummaryResponseDto } from './dto/customer-summary-response.dto';
+import { KycReviewDto } from './dto/kyc-review.dto';
 import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
 
 /**
@@ -83,5 +84,20 @@ export class CustomersController {
   ): Promise<CustomerProfileResponseDto | null> {
     const profile = await this.customersService.getCustomerProfileById(id);
     return profile ? CustomerProfileResponseDto.fromEntity(profile) : null;
+  }
+
+  /**
+   * Staff decision on a customer's self-attested PAN/Aadhaar KYC
+   * submission — see CustomersService.reviewKyc.
+   */
+  @Patch(':id/kyc-review')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async reviewKyc(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() reviewer: UserEntity,
+    @Body() dto: KycReviewDto,
+  ): Promise<CustomerProfileResponseDto> {
+    const profile = await this.customersService.reviewKyc(id, reviewer, dto);
+    return CustomerProfileResponseDto.fromEntity(profile);
   }
 }

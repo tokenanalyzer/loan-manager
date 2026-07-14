@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/models/document.dart';
 import '../../core/riverpod/providers.dart';
+import '../../core/utils/friendly_error.dart';
 
 /// Upload progress as a fraction (0.0-1.0), or null when nothing is
 /// currently uploading — kept separate from the overview `AsyncValue`
@@ -64,7 +65,7 @@ class DocumentsUploadController {
       },
       failure: (error) {
         _ref.read(documentsUploadStateProvider.notifier).state =
-            DocumentsUploadState(errorMessage: error.message);
+            DocumentsUploadState(errorMessage: friendlyMessage(error));
       },
     );
   }

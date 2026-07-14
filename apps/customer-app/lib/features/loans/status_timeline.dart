@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import '../../core/utils/formatters.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
 class TimelineStep {
   const TimelineStep({

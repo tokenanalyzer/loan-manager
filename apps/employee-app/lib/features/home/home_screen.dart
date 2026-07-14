@@ -5,13 +5,8 @@ import '../../core/auth/employee_auth_repository.dart';
 import '../../core/config/env_config.dart';
 import '../../core/di/injection.dart';
 
-/// The authenticated landing page — now a navigation hub for the
-/// Phase 5 features (CRM, application review).
-///
-/// Phase 2 scope: exists only to verify the app compiles, boots, and
-/// wires up theming/routing/environment config correctly end-to-end.
-/// No CRM/loan business logic lives here — only navigation to the
-/// screens that do.
+/// The authenticated landing page — a navigation hub for staff
+/// features (CRM, loan application review).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -21,7 +16,7 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Loan Manager — Employee App'),
+        title: const Text('Loan Manager — Staff'),
         actions: [
           if (EnvConfig.firebaseEnabled)
             IconButton(
@@ -34,16 +29,13 @@ class HomeScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
-          Text(
-            'Phase 2 development environment is running.',
-            style: textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text('Environment: ${EnvConfig.appEnv}', style: textTheme.bodyMedium),
-          Text('API base URL: ${EnvConfig.apiBaseUrl}',
-              style: textTheme.bodyMedium),
-          const SizedBox(height: 32),
+          Text('Staff dashboard', style: textTheme.headlineMedium),
+          if (!EnvConfig.isProduction) ...[
+            const SizedBox(height: 8),
+            Text('Environment: ${EnvConfig.appEnv}',
+                style: textTheme.bodySmall),
+          ],
+          const SizedBox(height: 24),
           Card(
             child: ListTile(
               leading: const Icon(Icons.people),

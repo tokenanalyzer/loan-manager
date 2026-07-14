@@ -5,9 +5,9 @@ import '../models/customer_summary.dart';
 
 /// Repository for the Employee App's CRM customer lookup.
 ///
-/// Read-only — there is deliberately no customer-editing capability
-/// for employees in Phase 5 (customers manage their own profile via
-/// the Customer App).
+/// Mostly read-only — customers manage their own profile via the
+/// Customer App — except for the KYC review decision (verify/reject),
+/// which is a staff-only action.
 class CustomerRepository extends BaseRepository {
   CustomerRepository(super.apiClient);
 
@@ -33,6 +33,29 @@ class CustomerRepository extends BaseRepository {
       mapper: (data) => data == null
           ? null
           : CustomerProfile.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  Future<ApiResult<CustomerProfile>> verifyKyc(String customerId) {
+    return patch<CustomerProfile>(
+      '/v1/customers/$customerId/kyc-review',
+      body: {'decision': 'verify'},
+      mapper: (data) => CustomerProfile.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
+  Future<ApiResult<CustomerProfile>> rejectKyc(
+    String customerId, {
+    String? rejectionReason,
+  }) {
+    return patch<CustomerProfile>(
+      '/v1/customers/$customerId/kyc-review',
+      body: {
+        'decision': 'reject',
+        if (rejectionReason != null && rejectionReason.isNotEmpty)
+          'rejectionReason': rejectionReason,
+      },
+      mapper: (data) => CustomerProfile.fromJson(data as Map<String, dynamic>),
     );
   }
 }

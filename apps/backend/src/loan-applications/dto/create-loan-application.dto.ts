@@ -27,4 +27,17 @@ export class CreateLoanApplicationDto {
   @IsString()
   @MaxLength(255)
   purpose?: string;
+
+  /**
+   * Matches a `LoanCategory.id` from the Customer App's static catalog
+   * (e.g. `'personal'`, `'home'`, `'gold'`). Optional — when present, the
+   * service validates `requestedAmount`/`requestedTermMonths` against
+   * that category's own (tighter) bounds in `LOAN_CATEGORY_BOUNDS`,
+   * on top of the global bounds already enforced by the `@Min`/`@Max`
+   * decorators above.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  categoryId?: string;
 }

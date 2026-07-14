@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/models/document.dart';
+import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import 'documents_controller.dart';
@@ -61,7 +62,7 @@ class DocumentsScreen extends ConsumerWidget {
       body: overviewAsync.when(
         loading: () => const LoadingView(),
         error: (error, _) => ErrorView(
-          message: 'Could not load documents: $error',
+          message: friendlyMessage(error),
           onRetry: () => ref.invalidate(documentsOverviewProvider),
         ),
         data: (overview) => ListView(

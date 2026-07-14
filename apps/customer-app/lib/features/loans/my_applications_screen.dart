@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_flutter/shared_flutter.dart';
+
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
 import '../../core/network/loan_application_repository.dart';
-import '../../core/utils/formatters.dart';
+import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
-import '../../core/widgets/status_badge.dart';
+import 'status_timeline.dart';
 
 /// Lists the signed-in customer's own loan applications.
 class MyApplicationsScreen extends StatefulWidget {
@@ -51,11 +54,18 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
           future: _future,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const LoadingView();
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: const [
+                  SkeletonCard(lines: 3),
+                  SizedBox(height: 12),
+                  SkeletonCard(lines: 3),
+                ],
+              );
             }
             if (snapshot.hasError) {
               return ErrorView(
-                message: 'Could not load applications: ${snapshot.error}',
+                message: friendlyMessage(snapshot.error!),
                 onRetry: () => setState(() => _future = _load()),
               );
             }
@@ -75,30 +85,63 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
               itemCount: applications.length,
               itemBuilder: (context, index) {
                 final application = applications[index];
+                final category = application.categoryId != null
+                    ? findLoanCategory(application.categoryId!)
+                    : null;
+                final steps = buildApplicationTimeline(
+                  status: application.status,
+                  submittedAt: application.submittedAt,
+                  reviewedAt: application.reviewedAt,
+                );
+                final progress =
+                    steps.where((s) => s.isComplete).length / steps.length;
+
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: AppCard(
                     onTap: () => context.push('/loans/${application.id}'),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                Formatters.currency(
-                                    application.requestedAmount),
-                                style: Theme.of(context).textTheme.titleMedium,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (category != null)
+                                    Text(category.title,
+                                        style: Theme.of(context).textTheme.labelSmall),
+                                  Text(
+                                    Formatters.currency(
+                                        application.requestedAmount),
+                                    style: Theme.of(context).textTheme.titleMedium,
+                                  ),
+                                  Text(
+                                    '${application.requestedTermMonths} months · '
+                                    '${Formatters.date(application.submittedAt)}',
+                                    style: Theme.of(context).textTheme.bodySmall,
+                                  ),
+                                  if (application.loan != null)
+                                    Text(
+                                      '${Formatters.currency(application.loan!.monthlyInstallment.toStringAsFixed(2))} / month',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.copyWith(fontWeight: FontWeight.w600),
+                                    ),
+                                ],
                               ),
-                              Text(
-                                '${application.requestedTermMonths} months · '
-                                '${Formatters.date(application.submittedAt)}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
+                            ),
+                            StatusBadge.forApplicationStatus(application.status),
+                          ],
                         ),
-                        StatusBadge.forApplicationStatus(application.status),
+                        const SizedBox(height: 10),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child:
+                              LinearProgressIndicator(value: progress, minHeight: 6),
+                        ),
                       ],
                     ),
                   ),

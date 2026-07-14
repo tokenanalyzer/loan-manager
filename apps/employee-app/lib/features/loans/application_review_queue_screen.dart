@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
@@ -61,7 +62,7 @@ class _ApplicationReviewQueueScreenState
               final application = applications[index];
               return ListTile(
                 title: Text(
-                    '\$${application.requestedAmount} · ${application.requestedTermMonths} mo'),
+                    '${Formatters.currency(application.requestedAmount)} · ${application.requestedTermMonths} mo'),
                 subtitle: Text(application.status),
                 onTap: () async {
                   await context.push('/applications/${application.id}');

@@ -13,6 +13,7 @@ class LoanApplication {
     required this.submittedAt,
     this.reviewedById,
     this.purpose,
+    this.categoryId,
     this.reviewedAt,
     this.loanId,
   });
@@ -23,6 +24,7 @@ class LoanApplication {
   final String requestedAmount;
   final int requestedTermMonths;
   final String? purpose;
+  final String? categoryId;
   final String status;
   final DateTime submittedAt;
   final DateTime? reviewedAt;
@@ -36,6 +38,7 @@ class LoanApplication {
       requestedAmount: json['requestedAmount'] as String,
       requestedTermMonths: json['requestedTermMonths'] as int,
       purpose: json['purpose'] as String?,
+      categoryId: json['categoryId'] as String?,
       status: json['status'] as String,
       submittedAt: DateTime.parse(json['submittedAt'] as String),
       reviewedAt: json['reviewedAt'] != null

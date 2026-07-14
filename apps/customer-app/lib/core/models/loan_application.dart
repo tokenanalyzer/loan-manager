@@ -1,3 +1,52 @@
+/// Mirrors the backend's `LoanResponseDto` — the created loan's core
+/// terms plus server-computed EMI figures (reducing-balance formula,
+/// see `apps/backend/src/loan-applications/utils/emi.util.ts`).
+class LoanDetails {
+  const LoanDetails({
+    required this.id,
+    required this.loanNumber,
+    required this.principalAmount,
+    required this.interestRate,
+    required this.termMonths,
+    required this.status,
+    required this.monthlyInstallment,
+    required this.totalInterest,
+    required this.totalPayable,
+    this.disbursedAt,
+    this.maturityDate,
+  });
+
+  final String id;
+  final String loanNumber;
+  final String principalAmount;
+  final String interestRate;
+  final int termMonths;
+  final String status;
+  final DateTime? disbursedAt;
+  final String? maturityDate;
+  final double monthlyInstallment;
+  final double totalInterest;
+  final double totalPayable;
+
+  factory LoanDetails.fromJson(Map<String, dynamic> json) {
+    return LoanDetails(
+      id: json['id'] as String,
+      loanNumber: json['loanNumber'] as String,
+      principalAmount: json['principalAmount'] as String,
+      interestRate: json['interestRate'] as String,
+      termMonths: json['termMonths'] as int,
+      status: json['status'] as String,
+      disbursedAt: json['disbursedAt'] != null
+          ? DateTime.parse(json['disbursedAt'] as String)
+          : null,
+      maturityDate: json['maturityDate'] as String?,
+      monthlyInstallment: (json['monthlyInstallment'] as num).toDouble(),
+      totalInterest: (json['totalInterest'] as num).toDouble(),
+      totalPayable: (json['totalPayable'] as num).toDouble(),
+    );
+  }
+}
+
 /// Mirrors the backend's `LoanApplicationResponseDto`.
 ///
 /// Phase 5 scope: a plain data model — no business logic (status
@@ -13,8 +62,10 @@ class LoanApplication {
     required this.submittedAt,
     this.reviewedById,
     this.purpose,
+    this.categoryId,
     this.reviewedAt,
     this.loanId,
+    this.loan,
   });
 
   final String id;
@@ -23,10 +74,12 @@ class LoanApplication {
   final String requestedAmount;
   final int requestedTermMonths;
   final String? purpose;
+  final String? categoryId;
   final String status;
   final DateTime submittedAt;
   final DateTime? reviewedAt;
   final String? loanId;
+  final LoanDetails? loan;
 
   factory LoanApplication.fromJson(Map<String, dynamic> json) {
     return LoanApplication(
@@ -36,12 +89,16 @@ class LoanApplication {
       requestedAmount: json['requestedAmount'] as String,
       requestedTermMonths: json['requestedTermMonths'] as int,
       purpose: json['purpose'] as String?,
+      categoryId: json['categoryId'] as String?,
       status: json['status'] as String,
       submittedAt: DateTime.parse(json['submittedAt'] as String),
       reviewedAt: json['reviewedAt'] != null
           ? DateTime.parse(json['reviewedAt'] as String)
           : null,
       loanId: json['loanId'] as String?,
+      loan: json['loan'] != null
+          ? LoanDetails.fromJson(json['loan'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

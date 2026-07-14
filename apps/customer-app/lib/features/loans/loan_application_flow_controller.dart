@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/network/loan_application_repository.dart';
 import '../../core/riverpod/providers.dart';
+import '../../core/utils/friendly_error.dart';
 
 enum LoanApplicationStep { amountAndTerm, purpose, review }
 
@@ -96,6 +97,7 @@ class LoanApplicationFlowController
       requestedAmount: state.amount!,
       requestedTermMonths: state.termMonths!,
       purpose: state.purpose,
+      categoryId: state.categoryId,
     );
 
     return result.when(
@@ -104,8 +106,8 @@ class LoanApplicationFlowController
         return application.id;
       },
       failure: (error) {
-        state =
-            state.copyWith(isSubmitting: false, errorMessage: error.message);
+        state = state.copyWith(
+            isSubmitting: false, errorMessage: friendlyMessage(error));
         return null;
       },
     );

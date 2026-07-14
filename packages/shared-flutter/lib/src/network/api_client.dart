@@ -45,6 +45,7 @@ class ApiClient {
 
   final Dio _dio;
   Future<String?> Function()? _authTokenProvider;
+  void Function()? _onUnauthorized;
 
   /// Exposed for feature-specific repositories that need direct Dio
   /// access (e.g. multipart uploads) beyond the generic [request] helper.
@@ -62,13 +63,23 @@ class ApiClient {
     _authTokenProvider = null;
   }
 
+  /// Invoked whenever any request comes back `401` — a real expired/
+  /// invalid session, not a config issue. Deliberately doesn't know
+  /// *how* to sign out (this package has no Firebase dependency) — the
+  /// app wires this to its own auth repository's `signOut()` so an
+  /// expired session cleanly drops the user back to the login screen
+  /// instead of leaving every open screen stuck on a dead error state.
+  void setUnauthorizedHandler(void Function() handler) {
+    _onUnauthorized = handler;
+  }
+
   Future<ApiResult<T>> request<T>(
     Future<Response<dynamic>> Function(Dio dio) call, {
     required T Function(dynamic data) mapper,
   }) async {
     try {
       final response = await call(_dio);
-      return ApiSuccess(mapper(response.data));
+      return ApiSuccess(mapper(_normalizeEmptyBody(response.data)));
     } on DioException catch (error) {
       return ApiFailure(_mapDioException(error));
     } catch (error) {
@@ -99,7 +110,7 @@ class ApiClient {
         data: formData,
         onSendProgress: onSendProgress,
       );
-      return ApiSuccess(mapper(response.data));
+      return ApiSuccess(mapper(_normalizeEmptyBody(response.data)));
     } on DioException catch (error) {
       return ApiFailure(_mapDioException(error));
     } catch (error) {
@@ -117,9 +128,13 @@ class ApiClient {
       case DioExceptionType.connectionError:
         return NetworkException.noConnection();
       case DioExceptionType.badResponse:
+        final statusCode = error.response?.statusCode;
+        if (statusCode == 401) {
+          _onUnauthorized?.call();
+        }
         return NetworkException(
           message: _extractMessage(error) ?? 'Request failed.',
-          statusCode: error.response?.statusCode,
+          statusCode: statusCode,
           cause: error,
         );
       case DioExceptionType.cancel:
@@ -136,5 +151,22 @@ class ApiClient {
       return data['message'] as String;
     }
     return null;
+  }
+
+  /// NestJS handlers that return `null` (e.g. "no profile yet") send an
+  /// **empty** response body, not the literal JSON `null` — Dio then
+  /// has nothing to parse and hands back `''` (an empty string), not
+  /// Dart `null`. Every nullable-response repository mapper in both
+  /// apps is written as `data == null ? null : X.fromJson(data as
+  /// Map<...>)`, which silently never matched and threw a type-cast
+  /// exception on the `as Map` instead. Normalizing here fixes it once
+  /// for every current and future nullable endpoint, rather than
+  /// requiring each call site to defensively re-check for an empty
+  /// string.
+  dynamic _normalizeEmptyBody(dynamic data) {
+    if (data is String && data.isEmpty) {
+      return null;
+    }
+    return data;
   }
 }

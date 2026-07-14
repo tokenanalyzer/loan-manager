@@ -40,6 +40,10 @@ dependencies:
   firebase_storage: ^12.1.1
   firebase_messaging: ^15.0.2
 
+  # Google Sign-In (federated credential exchanged for a Firebase
+  # session via GoogleAuthProvider — see CustomerAuthRepository).
+  google_sign_in: ^6.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

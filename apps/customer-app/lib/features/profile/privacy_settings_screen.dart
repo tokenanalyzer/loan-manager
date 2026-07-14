@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:shared_flutter/shared_flutter.dart';
+
 import '../../core/riverpod/providers.dart';
-import '../../core/utils/formatters.dart';
+import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/state_views.dart';
 import 'profile_providers.dart';
@@ -29,7 +31,9 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
     if (!mounted) return;
     result.when(
       success: (_) => ref.invalidate(profileOverviewProvider),
-      failure: (_) {},
+      failure: (error) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyMessage(error))),
+      ),
     );
     setState(() => _isSaving = false);
   }
@@ -42,7 +46,9 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
     if (!mounted) return;
     result.when(
       success: (_) => ref.invalidate(profileOverviewProvider),
-      failure: (_) {},
+      failure: (error) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendlyMessage(error))),
+      ),
     );
     setState(() => _isSaving = false);
   }
@@ -56,8 +62,7 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
       appBar: AppBar(title: const Text('Privacy settings')),
       body: overviewAsync.when(
         loading: () => const LoadingView(),
-        error: (error, _) =>
-            ErrorView(message: 'Could not load privacy settings: $error'),
+        error: (error, _) => ErrorView(message: friendlyMessage(error)),
         data: (overview) {
           final profile = overview.customerProfile;
 

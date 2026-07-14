@@ -6,12 +6,14 @@ class UserProfile {
     required this.role,
     required this.isActive,
     this.email,
+    this.phone,
     this.fullName,
   });
 
   final String id;
   final String firebaseUid;
   final String? email;
+  final String? phone;
   final String? fullName;
   final String role;
   final bool isActive;
@@ -21,6 +23,7 @@ class UserProfile {
       id: json['id'] as String,
       firebaseUid: json['firebaseUid'] as String,
       email: json['email'] as String?,
+      phone: json['phone'] as String?,
       fullName: json['fullName'] as String?,
       role: json['role'] as String,
       isActive: json['isActive'] as bool,

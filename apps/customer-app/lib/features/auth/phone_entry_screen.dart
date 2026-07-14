@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/customer_auth_repository.dart';
@@ -19,6 +20,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   bool _isSending = false;
+  bool _isGoogleSigningIn = false;
   String? _errorMessage;
 
   @override
@@ -38,7 +40,7 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
     });
 
     await getIt<CustomerAuthRepository>().sendOtp(
-      phoneNumber: _phoneController.text.trim(),
+      phoneNumber: '+91${_phoneController.text.trim()}',
       onCodeSent: (verificationId) {
         if (!mounted) return;
         setState(() => _isSending = false);
@@ -52,6 +54,24 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
         });
       },
     );
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _isGoogleSigningIn = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await getIt<CustomerAuthRepository>().signInWithGoogle();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _errorMessage = 'Google sign-in failed. Please try again.');
+    }
+
+    if (mounted) {
+      setState(() => _isGoogleSigningIn = false);
+    }
   }
 
   @override
@@ -80,14 +100,20 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
               TextFormField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
+                maxLength: 10,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
                 decoration: const InputDecoration(
-                  labelText: 'Phone number',
-                  hintText: '+1 555 123 4567',
+                  labelText: 'Mobile number',
+                  hintText: '98765 43210',
+                  prefixText: '+91 ',
                   border: OutlineInputBorder(),
+                  counterText: '',
                 ),
                 validator: (value) {
-                  if (value == null || value.trim().length < 8) {
-                    return 'Enter a valid phone number in international format.';
+                  if (value == null || !RegExp(r'^[6-9][0-9]{9}$').hasMatch(value)) {
+                    return 'Enter a valid 10-digit Indian mobile number.';
                   }
                   return null;
                 },
@@ -109,6 +135,29 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text('Send code'),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('OR', style: textTheme.bodySmall),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: _isGoogleSigningIn ? null : _signInWithGoogle,
+                icon: _isGoogleSigningIn
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.g_mobiledata, size: 28),
+                label: const Text('Continue with Google'),
               ),
             ],
           ),

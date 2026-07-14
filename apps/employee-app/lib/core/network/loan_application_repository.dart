@@ -32,7 +32,7 @@ class LoanApplicationRepository extends BaseRepository {
     required String id,
     required double interestRate,
   }) {
-    return _patch<LoanApplication>(
+    return patch<LoanApplication>(
       '/v1/loan-applications/$id/review',
       body: {'decision': 'approve', 'interestRate': interestRate},
       mapper: (data) => LoanApplication.fromJson(data as Map<String, dynamic>),
@@ -40,21 +40,10 @@ class LoanApplicationRepository extends BaseRepository {
   }
 
   Future<ApiResult<LoanApplication>> reject(String id) {
-    return _patch<LoanApplication>(
+    return patch<LoanApplication>(
       '/v1/loan-applications/$id/review',
       body: {'decision': 'reject'},
       mapper: (data) => LoanApplication.fromJson(data as Map<String, dynamic>),
-    );
-  }
-
-  Future<ApiResult<T>> _patch<T>(
-    String path, {
-    required Object body,
-    required T Function(dynamic data) mapper,
-  }) {
-    return apiClient.request<T>(
-      (dio) => dio.patch(path, data: body),
-      mapper: mapper,
     );
   }
 }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -7,6 +8,7 @@ import {
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 
+import { formatInr } from '../common/utils/currency.util';
 import {
   LoanApplicationEntity,
   LoanApplicationStatus,
@@ -19,6 +21,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
+import { LOAN_CATEGORY_BOUNDS } from './loan-application.constants';
 import { LoanApplicationRepository } from './loan-application.repository';
 import { LoanRepository } from './loan.repository';
 
@@ -55,11 +58,32 @@ export class LoanApplicationsService {
     applicant: UserEntity,
     dto: CreateLoanApplicationDto,
   ): Promise<LoanApplicationEntity> {
+    if (dto.categoryId) {
+      const bounds = LOAN_CATEGORY_BOUNDS[dto.categoryId];
+      if (!bounds) {
+        throw new BadRequestException(`Unknown loan category: ${dto.categoryId}.`);
+      }
+      if (dto.requestedAmount < bounds.minAmount || dto.requestedAmount > bounds.maxAmount) {
+        throw new BadRequestException(
+          `Requested amount must be between ${bounds.minAmount} and ${bounds.maxAmount} for this loan category.`,
+        );
+      }
+      if (
+        dto.requestedTermMonths < bounds.minTermMonths ||
+        dto.requestedTermMonths > bounds.maxTermMonths
+      ) {
+        throw new BadRequestException(
+          `Term must be between ${bounds.minTermMonths} and ${bounds.maxTermMonths} months for this loan category.`,
+        );
+      }
+    }
+
     return this.loanApplicationRepository.create({
       applicantId: applicant.id,
       requestedAmount: dto.requestedAmount.toFixed(2),
       requestedTermMonths: dto.requestedTermMonths,
       purpose: dto.purpose ?? null,
+      categoryId: dto.categoryId ?? null,
       status: LoanApplicationStatus.SUBMITTED,
       submittedAt: new Date(),
     });
@@ -150,7 +174,7 @@ export class LoanApplicationsService {
           {
             userId: application.applicantId,
             title: 'Loan application approved',
-            body: `Your application for $${application.requestedAmount} has been approved.`,
+            body: `Your application for ${formatInr(application.requestedAmount)} has been approved.`,
             relatedEntityType: 'loan_application',
             relatedEntityId: application.id,
           },
@@ -169,7 +193,7 @@ export class LoanApplicationsService {
         {
           userId: application.applicantId,
           title: 'Loan application update',
-          body: `Your application for $${application.requestedAmount} was not approved this time.`,
+          body: `Your application for ${formatInr(application.requestedAmount)} was not approved this time.`,
           relatedEntityType: 'loan_application',
           relatedEntityId: application.id,
         },
