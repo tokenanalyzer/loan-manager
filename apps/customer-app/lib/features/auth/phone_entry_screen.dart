@@ -92,6 +92,18 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(Icons.account_balance, size: 32, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 24),
               Text('Enter your phone number', style: textTheme.headlineMedium),
               const SizedBox(height: 8),
               Text("We'll text you a code to verify it's you.",
@@ -108,7 +120,6 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
                   labelText: 'Mobile number',
                   hintText: '98765 43210',
                   prefixText: '+91 ',
-                  border: OutlineInputBorder(),
                   counterText: '',
                 ),
                 validator: (value) {

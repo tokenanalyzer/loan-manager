@@ -7,17 +7,25 @@ class TimelineStep {
     required this.message,
     required this.isComplete,
     this.timestamp,
+    this.isNegative = false,
   });
 
   final String label;
   final String message;
   final bool isComplete;
   final DateTime? timestamp;
+
+  /// True for a completed step that represents a rejection/decline —
+  /// rendered in the error color instead of the usual "done" primary,
+  /// so a rejected application doesn't read as if everything went well.
+  final bool isNegative;
 }
 
 /// Reusable vertical status timeline — used by Application Detail to
 /// show customer-visible status messages at each stage, not just the
-/// raw backend status enum value.
+/// raw backend status enum value. Each completed marker scales in on
+/// first build, staggered by step index, so the timeline feels like it
+/// arrived rather than snapping into place.
 class StatusTimeline extends StatelessWidget {
   const StatusTimeline({required this.steps, super.key});
 
@@ -31,9 +39,11 @@ class StatusTimeline extends StatelessWidget {
       children: List.generate(steps.length, (index) {
         final step = steps[index];
         final isLast = index == steps.length - 1;
-        final color = step.isComplete
-            ? theme.colorScheme.primary
-            : theme.colorScheme.outlineVariant;
+        final color = !step.isComplete
+            ? theme.colorScheme.outlineVariant
+            : step.isNegative
+                ? AppColors.error
+                : theme.colorScheme.primary;
 
         return IntrinsicHeight(
           child: Row(
@@ -41,14 +51,20 @@ class StatusTimeline extends StatelessWidget {
             children: [
               Column(
                 children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    decoration:
-                        BoxDecoration(color: color, shape: BoxShape.circle),
-                    child: step.isComplete
-                        ? const Icon(Icons.check, size: 14, color: Colors.white)
-                        : null,
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: step.isComplete ? 0 : 1, end: 1),
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutBack,
+                    builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                      child: step.isComplete
+                          ? Icon(step.isNegative ? Icons.close : Icons.check,
+                              size: 14, color: Colors.white)
+                          : null,
+                    ),
                   ),
                   if (!isLast)
                     Expanded(child: Container(width: 2, color: color)),
@@ -101,6 +117,7 @@ List<TimelineStep> buildApplicationTimeline({
   DateTime? reviewedAt,
 }) {
   final isDecided = status == 'approved' || status == 'rejected';
+  final isRejected = status == 'rejected';
 
   return [
     TimelineStep(
@@ -128,6 +145,7 @@ List<TimelineStep> buildApplicationTimeline({
         _ => "We'll notify you as soon as a decision is made.",
       },
       isComplete: isDecided,
+      isNegative: isRejected,
       timestamp: reviewedAt,
     ),
   ];

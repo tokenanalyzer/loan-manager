@@ -7,6 +7,8 @@ import 'package:shared_flutter/shared_flutter.dart';
 import '../../core/models/app_notification.dart';
 import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/fade_slide_in.dart';
+import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
 import 'notifications_controller.dart';
 
@@ -34,7 +36,16 @@ class NotificationsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Notifications')),
       body: notificationsAsync.when(
-        loading: () => const LoadingView(),
+        loading: () => ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SkeletonCard(lines: 3),
+            SizedBox(height: 12),
+            SkeletonCard(lines: 3),
+            SizedBox(height: 12),
+            SkeletonCard(lines: 3),
+          ],
+        ),
         error: (error, _) => ErrorView(
           message: friendlyMessage(error),
           onRetry: () => ref.invalidate(notificationsProvider),
@@ -56,7 +67,9 @@ class NotificationsScreen extends ConsumerWidget {
                 final notification = notifications[index];
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: AppCard(
+                  child: FadeSlideIn(
+                    delay: Duration(milliseconds: 30 * index),
+                    child: AppCard(
                     onTap: () => _handleTap(context, ref, notification),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,6 +114,7 @@ class NotificationsScreen extends ConsumerWidget {
                           ),
                         ),
                       ],
+                    ),
                     ),
                   ),
                 );

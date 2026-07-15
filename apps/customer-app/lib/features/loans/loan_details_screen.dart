@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
+import '../../core/constants/category_style.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/fade_slide_in.dart';
 import '../../core/widgets/loan_cost_breakdown_card.dart';
 import '../../core/widgets/primary_button.dart';
 
@@ -29,79 +31,96 @@ class LoanDetailsScreen extends StatelessWidget {
       );
     }
 
+    final style = CategoryStyle.forId(category.id);
+
     return Scaffold(
       appBar: AppBar(title: Text(category.title)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Icon(category.icon,
-              size: 56, color: Theme.of(context).colorScheme.primary),
+          Hero(
+            tag: 'category-icon-${category.id}',
+            child: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(color: style.tint, shape: BoxShape.circle),
+              child: Icon(style.icon, size: 32, color: style.color),
+            ),
+          ),
           const SizedBox(height: 16),
           Text(category.title, style: textTheme.headlineMedium),
           const SizedBox(height: 8),
           Text(category.description, style: textTheme.bodyLarge),
           const SizedBox(height: 20),
-          AppCard(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Amount range', style: textTheme.labelSmall),
-                      Text(
-                        '${Formatters.currency(category.minAmount.toStringAsFixed(2))} – '
-                        '${Formatters.currency(category.maxAmount.toStringAsFixed(2))}',
-                        style: textTheme.titleMedium,
-                      ),
-                      Text(
-                        '${category.minTermMonths}–${category.maxTermMonths} months tenure',
-                        style: textTheme.bodySmall,
-                      ),
-                    ],
+          FadeSlideIn(
+            child: AppCard(
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Amount range', style: textTheme.labelSmall),
+                        Text(
+                          '${Formatters.currency(category.minAmount.toStringAsFixed(2))} – '
+                          '${Formatters.currency(category.maxAmount.toStringAsFixed(2))}',
+                          style: textTheme.titleMedium,
+                        ),
+                        Text(
+                          '${category.minTermMonths}–${category.maxTermMonths} months tenure',
+                          style: textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
-          LoanCostBreakdownCard(
-            title: 'Estimated cost (at minimum amount)',
-            breakdown: computeLoanCostBreakdown(
-              principal: category.minAmount,
-              annualRatePercent: category.indicativeRateMidpoint,
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 60),
+            child: LoanCostBreakdownCard(
+              title: 'Estimated cost (at minimum amount)',
+              breakdown: computeLoanCostBreakdown(
+                principal: category.minAmount,
+                annualRatePercent: category.indicativeRateMidpoint,
+                tenureMonths: category.maxTermMonths,
+                processingFeePercent: category.processingFeePercent,
+              ),
               tenureMonths: category.maxTermMonths,
-              processingFeePercent: category.processingFeePercent,
+              rateLabel:
+                  '${category.indicativeRateMin}–${category.indicativeRateMax}% p.a.',
             ),
-            tenureMonths: category.maxTermMonths,
-            rateLabel:
-                '${category.indicativeRateMin}–${category.indicativeRateMax}% p.a.',
           ),
           const SizedBox(height: 20),
           Text('General eligibility guidance', style: textTheme.titleMedium),
           const SizedBox(height: 8),
-          AppCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final note in category.eligibilityNotes)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.check_circle_outline, size: 18),
-                        const SizedBox(width: 8),
-                        Expanded(
-                            child: Text(note, style: textTheme.bodyMedium)),
-                      ],
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 110),
+            child: AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final note in category.eligibilityNotes)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 18, color: style.color),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: Text(note, style: textTheme.bodyMedium)),
+                        ],
+                      ),
                     ),
+                  Text(
+                    'Final approval and terms are determined during application review.',
+                    style: textTheme.bodySmall,
                   ),
-                Text(
-                  'Final approval and terms are determined during application review.',
-                  style: textTheme.bodySmall,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),

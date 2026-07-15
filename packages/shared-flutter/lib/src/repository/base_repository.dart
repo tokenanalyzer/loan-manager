@@ -47,4 +47,14 @@ abstract class BaseRepository {
       mapper: mapper,
     );
   }
+
+  Future<ApiResult<T>> delete<T>(
+    String path, {
+    required T Function(dynamic data) mapper,
+  }) {
+    return apiClient.request<T>(
+      (dio) => dio.delete(path),
+      mapper: mapper,
+    );
+  }
 }

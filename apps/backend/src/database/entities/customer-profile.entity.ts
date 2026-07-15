@@ -111,4 +111,90 @@ export class CustomerProfileEntity extends AbstractEntity {
 
   @Column({ type: 'varchar', length: 64, nullable: true })
   nomineeRelationship?: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  nomineePhone?: string | null;
+
+  /**
+   * Full loan-application-wizard fields (Customer App production
+   * sprint, Phase 1) — kept here, not on `LoanApplicationEntity`,
+   * because they're facts about the person rather than one specific
+   * application, matching the existing address/employment/income/
+   * bank/nominee fields above: filled in once, reused (and editable)
+   * across every application, not re-asked per submission.
+   */
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  gender?: string | null;
+
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  maritalStatus?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  fatherName?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  motherName?: string | null;
+
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  residenceType?: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  yearsAtCurrentAddress?: number | null;
+
+  /**
+   * A single free-text permanent address — unlike the current address
+   * above, this isn't decomposed into line/city/state/postal because
+   * the form only ever needs it as one declared line, not a
+   * disbursement-relevant structured address.
+   */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  permanentAddress?: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  companyName?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  designation?: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  joiningDate?: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  officeAddress?: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  officePhone?: string | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  additionalIncome?: string | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  currentMonthlyEmi?: string | null;
+
+  @Column({ type: 'int', nullable: true })
+  creditCardCount?: number | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  creditCardOutstanding?: string | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  existingLoansOutstanding?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  reference1Name?: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  reference1Phone?: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  reference1Relationship?: string | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  reference2Name?: string | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  reference2Phone?: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  reference2Relationship?: string | null;
 }

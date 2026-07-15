@@ -1,171 +1,151 @@
-# Work Summary — 2026-07-14
+# Work Summary — 2026-07-15
 
-Session scope: Google Sign-In integration, then a full India-first localization
-pass, then a premium "Loan Marketplace" redesign of the Customer App, spanning
-`apps/backend`, `apps/customer-app`, `apps/employee-app`, and
-`packages/shared-flutter`.
+Session scope: Customer App production sprint, continued across two parts —
+(1) persistent bottom navigation + design-system polish, (2) a phased
+"demo → production-grade Indian Loan Marketplace" push covering the full
+10-step loan application wizard and a catalog-driven Document Manager,
+finishing with a full device verification pass that caught and fixed two
+real production bugs.
 
-75 files changed, ~2,716 insertions / ~872 deletions (uncommitted — see
-"Remaining tasks").
+Backend (`apps/backend`), Customer App (`apps/customer-app`), and
+`packages/shared-flutter` all touched. Nothing committed yet — see
+`git status` for the full uncommitted diff (this file's own history has a
+"Remaining tasks" note on that).
 
-## Features completed today
+## 1. Bottom navigation (Sprint 1)
 
-### Authentication
-- Google Sign-In implemented end-to-end (Firebase config, native Android
-  wiring, `google_sign_in` package, "Continue with Google" button on login)
-  alongside the existing Phone OTP flow — neither replaces the other.
-- Centralized 401 handling: `ApiClient.setUnauthorizedHandler()` wired to
-  `CustomerAuthRepository.signOut()` so an expired session cleanly redirects
-  to `/login` instead of leaving a screen stuck on a dead error.
+- Persistent bottom nav via `StatefulShellRoute.indexedStack`, 4 tabs: Home,
+  Loans, Documents, Profile — each tab keeps its own navigation stack.
+- New: `core/navigation/app_shell.dart`, `core/widgets/page_transitions.dart`,
+  `core/widgets/hero_card.dart`, `core/widgets/section_header.dart`,
+  `core/widgets/fade_slide_in.dart`, `core/widgets/animated_currency.dart`,
+  `core/constants/category_style.dart`.
+- Verified on-device: every tab, back navigation, Android system back button —
+  no duplicate screens or routing bugs.
 
-### India-first localization
-- Real Indian loan categories: Personal, Home, Business, Education, Vehicle,
-  Gold Loan (Home Improvement removed), each with real min/max amount, term
-  bounds, indicative rate range, and processing-fee percent — mirrored
-  identically in backend (`LOAN_CATEGORY_BOUNDS`) and shared-flutter
-  (`kLoanCategories`).
-- ₹ formatting everywhere via `Formatters.currency()` (Indian digit grouping)
-  and backend `formatInr()`, replacing raw `$`/unformatted numbers.
-- KYC: PAN + Aadhaar (masked, hashed) fields, `KycStatus` enum, auto-transition
-  to `PENDING_REVIEW` once both are on file, staff verify/reject endpoint with
-  audit log + notification.
-- Bank account (masked) and nominee fields added to customer profile, editable
-  in-app, staff-visible where appropriate.
-- RBI Key-Fact-Statement-style cost transparency: every EMI view now shows
-  EMI, total interest, processing fee, 18% GST on fee, net disbursed, and
-  total payable — not just a bare EMI number (`LoanCostBreakdownCard`,
-  `computeLoanCostBreakdown`).
-- FOIR-based loan eligibility estimate (`estimateEligibleAmount`), disclosed
-  as "indicative, subject to verification" per RBI digital-lending norms.
+## 2. Sprint 2 Phase 1 — UI polish + full application wizard
 
-### Premium Customer App redesign (post plan-revision, CRED/Navi/BankBazaar direction)
-- New design system in `shared-flutter`: deep indigo + warm gold palette,
-  full typography scale, themed cards/buttons/chips/inputs, dark-mode parity,
-  `SkeletonLoader`/`SkeletonCard` shimmer loading states.
-- Home dashboard rebuilt from scratch: time-of-day greeting header with
-  avatar + notification bell, Credit Profile card (honest "Profile Strength"
-  ring, not a fabricated credit score), Loan Eligibility / Pre-approved
-  Offers section, Active Applications with per-loan progress bars, EMI
-  Summary (only shown when relevant), an honest "Lending Partners" section
-  (own brand "Active" + explicitly-labeled "Coming soon" tiles — no invented
-  bank names/partnerships), Recommended Loan Products with inline eligibility,
-  Quick Actions, Recent Activity feed (merged applications + notifications).
-- New standalone EMI Calculator tool (`/tools/emi-calculator`).
-- Profile view/edit rebuilt: identity card, KYC status, PAN/Aadhaar (masked),
-  address/occupation/income, bank account (masked), nominee, sign-out moved
-  here from the old home AppBar.
-- My Applications / Application Detail: category name, EMI, real progress
-  bars everywhere a bare status badge used to be.
-- Centralized friendly error copy (`friendlyMessage()`) — no screen shows raw
-  `NetworkException(...)` text anymore.
+Backend (additive, one migration):
+- `1783772100000-ExtendCustomerProfileForApplicationForm.ts` — ~24 nullable
+  columns on `customer_profiles` (personal, address, employment, income,
+  existing-obligations, nominee phone, two references).
+- Wired through existing `CustomerProfileEntity` →
+  `UpdateCustomerProfileDto` → `CustomerProfileResponseDto` →
+  `CustomersService.upsertOwnProfile` — no new endpoints, no breaking change
+  to `PATCH /v1/customers/me`.
 
-## Bugs fixed
-1. **Malformed `google-services.json`** (concatenated old+new file) — replaced
-   with the correct single JSON.
-2. **Windows Firewall blocking backend on Public network profile** — network
-   category switched to Private for the active Wi-Fi interface so the phone
-   could reach the dev machine.
-3. **Employee-app couldn't build at all** — Gradle/AGP/Kotlin were still
-   pinned to old versions (AGP 7.3.0/Kotlin 1.9.24/Gradle 7.6.3) while
-   customer-app had already been bumped; applied the same bump (AGP 9.0.1,
-   Kotlin 2.3.20, Gradle 9.1.0, Java target 17) to employee-app.
-4. **Employee-app couldn't reach the backend from a physical device** —
-   `API_BASE_URL` was still `localhost`; corrected to the LAN IP
-   (`192.168.1.9`), matching customer-app.
-5. **`aadhaar_last_4` vs `aadhaar_last4` column mismatch** — TypeORM's
-   `SnakeNamingStrategy` doesn't insert an underscore before a trailing digit;
-   fixed with a corrective migration rather than editing the already-applied
-   one.
-6. **Critical: Profile screen showed "Something went wrong" for every
-   customer with no profile row yet.** Root cause: NestJS sends an *empty*
-   HTTP body for handlers returning `null` (not the JSON text `null`); Dio
-   then returns `''` instead of Dart `null`, and every `data == null ? null :
-   X.fromJson(data as Map)` mapper in both apps threw a type-cast exception
-   on the empty string instead of matching the null case. Fixed once, centrally,
-   in `ApiClient._normalizeEmptyBody()` (shared-flutter) rather than patching
-   each repository mapper — fixes every current and future nullable endpoint
-   in both apps.
-7. Stale doc comment on `audit-log.entity.ts` claiming "nothing writes to
-   this table yet" (false) — corrected.
-8. Missing `phone` field on `UserProfileResponseDto` — Profile screen needed
-   it and the backend simply wasn't returning it.
+Frontend:
+- New `core/constants/application_wizard_steps.dart` — `WizardStep` enum +
+  `stepsForCategory(categoryId)`, tailoring the step sequence per loan
+  category (Gold/Vehicle skip reference/EMI-obligation checks; Education
+  skips existing-loan checks; Personal/Home/Business get the full 10 steps).
+- `loan_application_flow_controller.dart` and `loan_application_flow_screen.dart`
+  rewritten: 10 step widgets, pre-fill from `profileOverviewProvider`, compact
+  scrollable step-progress indicator.
+- Home, Profile, Loan Details, Application Details screens polished (hero
+  card color-contrast fix, "Loans for you" overflow fix, DEV badge removed,
+  Recent Documents section, animated status timeline).
 
-## Files modified
-Full list is in `git status` / `git diff --stat` (75 files). Highlights by area:
+Verified: backend typecheck/build, `flutter analyze`/`flutter test`
+(caught one real bug — sorting a `const` empty-list fallback threw
+`UnsupportedError`, fixed), device walkthrough of the full wizard per
+category.
 
-- **Backend** (`apps/backend/src`): customer-profile entity + enums, 4 new
-  migrations, customers service/controller/DTOs (KYC, bank, nominee),
-  loan-application constants/DTOs/service (categories, cost breakdown),
-  documents constants (PAN/Aadhaar upload types), new `currency.util.ts`,
-  new `emi.util.ts`, new `aadhaar-hash.util.ts`.
-- **shared-flutter** (`packages/shared-flutter/lib`): theme (colors, text
-  styles, ThemeData) rewritten; new `loan_category.dart`, `formatters.dart`,
-  `emi_calculator.dart`, `eligibility_calculator.dart`,
-  `loan_cost_breakdown.dart`, `status_badge.dart`; `base_repository.dart`
-  gains shared `patch<T>()`; `api_client.dart` gains empty-body normalization
-  + unauthorized-handler hook.
-- **Customer app** (`apps/customer-app/lib`): home controller + screen
-  rewritten, loan catalog/details/flow/detail/my-applications screens
-  rewritten, profile view/edit rewritten, new `friendly_error.dart`,
-  `skeleton_loader.dart`, `loan_cost_breakdown_card.dart`,
-  `emi_calculator_screen.dart` + route, DI wiring for 401 handling, Android
-  Gradle bumps, `env/development.json` LAN IP + Firebase enabled.
-- **Employee app** (`apps/employee-app/lib`): customer/loan models gain KYC
-  and category fields, customer repository gains `verifyKyc`/`rejectKyc`,
-  customer-detail screen gains KYC review UI, home screen dev-text removed,
-  Android Gradle bumps, `env/development.json` LAN IP fix.
-- **Docs**: new `docs/architecture-review-2026-07.md` (forward-looking
-  architecture notes — product catalog, payments module, KYC vendor
-  integration point, admin-panel build-out, staff provisioning gap).
+## 3. Sprint 2 Phase 2 — Catalog-driven Document Manager
 
-## APIs changed
-- `PATCH /v1/customers/:id/kyc-review` (new) — staff KYC verify/reject.
-- `PATCH /v1/customers/me` (existing endpoint, extended payload) — now
-  accepts `panNumber`, `aadhaarNumber` (write-only), `postalCode`,
-  `bankAccountNumber`, `bankIfscCode`, `bankAccountHolderName`,
-  `nomineeName`, `nomineeRelationship`.
-- `GET /v1/customers/me` response — now includes `panNumber`,
-  `aadhaarLast4` (masked), `kycStatus`, `kycRejectionReason`,
-  `bankAccountLast4` (masked), `bankIfscCode`, `bankAccountHolderName`,
-  `nomineeName`, `nomineeRelationship`. Never exposes full Aadhaar or full
-  bank account number.
-- `GET /v1/users/me` response — now includes `phone`.
-- Loan application create/response DTOs — accept/return `categoryId`; response
-  now includes a computed `loan` object (EMI, total interest, total payable)
-  when a loan exists.
-- Document upload — `PAN_CARD` and `AADHAAR_CARD` added to accepted/required
-  document types.
+Replaced the old hardcoded 6-type document enum with a data-driven catalog,
+per the user's explicit architectural rules (no hardcoded types, DB-config
+new types without code changes, admin-manageable, backward compatible).
 
-## Database changes
-Four new migrations (all applied to local Postgres, verified via
-`npm run migration:run` → "No migrations are pending"):
-1. `1783771700000-AddLoanApplicationCategoryId` — adds `category_id`.
-2. `1783771800000-AddKycFieldsAndDocumentTypes` — `kyc_status_enum`, renames
-   `national_id_number` → `pan_number`, adds Aadhaar fields, adds
-   `pan_card`/`aadhaar_card` to `document_type_enum`.
-3. `1783771900000-FixAadhaarLast4ColumnName` — corrective rename
-   `aadhaar_last_4` → `aadhaar_last4`.
-4. `1783772000000-AddBankAccountAndNomineeFields` — bank account/IFSC/holder
-   name, nominee name/relationship.
+Backend:
+- Two migrations: `1783772200000-CreateDocumentTypesCatalog.ts` (new
+  `document_types` table, ~22 seeded rows across 6 categories) and
+  `1783772300000-ExtendDocumentsForCatalog.ts` (adds `document_type_code`,
+  `slot_index`, `label` to `documents`, backfills from the legacy enum).
+- New `DocumentTypeEntity`, `document-type.repository.ts`,
+  `document-types.service.ts` (admin CRUD), `document-types.controller.ts`
+  (`@Auth(UserRole.ADMIN)`).
+- `documents.service.ts` rewritten: `getOverview(user, categoryId?)`,
+  slot-aware `upload()`, new `delete()`.
+- `documents.controller.ts`: `GET /v1/documents?categoryId=`, `POST` with new
+  DTO, new `DELETE /v1/documents/:id`.
+- Legacy `document_type` enum column kept and populated for backward
+  compatibility — zero data migration risk (seeded catalog codes are
+  byte-identical to the old enum values).
 
-## Remaining tasks
-- **Nothing is committed yet** — all 75 files are uncommitted working-tree
-  changes. Decide on commit strategy (single squash vs. logical commits) next
-  session before doing anything else risky.
-- Employee-app customer model/repository does not yet expose bank
-  account/nominee fields (explicitly deferred — staff don't currently need
-  to see them, but flag if that changes).
-- Real multi-lender backend (Bank Portal / partner banks) — out of scope by
-  design this pass; "Lending Partners" section is intentionally honest
-  placeholders only.
-- Real credit-bureau (CIBIL) integration — separate compliance/vendor
-  workstream, not attempted.
-- DSA App, Bank Portal, Super Admin Panel — not started; next per the user's
-  stated roadmap.
-- Category-specific collateral document requirements (e.g. gold loan jewelry
-  appraisal, home loan property documents) not yet modeled.
-- Payments/repayment tracking module — not implemented (loans track
-  disbursement but not repayment schedule/collection).
-- See `docs/architecture-review-2026-07.md` for the fuller architecture
-  backlog (pagination, notification fan-out, storage service, migration
-  verification, staff provisioning).
+Frontend:
+- `core/models/document.dart` rewritten (`AppDocument`, `DocumentSlot`,
+  `DocumentTypeOverview` with `isComplete`/`uploadedCount`,
+  `DocumentCategory`, `DocumentsOverview`).
+- `documents_checklist.dart` rewritten — fully catalog-driven: category
+  sections, per-type cards, multi-slot rows (e.g. Salary Slip 1/2/3),
+  Required/Optional badges, upload/replace/delete/preview, upload progress.
+- New `core/constants/document_category_style.dart` for per-category
+  icon/color.
+- The wizard's Documents step (`_DocumentsStep`) embeds this same widget,
+  scoped by `categoryId` so category-specific documents (e.g. Home's
+  Property Papers/Sale Agreement/Registry) appear automatically.
+
+## 4. Device verification pass — two real bugs found and fixed
+
+Full device walkthrough (multi-slot upload, replace, delete, preview,
+wizard category filtering) surfaced two genuine production bugs:
+
+**Bug 1 — silent upload failures.** `UploadDocumentDto.slotIndex` used
+`@IsInt()` with no `@Type(() => Number)`. Multipart form-data sends every
+field as a string, so class-validator rejected `slotIndex` and NestJS
+returned a validation error as `message: string[]` — but the Flutter
+`ApiClient._extractMessage()` only handled `message: string`, so every
+upload failed with a generic, unhelpful "Request failed." Fixed both sides:
+- `apps/backend/src/documents/dto/upload-document.dto.ts` — added
+  `@Type(() => Number)`.
+- `packages/shared-flutter/lib/src/network/api_client.dart` —
+  `_extractMessage` now also joins NestJS's `string[]` validation-error
+  format, so future validation errors surface their real message.
+
+**Bug 2 — loan applications submittable with zero required documents.**
+The wizard's Documents step let the applicant tap Continue (and ultimately
+Submit) with no validation at all. Confirmed via direct DB query: a Home
+Loan application for ₹5,00,000 was successfully submitted with 8 of 9
+required documents missing, including all 3 Home-specific ones (Property
+Papers, Sale Agreement, Registry Document). Fixed in
+`apps/customer-app/lib/features/loans/loan_application_flow_screen.dart` —
+`_DocumentsStep` now watches `documentsOverviewProvider(categoryId)` and
+disables Continue (with a clear inline message) until every required
+document type for that category is uploaded. Verified two ways on-device:
+Continue is enabled once all required docs are genuinely on file, and
+`enabled="false"` in the accessibility tree when a category-specific
+requirement (Gold Valuation Certificate) is still missing.
+
+Both fixes required a full app rebuild + reinstall to take effect (Dart
+source edits don't hot-reload into an already-installed release/debug APK
+without an attached `flutter run` session) — rebuilt via
+`flutter build apk --debug --dart-define-from-file=env/development.json`
+and `adb install -r`. First rebuild attempt omitted the dart-define flag and
+defaulted to `localhost`, breaking connectivity from the physical device;
+corrected on the second build.
+
+## 5. Final verification (all green)
+
+- `cd apps/backend && npm run typecheck && npm run build` — clean.
+- `cd apps/customer-app && flutter analyze` — no issues.
+- `cd apps/customer-app && flutter test` — all tests pass.
+- Device walkthrough: Documents tab (all 6 categories), multi-slot
+  upload/replace/delete/preview, wizard category-specific document
+  filtering (Personal and Gold categories both walked end-to-end).
+
+## Known dev-DB clutter (not cleaned up per instruction)
+
+Several duplicate test loan applications were submitted to the local dev
+Postgres database during the confused early part of the device-verification
+session, before Bug 2's fix was actually deployed to the device (one Home
+Loan, one Business Loan, two Personal Loans, all using the same test
+customer). Harmless dev-only data — flagged here rather than deleted, since
+today's instructions were explicitly not to touch test data.
+
+## Remaining / uncommitted
+
+- **Nothing from today (or the prior 2026-07-14 session) is committed** —
+  see `git status` for the full list of modified/untracked files. Decide on
+  a commit strategy before starting new work next session.
+- See `TODO_NEXT_SESSION.md` for the prioritized next-session list.

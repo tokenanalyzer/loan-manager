@@ -1,6 +1,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { AbstractEntity } from './abstract.entity';
+import type { DocumentTypeEntity } from './document-type.entity';
 import { DocumentType } from './enums';
 import type { LoanApplicationEntity } from './loan-application.entity';
 import type { LoanEntity } from './loan.entity';
@@ -13,6 +14,12 @@ import type { UserEntity } from './user.entity';
  * Phase 3 scope: schema only — this stores a `storagePath` reference;
  * it does not implement upload/download logic or Firebase Storage
  * SDK usage (that belongs to a later phase alongside real features).
+ *
+ * Customer App Phase 2: `documentTypeCode`/`slotIndex` (+ the
+ * `documentType` FK relation) are the real, catalog-driven type
+ * system now — see `DocumentTypeEntity`. The legacy `documentType`
+ * enum column below is kept populated for backward compatibility
+ * only; nothing reads it going forward.
  */
 @Entity('documents')
 export class DocumentEntity extends AbstractEntity {
@@ -41,8 +48,24 @@ export class DocumentEntity extends AbstractEntity {
   @JoinColumn({ name: 'loan_id', foreignKeyConstraintName: 'fk_documents_loan' })
   loan?: LoanEntity | null;
 
+  /** @deprecated legacy column, kept for backward compatibility only — see class doc comment. */
   @Column({ type: 'enum', enum: DocumentType, default: DocumentType.OTHER })
   documentType!: DocumentType;
+
+  @Column({ type: 'varchar', length: 64 })
+  documentTypeCode!: string;
+
+  @ManyToOne('DocumentTypeEntity')
+  @JoinColumn({ name: 'document_type_code', foreignKeyConstraintName: 'fk_documents_type' })
+  documentTypeRef?: DocumentTypeEntity;
+
+  /** Which upload slot this is for multi-upload types (e.g. Salary Slip 1/2/3). */
+  @Column({ type: 'int', default: 1 })
+  slotIndex!: number;
+
+  /** Optional customer/service-assigned display label override for this slot. */
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  label?: string | null;
 
   @Column({ type: 'varchar', length: 512 })
   storagePath!: string;

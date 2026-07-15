@@ -195,7 +195,7 @@ class HomeController extends AsyncNotifier<HomeDashboardData> {
     final applicationsResult = await loanRepository.getMyApplications();
     final notificationsResult = await notificationRepository.getMyNotifications();
     final profileResult = await customerProfileRepository.getMyProfile();
-    final documentsResult = await documentRepository.getMyDocuments();
+    final documentsResult = await documentRepository.getOverview();
 
     final userProfile =
         userResult.when(success: (data) => data, failure: (_) => null);
@@ -210,7 +210,10 @@ class HomeController extends AsyncNotifier<HomeDashboardData> {
     final customerProfile =
         profileResult.when(success: (data) => data, failure: (_) => null);
     final documentsComplete = documentsResult.when(
-      success: (overview) => overview.required.every((r) => r.isUploaded),
+      success: (overview) => overview.categories
+          .expand((group) => group.types)
+          .where((type) => type.isRequired)
+          .every((type) => type.isComplete),
       failure: (_) => false,
     );
 

@@ -4,18 +4,29 @@ import 'package:go_router/go_router.dart';
 
 import 'package:shared_flutter/shared_flutter.dart';
 
-import '../../core/config/env_config.dart';
+import '../../core/constants/category_style.dart';
+import '../../core/models/document.dart';
 import '../../core/utils/friendly_error.dart';
+import '../../core/widgets/animated_currency.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/fade_slide_in.dart';
+import '../../core/widgets/hero_card.dart';
+import '../../core/widgets/section_header.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
-import '../loans/status_timeline.dart';
+import '../documents/documents_controller.dart';
 import 'home_controller.dart';
 
 /// The Home dashboard — the app's first impression. Every section
 /// below is built from real data (or simply not rendered if that data
 /// doesn't exist yet) — no placeholder numbers, no "Environment:
 /// development" text, no repeated content across sections.
+///
+/// Deliberately dense above the fold: Credit Profile, Loan
+/// Eligibility, Active Applications, EMI Summary, Recent Activity, and
+/// Quick Apply all read in the first viewport on a real phone — see
+/// the compact hero card + stat-strip layout below, instead of one
+/// full-width card per fact.
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -50,35 +61,69 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends ConsumerWidget {
   const _DashboardContent({required this.data});
 
   final HomeDashboardData data;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offers = data.eligibilityOffers;
+    final documentsAsync = ref.watch(documentsOverviewProvider(null));
+    final recentDocuments = documentsAsync.valueOrNull?.categories
+            .expand((group) => group.types)
+            .expand((type) => type.slots)
+            .map((slot) => slot.document)
+            .whereType<AppDocument>()
+            .toList() ??
+        <AppDocument>[];
+    recentDocuments.sort((a, b) => b.uploadedAt.compareTo(a.uploadedAt));
+    final topRecentDocuments = recentDocuments.take(3).toList();
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       children: [
         _Header(data: data),
-        const SizedBox(height: 20),
-        _CreditProfileCard(data: data),
-        const SizedBox(height: 20),
-        _LoansForYouSection(data: data),
-        const SizedBox(height: 20),
-        _ActiveApplicationsSection(data: data),
-        if (data.approvedLoans.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          _EmiSummaryCard(data: data),
-        ],
-        const SizedBox(height: 20),
-        _LendingPartnersSection(),
-        const SizedBox(height: 20),
-        _QuickActionsSection(),
+        const SizedBox(height: 16),
+        FadeSlideIn(
+          child: _CreditAndEligibilityHero(data: data, offers: offers),
+        ),
+        const SizedBox(height: 14),
+        FadeSlideIn(
+          delay: const Duration(milliseconds: 60),
+          child: _OverviewStatRow(data: data, documentsAsync: documentsAsync),
+        ),
+        const SizedBox(height: 22),
+        FadeSlideIn(
+          delay: const Duration(milliseconds: 110),
+          child: _QuickApplyRow(),
+        ),
         if (data.recentActivity.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          _RecentActivitySection(data: data),
+          const SizedBox(height: 22),
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 160),
+            child: _RecentActivitySection(data: data),
+          ),
         ],
+        if (offers.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 200),
+            child: _LoansForYouSection(offers: offers),
+          ),
+        ],
+        if (topRecentDocuments.isNotEmpty) ...[
+          const SizedBox(height: 22),
+          FadeSlideIn(
+            delay: const Duration(milliseconds: 220),
+            child: _RecentDocumentsSection(documents: topRecentDocuments),
+          ),
+        ],
+        const SizedBox(height: 22),
+        FadeSlideIn(
+          delay: const Duration(milliseconds: 240),
+          child: _LendingPartnersSection(),
+        ),
       ],
     );
   }
@@ -112,9 +157,9 @@ class _Header extends StatelessWidget {
     return Row(
       children: [
         GestureDetector(
-          onTap: () => context.push('/profile'),
+          onTap: () => context.go('/profile'),
           child: CircleAvatar(
-            radius: 24,
+            radius: 22,
             backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
             child: Text(
               initials,
@@ -124,15 +169,7 @@ class _Header extends StatelessWidget {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(_greeting, style: textTheme.headlineMedium),
-              if (!EnvConfig.isProduction)
-                Text('Environment: ${EnvConfig.appEnv}',
-                    style: textTheme.bodySmall),
-            ],
-          ),
+          child: Text(_greeting, style: textTheme.headlineMedium),
         ),
         Stack(
           clipBehavior: Clip.none,
@@ -170,141 +207,364 @@ class _Header extends StatelessWidget {
   }
 }
 
-class _CreditProfileCard extends StatelessWidget {
-  const _CreditProfileCard({required this.data});
+/// Combines Credit Profile and Loan Eligibility — the two facts a
+/// returning customer most wants at a glance — into one premium
+/// [HeroCard] instead of two competing full-width cards.
+class _CreditAndEligibilityHero extends StatelessWidget {
+  const _CreditAndEligibilityHero({required this.data, required this.offers});
 
   final HomeDashboardData data;
+  final List<EligibilityOffer> offers;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
     final strength = data.profileStrength;
     final nudge = data.profileStrengthNudge;
+    final topOffer = offers.isNotEmpty ? offers.first : null;
 
-    return AppCard(
-      onTap: () => context.push('/profile'),
-      child: Row(
+    return HeroCard(
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => context.go('/profile'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Credit profile',
+                        style: textTheme.labelMedium?.copyWith(color: Colors.white70)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: strength),
+                                duration: const Duration(milliseconds: 900),
+                                curve: Curves.easeOutCubic,
+                                builder: (context, animated, _) => CircularProgressIndicator(
+                                  value: animated,
+                                  strokeWidth: 4,
+                                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                                  valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                ),
+                              ),
+                              Text('${(strength * 100).round()}%',
+                                  style: textTheme.labelSmall
+                                      ?.copyWith(fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            nudge ?? 'Complete',
+                            style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (nudge != null) ...[
+                      const SizedBox(height: 6),
+                      GestureDetector(
+                        onTap: () => _showCreditTips(context),
+                        child: Text(
+                          'View tips',
+                          style: textTheme.labelSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              width: 1,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              color: Colors.white.withValues(alpha: 0.20),
+            ),
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => topOffer != null
+                    ? context.push('/loans/apply?categoryId=${topOffer.category.id}')
+                    : context.push('/profile/edit'),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text('Eligible up to',
+                            style: textTheme.labelMedium?.copyWith(color: Colors.white70)),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () => _showEligibilityExplanation(context),
+                          child: const Icon(Icons.info_outline, size: 14, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    topOffer != null
+                        ? FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: AnimatedCurrency(
+                              value: topOffer.eligibleAmount,
+                              style: textTheme.titleLarge?.copyWith(color: Colors.white),
+                            ),
+                          )
+                        : Text('Add income',
+                            style: textTheme.titleMedium?.copyWith(color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(
+                      topOffer != null ? topOffer.category.title : 'to see your eligibility',
+                      style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+void _showCreditTips(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 56,
-            height: 56,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: strength,
-                  strokeWidth: 5,
-                  backgroundColor: colorScheme.surfaceContainerHighest,
-                  valueColor: AlwaysStoppedAnimation(
-                    strength >= 1 ? AppColors.success : AppColors.accentGold,
-                  ),
-                ),
-                Text('${(strength * 100).round()}%',
-                    style: textTheme.labelSmall),
-              ],
-            ),
+          Text('Strengthen your credit profile', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          const _TipRow(text: 'Keep your KYC (PAN + Aadhaar) verified and up to date.'),
+          const _TipRow(text: 'Upload all required documents before you apply.'),
+          const _TipRow(text: 'Keep declared income and existing EMIs accurate — lenders '
+              'cross-check these during review.'),
+          const _TipRow(
+              text: 'Pay existing EMIs and credit card bills on time — repayment history '
+                  'matters most for approval.'),
+        ],
+      ),
+    ),
+  );
+}
+
+void _showEligibilityExplanation(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (context) => Padding(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('How we estimate this', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          Text(
+            'Your eligible amount is estimated from your declared monthly income, minus '
+            'any existing EMI obligations you\'ve told us about, over the loan category\'s '
+            'typical tenure and interest rate. It\'s an indicative estimate, not a '
+            'guaranteed offer — your actual eligibility is confirmed during application '
+            'review.',
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Credit profile', style: textTheme.titleSmall),
-                const SizedBox(height: 4),
-                Text(
-                  nudge ?? 'Your profile is complete. You may see better offers.',
-                  style: textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right),
+        ],
+      ),
+    ),
+  );
+}
+
+class _TipRow extends StatelessWidget {
+  const _TipRow({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.check_circle_outline, size: 18, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium)),
         ],
       ),
     );
   }
 }
 
-class _LoansForYouSection extends StatelessWidget {
-  const _LoansForYouSection({required this.data});
+/// Compact two-up stat row for Active Applications + EMI Summary — a
+/// slim strip rather than one full card per fact, so both are visible
+/// above the fold alongside everything else.
+class _OverviewStatRow extends StatelessWidget {
+  const _OverviewStatRow({required this.data, required this.documentsAsync});
 
   final HomeDashboardData data;
+  final AsyncValue<DocumentsOverview> documentsAsync;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = data.activeApplications;
+    final activeTotal =
+        active.fold<double>(0, (sum, app) => sum + (double.tryParse(app.requestedAmount) ?? 0));
+    final nextMaturity = data.nextMaturityDate;
+    final missingDocs = documentsAsync.valueOrNull?.categories
+            .expand((group) => group.types)
+            .where((type) => type.isRequired && !type.isComplete)
+            .length ??
+        0;
+    final activeCaption = active.isEmpty
+        ? null
+        : (missingDocs > 0
+            ? '$missingDocs document${missingDocs == 1 ? '' : 's'} needed'
+            : Formatters.currency(activeTotal.toStringAsFixed(2)));
+
+    return IntrinsicHeight(
+      child: Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: _StatChip(
+            icon: Icons.description_outlined,
+            label: 'Active applications',
+            value: active.isEmpty ? 'None yet' : '${active.length}',
+            caption: activeCaption,
+            onTap: () => active.isEmpty
+                ? context.push('/loans/categories')
+                : (missingDocs > 0 ? context.push('/documents') : context.go('/loans')),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _StatChip(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Monthly EMI',
+            value: data.totalMonthlyEmi > 0
+                ? Formatters.currency(data.totalMonthlyEmi.toStringAsFixed(2))
+                : '—',
+            caption: nextMaturity != null ? 'Next: ${Formatters.date(nextMaturity)}' : null,
+            onTap: () => context.go('/loans'),
+          ),
+        ),
+      ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.onTap,
+    this.caption,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? caption;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final offers = data.eligibilityOffers;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    if (offers.isEmpty) {
-      return AppCard(
-        onTap: () => context.push('/profile/edit'),
-        child: Row(
-          children: [
-            Icon(Icons.trending_up, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text('Add your income to see loans you may be eligible for.'),
-            ),
-            const Icon(Icons.chevron_right),
+    return AppCard(
+      onTap: onTap,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: colorScheme.primary),
+          const SizedBox(height: 8),
+          Text(label, style: textTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 2),
+          Text(value, style: textTheme.titleMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+          if (caption != null) ...[
+            const SizedBox(height: 2),
+            Text(caption!,
+                style: textTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
-        ),
-      );
-    }
+        ],
+      ),
+    );
+  }
+}
 
-    final topAmount = offers.first.eligibleAmount;
+/// Horizontal, color-coded category row — the fast path into the loan
+/// journey, one tap from Home instead of a full 2-row grid.
+class _QuickApplyRow extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Loans for you', style: textTheme.titleMedium),
-        const SizedBox(height: 4),
-        Text(
-          'You could be eligible for up to ${Formatters.currency(topAmount.toStringAsFixed(0))}.',
-          style: textTheme.bodyMedium,
+        SectionHeader(
+          title: 'Quick apply',
+          actionLabel: 'All loans',
+          onAction: () => context.push('/loans/categories'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         SizedBox(
-          height: 148,
+          height: 90,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: offers.length,
+            itemCount: kLoanCategories.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final offer = offers[index];
+              final category = kLoanCategories[index];
+              final style = CategoryStyle.forId(category.id);
               return SizedBox(
-                width: 190,
-                child: AppCard(
-                  onTap: () => context.push(
-                    '/loans/apply?categoryId=${offer.category.id}',
-                  ),
+                width: 76,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => context.push('/loans/categories/${category.id}'),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Icon(offer.category.icon,
-                              size: 20, color: AppColors.accentGold),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Pre-approved',
-                              style: textTheme.labelSmall
-                                  ?.copyWith(color: AppColors.accentGold),
-                            ),
-                          ),
-                        ],
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(color: style.tint, shape: BoxShape.circle),
+                        child: Icon(style.icon, color: style.color),
                       ),
                       const SizedBox(height: 8),
-                      Text(offer.category.title, style: textTheme.titleSmall),
-                      const SizedBox(height: 4),
                       Text(
-                        'Up to ${Formatters.currency(offer.eligibleAmount.toStringAsFixed(0))}',
-                        style: textTheme.titleMedium,
-                      ),
-                      Text(
-                        '${offer.category.indicativeRateMin}–${offer.category.indicativeRateMax}% p.a.',
-                        style: textTheme.bodySmall,
+                        category.title.replaceFirst(' Loan', ''),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelSmall,
                       ),
                     ],
                   ),
@@ -313,130 +573,100 @@ class _LoansForYouSection extends StatelessWidget {
             },
           ),
         ),
+      ],
+    );
+  }
+}
+
+class _LoansForYouSection extends StatelessWidget {
+  const _LoansForYouSection({required this.offers});
+
+  final List<EligibilityOffer> offers;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SectionHeader(title: 'Loans for you'),
+        const SizedBox(height: 8),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < offers.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 12),
+                  Builder(builder: (context) {
+                    final offer = offers[i];
+                    final style = CategoryStyle.forId(offer.category.id);
+                    return SizedBox(
+                      width: 190,
+                      child: AppCard(
+                        onTap: () => context.push(
+                          '/loans/apply?categoryId=${offer.category.id}',
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                      color: style.tint, shape: BoxShape.circle),
+                                  child: Icon(style.icon, size: 16, color: style.color),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Pre-approved',
+                                    style:
+                                        textTheme.labelSmall?.copyWith(color: style.color),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(offer.category.title,
+                                style: textTheme.titleSmall,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Up to ${Formatters.currency(offer.eligibleAmount.toStringAsFixed(0))}',
+                              style: textTheme.titleMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${offer.category.indicativeRateMin}–${offer.category.indicativeRateMax}% p.a.',
+                              style: textTheme.bodySmall,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ],
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
         Text(
           'Indicative estimate — subject to verification. Not a guaranteed offer.',
           style: textTheme.bodySmall,
         ),
       ],
-    );
-  }
-}
-
-class _ActiveApplicationsSection extends StatelessWidget {
-  const _ActiveApplicationsSection({required this.data});
-
-  final HomeDashboardData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final active = data.activeApplications;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Active applications', style: textTheme.titleMedium),
-        const SizedBox(height: 8),
-        if (active.isEmpty)
-          AppCard(
-            child: Row(
-              children: [
-                const Expanded(
-                    child: Text('No active applications right now.')),
-                TextButton(
-                  onPressed: () => context.push('/loans/categories'),
-                  child: const Text('Apply now'),
-                ),
-              ],
-            ),
-          )
-        else
-          ...active.map((application) {
-            final steps = buildApplicationTimeline(
-              status: application.status,
-              submittedAt: application.submittedAt,
-              reviewedAt: application.reviewedAt,
-            );
-            final progress =
-                steps.where((s) => s.isComplete).length / steps.length;
-            final category = application.categoryId != null
-                ? findLoanCategory(application.categoryId!)
-                : null;
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: AppCard(
-                onTap: () => context.push('/loans/${application.id}'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (category != null)
-                                Text(category.title, style: textTheme.labelSmall),
-                              Text(
-                                Formatters.currency(application.requestedAmount),
-                                style: textTheme.titleMedium,
-                              ),
-                            ],
-                          ),
-                        ),
-                        StatusBadge.forApplicationStatus(application.status),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(value: progress, minHeight: 6),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }),
-      ],
-    );
-  }
-}
-
-class _EmiSummaryCard extends StatelessWidget {
-  const _EmiSummaryCard({required this.data});
-
-  final HomeDashboardData data;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final nextMaturity = data.nextMaturityDate;
-
-    return AppCard(
-      onTap: () => context.push('/loans'),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Monthly EMI outstanding', style: textTheme.labelMedium),
-                const SizedBox(height: 4),
-                Text(
-                  Formatters.currency(data.totalMonthlyEmi.toStringAsFixed(2)),
-                  style: textTheme.headlineMedium,
-                ),
-                if (nextMaturity != null)
-                  Text('Next maturity: ${Formatters.date(nextMaturity)}',
-                      style: textTheme.bodySmall),
-              ],
-            ),
-          ),
-          const Icon(Icons.chevron_right),
-        ],
-      ),
     );
   }
 }
@@ -450,7 +680,7 @@ class _LendingPartnersSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Lending partners', style: textTheme.titleMedium),
+        const SectionHeader(title: 'Lending partners'),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -508,100 +738,6 @@ class _LendingPartnersSection extends StatelessWidget {
   }
 }
 
-class _QuickActionsSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Quick actions', style: textTheme.titleMedium),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.description_outlined,
-                label: 'My applications',
-                onTap: () => context.push('/loans'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.upload_file_outlined,
-                label: 'Documents',
-                onTap: () => context.push('/documents'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.calculate_outlined,
-                label: 'EMI Calculator',
-                onTap: () => context.push('/tools/emi-calculator'),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.person_outline,
-                label: 'Profile',
-                onTap: () => context.push('/profile'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _QuickAction(
-                icon: Icons.help_outline,
-                label: 'Support',
-                onTap: () => context.push('/support'),
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(child: SizedBox()),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  const _QuickAction(
-      {required this.icon, required this.label, required this.onTap});
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      child: Column(
-        children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _RecentActivitySection extends StatelessWidget {
   const _RecentActivitySection({required this.data});
 
@@ -609,19 +745,19 @@ class _RecentActivitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final preview = data.recentActivity.take(2).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Recent activity', style: textTheme.titleMedium),
+        const SectionHeader(title: 'Recent activity'),
         const SizedBox(height: 8),
         AppCard(
           child: Column(
             children: [
-              for (var i = 0; i < data.recentActivity.length; i++) ...[
+              for (var i = 0; i < preview.length; i++) ...[
                 if (i > 0) const Divider(height: 20),
-                _ActivityRow(item: data.recentActivity[i]),
+                _ActivityRow(item: preview[i]),
               ],
             ],
           ),
@@ -671,6 +807,55 @@ class _ActivityRow extends StatelessWidget {
           ),
         ),
         Text(Formatters.relativeTime(item.timestamp), style: textTheme.labelSmall),
+      ],
+    );
+  }
+}
+
+class _RecentDocumentsSection extends StatelessWidget {
+  const _RecentDocumentsSection({required this.documents});
+
+  final List<AppDocument> documents;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(
+          title: 'Recent documents',
+          actionLabel: 'View all',
+          onAction: () => context.push('/documents'),
+        ),
+        const SizedBox(height: 8),
+        AppCard(
+          child: Column(
+            children: [
+              for (var i = 0; i < documents.length; i++) ...[
+                if (i > 0) const Divider(height: 20),
+                Row(
+                  children: [
+                    Icon(Icons.description_outlined,
+                        size: 20, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        documents[i].originalFileName,
+                        style: textTheme.bodyMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(Formatters.relativeTime(documents[i].uploadedAt),
+                        style: textTheme.labelSmall),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
       ],
     );
   }

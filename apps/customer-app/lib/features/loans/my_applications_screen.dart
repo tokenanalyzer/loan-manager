@@ -3,11 +3,13 @@ import 'package:go_router/go_router.dart';
 
 import 'package:shared_flutter/shared_flutter.dart';
 
+import '../../core/constants/category_style.dart';
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
 import '../../core/network/loan_application_repository.dart';
 import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/fade_slide_in.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
 import 'status_timeline.dart';
@@ -88,6 +90,7 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                 final category = application.categoryId != null
                     ? findLoanCategory(application.categoryId!)
                     : null;
+                final style = CategoryStyle.forId(application.categoryId ?? '');
                 final steps = buildApplicationTimeline(
                   status: application.status,
                   submittedAt: application.submittedAt,
@@ -98,51 +101,74 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: AppCard(
-                    onTap: () => context.push('/loans/${application.id}'),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (category != null)
-                                    Text(category.title,
-                                        style: Theme.of(context).textTheme.labelSmall),
-                                  Text(
-                                    Formatters.currency(
-                                        application.requestedAmount),
-                                    style: Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  Text(
-                                    '${application.requestedTermMonths} months · '
-                                    '${Formatters.date(application.submittedAt)}',
-                                    style: Theme.of(context).textTheme.bodySmall,
-                                  ),
-                                  if (application.loan != null)
-                                    Text(
-                                      '${Formatters.currency(application.loan!.monthlyInstallment.toStringAsFixed(2))} / month',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(fontWeight: FontWeight.w600),
-                                    ),
-                                ],
+                  child: FadeSlideIn(
+                    delay: Duration(milliseconds: 40 * index),
+                    child: AppCard(
+                      onTap: () => context.push('/loans/${application.id}'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                    color: style.tint, shape: BoxShape.circle),
+                                child: Icon(style.icon, size: 18, color: style.color),
                               ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (category != null)
+                                      Text(category.title,
+                                          style: Theme.of(context).textTheme.labelSmall),
+                                    Hero(
+                                      tag: 'application-amount-${application.id}',
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: Text(
+                                          Formatters.currency(
+                                              application.requestedAmount),
+                                          style:
+                                              Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      '${application.requestedTermMonths} months · '
+                                      '${Formatters.date(application.submittedAt)}',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                    if (application.loan != null)
+                                      Text(
+                                        '${Formatters.currency(application.loan!.monthlyInstallment.toStringAsFixed(2))} / month',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              StatusBadge.forApplicationStatus(application.status),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0, end: progress),
+                              duration: const Duration(milliseconds: 700),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, animated, _) =>
+                                  LinearProgressIndicator(value: animated, minHeight: 6),
                             ),
-                            StatusBadge.forApplicationStatus(application.status),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child:
-                              LinearProgressIndicator(value: progress, minHeight: 6),
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );

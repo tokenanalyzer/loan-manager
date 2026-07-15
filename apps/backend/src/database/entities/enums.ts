@@ -47,6 +47,24 @@ export enum DocumentType {
 }
 
 /**
+ * Legacy/compatibility enum only — `documents.document_type` is kept
+ * populated (see `ExtendDocumentsForCatalog` migration) but nothing
+ * reads it going forward. The real, extensible type system is the
+ * `document_types` catalog table (`DocumentTypeEntity`), keyed by a
+ * free-form `code`, not this enum.
+ */
+
+/** The 6 fixed top-level groupings a `DocumentTypeEntity` belongs to. */
+export enum DocumentCategory {
+  IDENTITY = 'identity',
+  INCOME = 'income',
+  EMPLOYMENT = 'employment',
+  BALANCE_TRANSFER = 'balance_transfer',
+  LOAN_SPECIFIC = 'loan_specific',
+  OTHER = 'other',
+}
+
+/**
  * KYC (Know Your Customer) verification status — self-attested PAN +
  * Aadhaar capture, reviewed manually by staff (no live NSDL/UIDAI
  * vendor integration; see docs/architecture-review-2026-07.md for

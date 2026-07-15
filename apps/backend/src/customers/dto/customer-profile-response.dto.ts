@@ -29,6 +29,32 @@ export class CustomerProfileResponseDto {
   bankAccountHolderName!: string | null;
   nomineeName!: string | null;
   nomineeRelationship!: string | null;
+  nomineePhone!: string | null;
+
+  // --- Full application-form fields (Phase 1) ---
+  gender!: string | null;
+  maritalStatus!: string | null;
+  fatherName!: string | null;
+  motherName!: string | null;
+  residenceType!: string | null;
+  yearsAtCurrentAddress!: number | null;
+  permanentAddress!: string | null;
+  companyName!: string | null;
+  designation!: string | null;
+  joiningDate!: string | null;
+  officeAddress!: string | null;
+  officePhone!: string | null;
+  additionalIncome!: string | null;
+  currentMonthlyEmi!: string | null;
+  creditCardCount!: number | null;
+  creditCardOutstanding!: string | null;
+  existingLoansOutstanding!: string | null;
+  reference1Name!: string | null;
+  reference1Phone!: string | null;
+  reference1Relationship!: string | null;
+  reference2Name!: string | null;
+  reference2Phone!: string | null;
+  reference2Relationship!: string | null;
 
   static fromEntity(entity: {
     userId: string;
@@ -52,6 +78,30 @@ export class CustomerProfileResponseDto {
     bankAccountHolderName?: string | null;
     nomineeName?: string | null;
     nomineeRelationship?: string | null;
+    nomineePhone?: string | null;
+    gender?: string | null;
+    maritalStatus?: string | null;
+    fatherName?: string | null;
+    motherName?: string | null;
+    residenceType?: string | null;
+    yearsAtCurrentAddress?: number | null;
+    permanentAddress?: string | null;
+    companyName?: string | null;
+    designation?: string | null;
+    joiningDate?: string | null;
+    officeAddress?: string | null;
+    officePhone?: string | null;
+    additionalIncome?: string | null;
+    currentMonthlyEmi?: string | null;
+    creditCardCount?: number | null;
+    creditCardOutstanding?: string | null;
+    existingLoansOutstanding?: string | null;
+    reference1Name?: string | null;
+    reference1Phone?: string | null;
+    reference1Relationship?: string | null;
+    reference2Name?: string | null;
+    reference2Phone?: string | null;
+    reference2Relationship?: string | null;
   }): CustomerProfileResponseDto {
     const dto = new CustomerProfileResponseDto();
     dto.userId = entity.userId;
@@ -77,6 +127,30 @@ export class CustomerProfileResponseDto {
     dto.bankAccountHolderName = entity.bankAccountHolderName ?? null;
     dto.nomineeName = entity.nomineeName ?? null;
     dto.nomineeRelationship = entity.nomineeRelationship ?? null;
+    dto.nomineePhone = entity.nomineePhone ?? null;
+    dto.gender = entity.gender ?? null;
+    dto.maritalStatus = entity.maritalStatus ?? null;
+    dto.fatherName = entity.fatherName ?? null;
+    dto.motherName = entity.motherName ?? null;
+    dto.residenceType = entity.residenceType ?? null;
+    dto.yearsAtCurrentAddress = entity.yearsAtCurrentAddress ?? null;
+    dto.permanentAddress = entity.permanentAddress ?? null;
+    dto.companyName = entity.companyName ?? null;
+    dto.designation = entity.designation ?? null;
+    dto.joiningDate = entity.joiningDate ?? null;
+    dto.officeAddress = entity.officeAddress ?? null;
+    dto.officePhone = entity.officePhone ?? null;
+    dto.additionalIncome = entity.additionalIncome ?? null;
+    dto.currentMonthlyEmi = entity.currentMonthlyEmi ?? null;
+    dto.creditCardCount = entity.creditCardCount ?? null;
+    dto.creditCardOutstanding = entity.creditCardOutstanding ?? null;
+    dto.existingLoansOutstanding = entity.existingLoansOutstanding ?? null;
+    dto.reference1Name = entity.reference1Name ?? null;
+    dto.reference1Phone = entity.reference1Phone ?? null;
+    dto.reference1Relationship = entity.reference1Relationship ?? null;
+    dto.reference2Name = entity.reference2Name ?? null;
+    dto.reference2Phone = entity.reference2Phone ?? null;
+    dto.reference2Relationship = entity.reference2Relationship ?? null;
     return dto;
   }
 }

@@ -105,15 +105,15 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
               ),
               const SizedBox(height: 24),
               Text('Danger zone',
-                  style: textTheme.titleSmall?.copyWith(color: Colors.red)),
+                  style: textTheme.titleSmall?.copyWith(color: AppColors.error)),
               const SizedBox(height: 8),
               AppCard(
                 onTap: () => context.push('/profile/delete-account'),
                 child: const ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.delete_outline, color: Colors.red),
+                  leading: Icon(Icons.delete_outline, color: AppColors.error),
                   title: Text('Request account deletion',
-                      style: TextStyle(color: Colors.red)),
+                      style: TextStyle(color: AppColors.error)),
                   trailing: Icon(Icons.chevron_right),
                 ),
               ),

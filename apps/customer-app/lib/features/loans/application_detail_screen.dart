@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 
 import 'package:shared_flutter/shared_flutter.dart';
 
+import '../../core/constants/category_style.dart';
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
 import '../../core/network/loan_application_repository.dart';
 import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
+import '../../core/widgets/fade_slide_in.dart';
 import '../../core/widgets/loan_cost_breakdown_card.dart';
+import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
 import 'status_timeline.dart';
 
@@ -50,7 +53,14 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const LoadingView();
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: const [
+                SkeletonCard(lines: 3),
+                SizedBox(height: 20),
+                SkeletonCard(lines: 3),
+              ],
+            );
           }
           if (snapshot.hasError) {
             return ErrorView(
@@ -60,13 +70,21 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
           }
 
           final application = snapshot.data!;
+          final style = CategoryStyle.forId(application.categoryId ?? '');
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               AppCard(
                 child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(color: style.tint, shape: BoxShape.circle),
+                      child: Icon(style.icon, color: style.color),
+                    ),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,9 +96,15 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                                   'Loan application',
                               style: textTheme.labelMedium,
                             ),
-                          Text(
-                            Formatters.currency(application.requestedAmount),
-                            style: textTheme.headlineMedium,
+                          Hero(
+                            tag: 'application-amount-${application.id}',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: Text(
+                                Formatters.currency(application.requestedAmount),
+                                style: textTheme.headlineMedium,
+                              ),
+                            ),
                           ),
                           Text(
                             '${application.requestedTermMonths} months',
@@ -99,12 +123,14 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
               const SizedBox(height: 20),
               Text('Status', style: textTheme.titleMedium),
               const SizedBox(height: 12),
-              AppCard(
-                child: StatusTimeline(
-                  steps: buildApplicationTimeline(
-                    status: application.status,
-                    submittedAt: application.submittedAt,
-                    reviewedAt: application.reviewedAt,
+              FadeSlideIn(
+                child: AppCard(
+                  child: StatusTimeline(
+                    steps: buildApplicationTimeline(
+                      status: application.status,
+                      submittedAt: application.submittedAt,
+                      reviewedAt: application.reviewedAt,
+                    ),
                   ),
                 ),
               ),
@@ -112,7 +138,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    const Icon(Icons.celebration_outlined, color: Colors.green),
+                    const Icon(Icons.celebration_outlined, color: AppColors.success),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -123,35 +149,38 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Builder(builder: (context) {
-                  final loan = application.loan!;
-                  final category = application.categoryId != null
-                      ? findLoanCategory(application.categoryId!)
-                      : null;
-                  final principal = double.parse(loan.principalAmount);
-                  final feePercent = category?.processingFeePercent ?? 0.02;
-                  final processingFee = principal * feePercent;
-                  final gst = processingFee * kProcessingFeeGstRate;
+                FadeSlideIn(
+                  delay: const Duration(milliseconds: 60),
+                  child: Builder(builder: (context) {
+                    final loan = application.loan!;
+                    final category = application.categoryId != null
+                        ? findLoanCategory(application.categoryId!)
+                        : null;
+                    final principal = double.parse(loan.principalAmount);
+                    final feePercent = category?.processingFeePercent ?? 0.02;
+                    final processingFee = principal * feePercent;
+                    final gst = processingFee * kProcessingFeeGstRate;
 
-                  return LoanCostBreakdownCard(
-                    title: 'Your EMI',
-                    isIndicative: false,
-                    footnote: loan.maturityDate != null
-                        ? 'Matures on ${Formatters.date(DateTime.parse(loan.maturityDate!))}.'
-                        : null,
-                    breakdown: LoanCostBreakdown(
-                      principal: principal,
-                      monthlyInstallment: loan.monthlyInstallment,
-                      totalInterest: loan.totalInterest,
-                      totalPayable: loan.totalPayable,
-                      processingFee: processingFee,
-                      gstOnFee: gst,
-                      netDisbursed: principal - processingFee - gst,
-                    ),
-                    tenureMonths: loan.termMonths,
-                    rateLabel: '${loan.interestRate}% p.a.',
-                  );
-                }),
+                    return LoanCostBreakdownCard(
+                      title: 'Your EMI',
+                      isIndicative: false,
+                      footnote: loan.maturityDate != null
+                          ? 'Matures on ${Formatters.date(DateTime.parse(loan.maturityDate!))}.'
+                          : null,
+                      breakdown: LoanCostBreakdown(
+                        principal: principal,
+                        monthlyInstallment: loan.monthlyInstallment,
+                        totalInterest: loan.totalInterest,
+                        totalPayable: loan.totalPayable,
+                        processingFee: processingFee,
+                        gstOnFee: gst,
+                        netDisbursed: principal - processingFee - gst,
+                      ),
+                      tenureMonths: loan.termMonths,
+                      rateLabel: '${loan.interestRate}% p.a.',
+                    );
+                  }),
+                ),
               ],
             ],
           );

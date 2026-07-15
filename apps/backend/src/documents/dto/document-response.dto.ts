@@ -1,8 +1,8 @@
-import { DocumentType } from '../../database/entities';
-
 export class DocumentResponseDto {
   id!: string;
-  documentType!: DocumentType;
+  documentTypeCode!: string;
+  slotIndex!: number;
+  label!: string | null;
   originalFileName!: string;
   mimeType!: string | null;
   fileSizeBytes!: string | null;
@@ -10,7 +10,9 @@ export class DocumentResponseDto {
 
   static fromEntity(entity: {
     id: string;
-    documentType: DocumentType;
+    documentTypeCode: string;
+    slotIndex: number;
+    label?: string | null;
     originalFileName: string;
     mimeType?: string | null;
     fileSizeBytes?: string | null;
@@ -18,7 +20,9 @@ export class DocumentResponseDto {
   }): DocumentResponseDto {
     const dto = new DocumentResponseDto();
     dto.id = entity.id;
-    dto.documentType = entity.documentType;
+    dto.documentTypeCode = entity.documentTypeCode;
+    dto.slotIndex = entity.slotIndex;
+    dto.label = entity.label ?? null;
     dto.originalFileName = entity.originalFileName;
     dto.mimeType = entity.mimeType ?? null;
     dto.fileSizeBytes = entity.fileSizeBytes ?? null;

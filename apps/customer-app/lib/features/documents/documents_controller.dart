@@ -7,51 +7,59 @@ import '../../core/utils/friendly_error.dart';
 /// Upload progress as a fraction (0.0-1.0), or null when nothing is
 /// currently uploading — kept separate from the overview `AsyncValue`
 /// so a re-upload doesn't blank the existing list while it's in flight.
+/// Keyed by `(documentTypeCode, slotIndex)` so two different slots
+/// never show each other's progress.
 class DocumentsUploadState {
-  const DocumentsUploadState(
-      {this.documentTypeInProgress, this.progress, this.errorMessage});
+  const DocumentsUploadState({this.slotInProgress, this.progress, this.errorMessage});
 
-  final String? documentTypeInProgress;
+  final (String, int)? slotInProgress;
   final double? progress;
   final String? errorMessage;
 
-  bool get isUploading => documentTypeInProgress != null;
+  bool isUploading(String documentTypeCode, int slotIndex) =>
+      slotInProgress == (documentTypeCode, slotIndex);
 }
 
 final documentsUploadStateProvider =
-    StateProvider.autoDispose<DocumentsUploadState>(
-        (ref) => const DocumentsUploadState());
+    StateProvider.autoDispose<DocumentsUploadState>((ref) => const DocumentsUploadState());
 
-final documentsOverviewProvider =
-    FutureProvider.autoDispose<DocumentsOverview>((ref) async {
+/// [categoryId] scopes the overview to a loan category's documents
+/// step (includes that category's loan-specific types); the
+/// standalone Documents tab uses the family's default `null` key
+/// (general view only).
+final documentsOverviewProvider = FutureProvider.autoDispose
+    .family<DocumentsOverview, String?>((ref, categoryId) async {
   final repository = ref.read(documentRepositoryProvider);
-  final result = await repository.getMyDocuments();
+  final result = await repository.getOverview(categoryId: categoryId);
   return result.when(success: (data) => data, failure: (error) => throw error);
 });
 
-/// Orchestrates upload (with progress) + refreshing the overview
-/// afterward. A plain class (not a Notifier) since it only performs
-/// one-shot actions against two other providers — no state of its own
-/// beyond what `documentsUploadStateProvider` already tracks.
+/// Orchestrates upload/delete (with progress) + refreshing the
+/// overview afterward. A plain class (not a Notifier) since it only
+/// performs one-shot actions against other providers.
 class DocumentsUploadController {
-  DocumentsUploadController(this._ref);
+  DocumentsUploadController(this._ref, this._categoryId);
 
   final Ref _ref;
+  final String? _categoryId;
 
-  Future<void> upload(
-      {required String documentType, required String filePath}) async {
+  Future<void> upload({
+    required String documentTypeCode,
+    required int slotIndex,
+    required String filePath,
+  }) async {
     _ref.read(documentsUploadStateProvider.notifier).state =
-        DocumentsUploadState(documentTypeInProgress: documentType, progress: 0);
+        DocumentsUploadState(slotInProgress: (documentTypeCode, slotIndex), progress: 0);
 
     final repository = _ref.read(documentRepositoryProvider);
     final result = await repository.upload(
-      documentType: documentType,
+      documentTypeCode: documentTypeCode,
+      slotIndex: slotIndex,
       filePath: filePath,
       onProgress: (sent, total) {
         if (total <= 0) return;
-        _ref.read(documentsUploadStateProvider.notifier).state =
-            DocumentsUploadState(
-          documentTypeInProgress: documentType,
+        _ref.read(documentsUploadStateProvider.notifier).state = DocumentsUploadState(
+          slotInProgress: (documentTypeCode, slotIndex),
           progress: sent / total,
         );
       },
@@ -59,10 +67,22 @@ class DocumentsUploadController {
 
     result.when(
       success: (_) {
-        _ref.read(documentsUploadStateProvider.notifier).state =
-            const DocumentsUploadState();
-        _ref.invalidate(documentsOverviewProvider);
+        _ref.read(documentsUploadStateProvider.notifier).state = const DocumentsUploadState();
+        _ref.invalidate(documentsOverviewProvider(_categoryId));
       },
+      failure: (error) {
+        _ref.read(documentsUploadStateProvider.notifier).state =
+            DocumentsUploadState(errorMessage: friendlyMessage(error));
+      },
+    );
+  }
+
+  Future<void> delete(String documentId) async {
+    final repository = _ref.read(documentRepositoryProvider);
+    final result = await repository.deleteDocument(documentId);
+
+    result.when(
+      success: (_) => _ref.invalidate(documentsOverviewProvider(_categoryId)),
       failure: (error) {
         _ref.read(documentsUploadStateProvider.notifier).state =
             DocumentsUploadState(errorMessage: friendlyMessage(error));
@@ -71,7 +91,6 @@ class DocumentsUploadController {
   }
 }
 
-final documentsUploadControllerProvider =
-    Provider.autoDispose<DocumentsUploadController>(
-  (ref) => DocumentsUploadController(ref),
-);
+final documentsUploadControllerProvider = Provider.autoDispose
+    .family<DocumentsUploadController, String?>(
+        (ref, categoryId) => DocumentsUploadController(ref, categoryId));

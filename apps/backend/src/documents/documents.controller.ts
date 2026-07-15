@@ -2,10 +2,12 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   Res,
   UploadedFile,
   UseInterceptors,
@@ -21,18 +23,15 @@ import { StorageService } from '../storage/storage.service';
 import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_FILE_SIZE_BYTES } from './documents.constants';
 import { DocumentsService } from './documents.service';
 import { DocumentResponseDto } from './dto/document-response.dto';
-import { RequiredDocumentStatusDto } from './dto/required-document-status.dto';
+import { DocumentsOverviewResponseDto } from './dto/documents-overview-response.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 
 /**
- * DocumentsController — Phase 6 scope: list (with required-doc
- * status), upload/replace, and preview. Only customers manage their
- * own documents here; staff review of uploaded documents is future work.
+ * DocumentsController — customer document operations: catalog-driven
+ * list, upload/replace (slot-aware), delete, and preview.
  *
- * Phase 7 hardening: a `fileFilter` rejects disallowed MIME types
- * before the file ever reaches disk (previously only size was
- * limited), and the preview response sanitizes the stored filename
- * before putting it in a header, closing a header-injection gap.
+ * Phase 2 hardening: `DELETE :id` is new (the original Phase 6 scope
+ * only had upload-replaces-on-reupload, no real delete).
  */
 @Controller({ path: 'documents', version: '1' })
 export class DocumentsController {
@@ -43,10 +42,11 @@ export class DocumentsController {
 
   @Get()
   @Auth(UserRole.CUSTOMER)
-  async listMine(
+  async getOverview(
     @CurrentAppUser() user: UserEntity,
-  ): Promise<{ required: RequiredDocumentStatusDto[]; documents: DocumentResponseDto[] }> {
-    return this.documentsService.listMine(user);
+    @Query('categoryId') categoryId?: string,
+  ): Promise<DocumentsOverviewResponseDto> {
+    return this.documentsService.getOverview(user, categoryId);
   }
 
   @Post()
@@ -77,6 +77,16 @@ export class DocumentsController {
       throw new BadRequestException('No file was provided (expected multipart field "file").');
     }
     return this.documentsService.upload(user, dto, file);
+  }
+
+  @Delete(':id')
+  @Auth(UserRole.CUSTOMER)
+  async delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() user: UserEntity,
+  ): Promise<{ deleted: true }> {
+    await this.documentsService.delete(user, id);
+    return { deleted: true };
   }
 
   @Get(':id/content')

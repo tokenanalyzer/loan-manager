@@ -59,7 +59,9 @@ abstract final class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.surface,
-        elevation: 0,
+        elevation: 6,
+        shadowColor: AppColors.primary.withValues(alpha: 0.10),
+        surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
@@ -147,6 +149,24 @@ abstract final class AppTheme {
         thickness: 1,
         space: 24,
       ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.surface,
+        elevation: 3,
+        shadowColor: AppColors.primary.withValues(alpha: 0.10),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: AppColors.primary.withValues(alpha: 0.12),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return AppTextStyles.labelSmall.copyWith(
+            color: selected ? AppColors.primary : AppColors.textTertiary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(color: selected ? AppColors.primary : AppColors.textTertiary);
+        }),
+      ),
     );
   }
 
@@ -182,7 +202,9 @@ abstract final class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.surfaceElevatedDark,
-        elevation: 0,
+        elevation: 6,
+        shadowColor: Colors.black.withValues(alpha: 0.35),
+        surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(18),
@@ -230,6 +252,24 @@ abstract final class AppTheme {
         color: AppColors.borderDark,
         thickness: 1,
         space: 24,
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: AppColors.surfaceElevatedDark,
+        elevation: 3,
+        shadowColor: Colors.black.withValues(alpha: 0.35),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: AppColors.primaryLight.withValues(alpha: 0.20),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return AppTextStyles.labelSmall.copyWith(
+            color: selected ? Colors.white : AppColors.textTertiary,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return IconThemeData(color: selected ? Colors.white : AppColors.textTertiary);
+        }),
       ),
     );
   }

@@ -27,16 +27,21 @@ import '../../features/tools/emi_calculator_screen.dart';
 import '../bootstrap/app_bootstrap_state.dart';
 import '../config/env_config.dart';
 import '../di/injection.dart';
+import '../navigation/app_shell.dart';
+import '../widgets/page_transitions.dart';
 
 /// App routing.
 ///
-/// Phase 6 rewrites the redirect gate to include Splash (session
-/// restoration — see `SplashScreen`) and Onboarding (shown once,
-/// tracked via `AppBootstrapState.hasSeenOnboarding`), and adds every
-/// route for the loan journey, documents, profile, support, and
-/// notifications features. When `EnvConfig.firebaseEnabled` is false,
-/// gating is skipped entirely (same "stays optional" behavior as
-/// every prior phase).
+/// The four primary sections (Home, Loans, Documents, Profile) live
+/// inside one `StatefulShellRoute.indexedStack` — see `AppShell` — so
+/// they share a persistent bottom nav and each keeps its own
+/// scroll/local state alive while switching tabs. Every other screen
+/// (loan application, document preview, profile edit, notifications,
+/// support, EMI calculator, ...) stays a top-level `GoRoute` pushed
+/// *above* the shell, exactly as before this pass — same paths, same
+/// `context.push(...)` call sites, same deep links (e.g. a
+/// notification linking to `/loans/:id`) — only how the four tab
+/// roots are declared changed, not the route table's shape.
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   refreshListenable: EnvConfig.firebaseEnabled ? getIt<AuthController>() : null,
@@ -86,111 +91,166 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) =>
           OtpVerificationScreen(verificationId: state.extra as String),
     ),
-    GoRoute(
-      path: '/',
-      name: 'home',
-      builder: (context, state) => const HomeScreen(),
+
+    // Persistent bottom-nav shell: Home / Loans / Documents / Profile.
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) =>
+          AppShell(navigationShell: navigationShell),
+      branches: [
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/',
+            name: 'home',
+            builder: (context, state) => const HomeScreen(),
+          ),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/loans',
+            name: 'my-loans',
+            builder: (context, state) => const MyApplicationsScreen(),
+          ),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/documents',
+            name: 'documents',
+            builder: (context, state) => const DocumentsScreen(),
+          ),
+        ]),
+        StatefulShellBranch(routes: [
+          GoRoute(
+            path: '/profile',
+            name: 'profile',
+            builder: (context, state) => const ProfileViewScreen(),
+          ),
+        ]),
+      ],
     ),
 
-    // Loan journey.
-    GoRoute(
-      path: '/loans',
-      name: 'my-loans',
-      builder: (context, state) => const MyApplicationsScreen(),
-    ),
+    // Loan journey (secondary screens — pushed above the shell, no bottom nav).
     GoRoute(
       path: '/loans/categories',
       name: 'loan-categories',
-      builder: (context, state) => const LoanCategorySelectionScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const LoanCategorySelectionScreen(),
+      ),
     ),
     GoRoute(
       path: '/loans/categories/:categoryId',
       name: 'loan-category-details',
-      builder: (context, state) =>
-          LoanDetailsScreen(categoryId: state.pathParameters['categoryId']!),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: LoanDetailsScreen(categoryId: state.pathParameters['categoryId']!),
+      ),
     ),
     GoRoute(
       path: '/loans/apply',
       name: 'loan-application-flow',
-      builder: (context, state) => LoanApplicationFlowScreen(
-          categoryId: state.uri.queryParameters['categoryId']),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: LoanApplicationFlowScreen(
+            categoryId: state.uri.queryParameters['categoryId']),
+      ),
     ),
     GoRoute(
       path: '/loans/apply/success',
       name: 'loan-application-success',
-      builder: (context, state) =>
-          LoanApplicationSuccessScreen(applicationId: state.extra as String),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: LoanApplicationSuccessScreen(applicationId: state.extra as String),
+      ),
     ),
     GoRoute(
       path: '/loans/:id',
       name: 'loan-application-detail',
-      builder: (context, state) =>
-          ApplicationDetailScreen(applicationId: state.pathParameters['id']!),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: ApplicationDetailScreen(applicationId: state.pathParameters['id']!),
+      ),
     ),
 
-    // Documents.
-    GoRoute(
-      path: '/documents',
-      name: 'documents',
-      builder: (context, state) => const DocumentsScreen(),
-    ),
+    // Documents (secondary).
     GoRoute(
       path: '/documents/:id',
       name: 'document-preview',
-      builder: (context, state) =>
-          DocumentPreviewScreen(documentId: state.pathParameters['id']!),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: DocumentPreviewScreen(documentId: state.pathParameters['id']!),
+      ),
     ),
 
-    // Profile.
-    GoRoute(
-      path: '/profile',
-      name: 'profile',
-      builder: (context, state) => const ProfileViewScreen(),
-    ),
+    // Profile (secondary).
     GoRoute(
       path: '/profile/edit',
       name: 'profile-edit',
-      builder: (context, state) => const ProfileEditScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const ProfileEditScreen(),
+      ),
     ),
     GoRoute(
       path: '/profile/privacy',
       name: 'privacy-settings',
-      builder: (context, state) => const PrivacySettingsScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const PrivacySettingsScreen(),
+      ),
     ),
     GoRoute(
       path: '/profile/delete-account',
       name: 'account-deletion',
-      builder: (context, state) => const AccountDeletionScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const AccountDeletionScreen(),
+      ),
     ),
 
-    // Support.
+    // Support (secondary).
     GoRoute(
       path: '/support',
       name: 'help-center',
-      builder: (context, state) => const HelpCenterScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const HelpCenterScreen(),
+      ),
     ),
     GoRoute(
-        path: '/support/faq',
-        name: 'faq',
-        builder: (context, state) => const FaqScreen()),
+      path: '/support/faq',
+      name: 'faq',
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const FaqScreen(),
+      ),
+    ),
     GoRoute(
       path: '/support/contact',
       name: 'contact-support',
-      builder: (context, state) => const ContactSupportScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const ContactSupportScreen(),
+      ),
     ),
 
-    // Notifications.
+    // Notifications (secondary).
     GoRoute(
       path: '/notifications',
       name: 'notifications',
-      builder: (context, state) => const NotificationsScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const NotificationsScreen(),
+      ),
     ),
 
-    // Tools.
+    // Tools (secondary).
     GoRoute(
       path: '/tools/emi-calculator',
       name: 'emi-calculator',
-      builder: (context, state) => const EmiCalculatorScreen(),
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const EmiCalculatorScreen(),
+      ),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

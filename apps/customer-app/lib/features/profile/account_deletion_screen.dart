@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/riverpod/providers.dart';
 import '../../core/utils/friendly_error.dart';
@@ -62,7 +63,7 @@ class _AccountDeletionScreenState extends ConsumerState<AccountDeletionScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.check_circle_outline,
-                  size: 56, color: Colors.green),
+                  size: 56, color: AppColors.success),
               const SizedBox(height: 16),
               Text('Request received',
                   style: textTheme.headlineSmall, textAlign: TextAlign.center),

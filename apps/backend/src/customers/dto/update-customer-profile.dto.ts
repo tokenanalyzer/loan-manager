@@ -1,12 +1,15 @@
 import {
   IsBoolean,
   IsDateString,
+  IsInt,
   IsNumber,
   IsOptional,
   IsPositive,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
 
 /**
@@ -124,4 +127,131 @@ export class UpdateCustomerProfileDto {
   @IsString()
   @MaxLength(64)
   nomineeRelationship?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[6-9][0-9]{9}$/, { message: 'nomineePhone must be a valid 10-digit Indian mobile number.' })
+  nomineePhone?: string;
+
+  // --- Full application-form fields (Phase 1) ---
+  // Free validated strings (not enums) for gender/maritalStatus/
+  // residenceType, matching the existing `employmentStatus` field's
+  // convention just above — the Flutter app supplies a fixed dropdown
+  // of values, the backend doesn't hard-enforce a closed set.
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  gender?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  maritalStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  fatherName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  motherName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  residenceType?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(99)
+  yearsAtCurrentAddress?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  permanentAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  companyName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  designation?: string;
+
+  @IsOptional()
+  @IsDateString()
+  joiningDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  officeAddress?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[6-9][0-9]{9}$/, { message: 'officePhone must be a valid 10-digit Indian mobile number.' })
+  officePhone?: string;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  additionalIncome?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  currentMonthlyEmi?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(50)
+  creditCardCount?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  creditCardOutstanding?: number;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  existingLoansOutstanding?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  reference1Name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[6-9][0-9]{9}$/, { message: 'reference1Phone must be a valid 10-digit Indian mobile number.' })
+  reference1Phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  reference1Relationship?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  reference2Name?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^[6-9][0-9]{9}$/, { message: 'reference2Phone must be a valid 10-digit Indian mobile number.' })
+  reference2Phone?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  reference2Relationship?: string;
 }

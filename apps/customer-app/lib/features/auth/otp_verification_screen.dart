@@ -74,6 +74,18 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Center(
+                child: Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(Icons.sms_outlined, size: 32, color: Colors.white),
+                ),
+              ),
+              const SizedBox(height: 24),
               Text('Enter the 6-digit code', style: textTheme.headlineMedium),
               const SizedBox(height: 8),
               Text('We sent a verification code by text message.',
@@ -85,7 +97,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 maxLength: 6,
                 decoration: const InputDecoration(
                   labelText: 'Verification code',
-                  border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.trim().length != 6) {

@@ -71,15 +71,13 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: _subjectController,
-              decoration: const InputDecoration(
-                  labelText: 'Subject', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Subject'),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _messageController,
               maxLines: 6,
-              decoration: const InputDecoration(
-                  labelText: 'Message', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Message'),
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),

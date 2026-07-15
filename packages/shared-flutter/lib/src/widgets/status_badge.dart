@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_colors.dart';
+
 /// Reusable status pill — used for loan application status, KYC
 /// status, document status, and notification read/unread state, so
 /// color-coding stays consistent across both Flutter apps instead of
 /// each screen (or each app) inventing its own.
+///
+/// Colors are always drawn from [AppColors] (never raw `Colors.*`) so
+/// the badge stays on-brand and legible in both light and dark theme.
 class StatusBadge extends StatelessWidget {
   const StatusBadge({required this.label, required this.color, super.key});
 
@@ -12,23 +17,23 @@ class StatusBadge extends StatelessWidget {
 
   factory StatusBadge.forApplicationStatus(String status) {
     final (label, color) = switch (status) {
-      'submitted' => ('Submitted', Colors.blueGrey),
-      'under_review' => ('Under review', Colors.orange),
-      'approved' => ('Approved', Colors.green),
-      'rejected' => ('Not approved', Colors.red),
-      'withdrawn' => ('Withdrawn', Colors.grey),
-      _ => (status, Colors.blueGrey),
+      'submitted' => ('Submitted', AppColors.textTertiary),
+      'under_review' => ('Under review', AppColors.warning),
+      'approved' => ('Approved', AppColors.success),
+      'rejected' => ('Not approved', AppColors.error),
+      'withdrawn' => ('Withdrawn', AppColors.textTertiary),
+      _ => (status, AppColors.textTertiary),
     };
     return StatusBadge(label: label, color: color);
   }
 
   factory StatusBadge.forKycStatus(String status) {
     final (label, color) = switch (status) {
-      'not_submitted' => ('KYC not submitted', Colors.blueGrey),
-      'pending_review' => ('KYC pending review', Colors.orange),
-      'verified' => ('KYC verified', Colors.green),
-      'rejected' => ('KYC rejected', Colors.red),
-      _ => (status, Colors.blueGrey),
+      'not_submitted' => ('KYC not submitted', AppColors.textTertiary),
+      'pending_review' => ('KYC pending review', AppColors.warning),
+      'verified' => ('KYC verified', AppColors.success),
+      'rejected' => ('KYC rejected', AppColors.error),
+      _ => (status, AppColors.textTertiary),
     };
     return StatusBadge(label: label, color: color);
   }

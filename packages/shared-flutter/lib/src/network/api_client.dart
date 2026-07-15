@@ -147,8 +147,16 @@ class ApiClient {
 
   String? _extractMessage(DioException error) {
     final data = error.response?.data;
-    if (data is Map && data['message'] is String) {
-      return data['message'] as String;
+    if (data is! Map) return null;
+    final message = data['message'];
+    if (message is String) return message;
+    // NestJS's ValidationPipe reports multiple failures as
+    // `message: string[]` (e.g. class-validator errors) rather than a
+    // single string — without this, every validation error silently
+    // fell back to the generic "Request failed." and hid the actual
+    // reason from both the user and whoever's debugging their report.
+    if (message is List && message.isNotEmpty) {
+      return message.whereType<String>().join(' ');
     }
     return null;
   }

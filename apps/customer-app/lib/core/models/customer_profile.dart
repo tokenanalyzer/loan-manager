@@ -22,6 +22,30 @@ class CustomerProfile {
     this.bankAccountHolderName,
     this.nomineeName,
     this.nomineeRelationship,
+    this.nomineePhone,
+    this.gender,
+    this.maritalStatus,
+    this.fatherName,
+    this.motherName,
+    this.residenceType,
+    this.yearsAtCurrentAddress,
+    this.permanentAddress,
+    this.companyName,
+    this.designation,
+    this.joiningDate,
+    this.officeAddress,
+    this.officePhone,
+    this.additionalIncome,
+    this.currentMonthlyEmi,
+    this.creditCardCount,
+    this.creditCardOutstanding,
+    this.existingLoansOutstanding,
+    this.reference1Name,
+    this.reference1Phone,
+    this.reference1Relationship,
+    this.reference2Name,
+    this.reference2Phone,
+    this.reference2Relationship,
   });
 
   final String userId;
@@ -47,8 +71,40 @@ class CustomerProfile {
   final String? bankAccountHolderName;
   final String? nomineeName;
   final String? nomineeRelationship;
+  final String? nomineePhone;
+
+  // Full application-form fields (Phase 1).
+  final String? gender;
+  final String? maritalStatus;
+  final String? fatherName;
+  final String? motherName;
+  final String? residenceType;
+  final int? yearsAtCurrentAddress;
+  final String? permanentAddress;
+  final String? companyName;
+  final String? designation;
+  final String? joiningDate;
+  final String? officeAddress;
+  final String? officePhone;
+  final String? additionalIncome;
+  final String? currentMonthlyEmi;
+  final int? creditCardCount;
+  final String? creditCardOutstanding;
+  final String? existingLoansOutstanding;
+  final String? reference1Name;
+  final String? reference1Phone;
+  final String? reference1Relationship;
+  final String? reference2Name;
+  final String? reference2Phone;
+  final String? reference2Relationship;
 
   bool get isKycComplete => kycStatus == 'pending_review' || kycStatus == 'verified';
+
+  /// Whether the customer's declared identity/address/employment/
+  /// income facts are on file — the wizard pre-fills from these and
+  /// treats them as "already answered" for a returning applicant.
+  bool get hasPersonalDetails =>
+      gender != null && maritalStatus != null && fatherName != null && motherName != null;
 
   factory CustomerProfile.fromJson(Map<String, dynamic> json) {
     return CustomerProfile(
@@ -75,6 +131,30 @@ class CustomerProfile {
       bankAccountHolderName: json['bankAccountHolderName'] as String?,
       nomineeName: json['nomineeName'] as String?,
       nomineeRelationship: json['nomineeRelationship'] as String?,
+      nomineePhone: json['nomineePhone'] as String?,
+      gender: json['gender'] as String?,
+      maritalStatus: json['maritalStatus'] as String?,
+      fatherName: json['fatherName'] as String?,
+      motherName: json['motherName'] as String?,
+      residenceType: json['residenceType'] as String?,
+      yearsAtCurrentAddress: json['yearsAtCurrentAddress'] as int?,
+      permanentAddress: json['permanentAddress'] as String?,
+      companyName: json['companyName'] as String?,
+      designation: json['designation'] as String?,
+      joiningDate: json['joiningDate'] as String?,
+      officeAddress: json['officeAddress'] as String?,
+      officePhone: json['officePhone'] as String?,
+      additionalIncome: json['additionalIncome'] as String?,
+      currentMonthlyEmi: json['currentMonthlyEmi'] as String?,
+      creditCardCount: json['creditCardCount'] as int?,
+      creditCardOutstanding: json['creditCardOutstanding'] as String?,
+      existingLoansOutstanding: json['existingLoansOutstanding'] as String?,
+      reference1Name: json['reference1Name'] as String?,
+      reference1Phone: json['reference1Phone'] as String?,
+      reference1Relationship: json['reference1Relationship'] as String?,
+      reference2Name: json['reference2Name'] as String?,
+      reference2Phone: json['reference2Phone'] as String?,
+      reference2Relationship: json['reference2Relationship'] as String?,
     );
   }
 }

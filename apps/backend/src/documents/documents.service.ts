@@ -1,59 +1,141 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 
-import { DocumentEntity, UserEntity } from '../database/entities';
+import { DocumentEntity, DocumentType, UserEntity } from '../database/entities';
 import { StorageService } from '../storage/storage.service';
 
+import { DocumentTypeRepository } from './document-type.repository';
 import { DocumentRepository } from './document.repository';
-import { REQUIRED_CUSTOMER_DOCUMENT_TYPES } from './documents.constants';
 import { DocumentResponseDto } from './dto/document-response.dto';
-import { RequiredDocumentStatusDto } from './dto/required-document-status.dto';
+import {
+  DocumentCategoryGroupDto,
+  DocumentsOverviewResponseDto,
+  DocumentTypeOverviewDto,
+} from './dto/documents-overview-response.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 
+/** Fixed display order for the 6 categories — the one place this app agrees "identity comes first." */
+const CATEGORY_ORDER = [
+  'identity',
+  'income',
+  'employment',
+  'balance_transfer',
+  'loan_specific',
+  'other',
+] as const;
+
 /**
- * DocumentsService — Phase 6 scope: upload (with replace-on-reupload
- * semantics), list-with-required-status, and preview/download. No
- * document verification/approval workflow (staff reviewing uploaded
- * docs) exists yet — future work.
+ * The 6 legacy `DocumentType` enum values, by code — used only to
+ * keep the deprecated `documents.document_type` column populated for
+ * backward compatibility. New catalog codes with no legacy analog
+ * fall back to `OTHER`.
+ */
+const LEGACY_ENUM_BY_CODE: Record<string, DocumentType> = {
+  pan_card: DocumentType.PAN_CARD,
+  aadhaar_card: DocumentType.AADHAAR_CARD,
+  address_proof: DocumentType.ADDRESS_PROOF,
+  id_proof: DocumentType.ID_PROOF,
+  income_proof: DocumentType.INCOME_PROOF,
+  other: DocumentType.OTHER,
+};
+
+/**
+ * DocumentsService — the customer-facing upload/list/delete flow.
+ *
+ * Phase 2 (Customer App production sprint) rewrite: every "which
+ * types exist / which are required / how many slots / which loan
+ * category" decision now comes from the `document_types` catalog
+ * table at request time (`DocumentTypeRepository`), not a compiled-in
+ * list — a new catalog row (inserted by a future Admin Panel via
+ * `DocumentTypesService`) is uploadable and shows up in `getOverview`
+ * immediately, with zero changes here.
  */
 @Injectable()
 export class DocumentsService {
   constructor(
     private readonly documentRepository: DocumentRepository,
+    private readonly documentTypeRepository: DocumentTypeRepository,
     private readonly storageService: StorageService,
   ) {}
 
-  async listMine(user: UserEntity): Promise<{
-    required: RequiredDocumentStatusDto[];
-    documents: DocumentResponseDto[];
-  }> {
-    const documents = await this.documentRepository.findAllByOwner(user.id);
+  /**
+   * Categories → types → upload slots, cross-referenced against the
+   * customer's own documents. `categoryId` (a loan-application
+   * category id, e.g. `home`) additionally includes `loan_specific`
+   * types tagged for that category; omit it for the general
+   * (non-application-scoped) Documents tab view.
+   */
+  async getOverview(
+    user: UserEntity,
+    categoryId?: string,
+  ): Promise<DocumentsOverviewResponseDto> {
+    const [types, documents] = await Promise.all([
+      this.documentTypeRepository.findAllActive(),
+      this.documentRepository.findAllByOwner(user.id),
+    ]);
 
-    const required = REQUIRED_CUSTOMER_DOCUMENT_TYPES.map(({ type, label }) => {
-      const match = documents.find((doc) => doc.documentType === type);
-      const status = new RequiredDocumentStatusDto();
-      status.documentType = type;
-      status.label = label;
-      status.isUploaded = Boolean(match);
-      status.document = match ? DocumentResponseDto.fromEntity(match) : undefined;
-      return status;
+    const relevantTypes = types.filter((type) => {
+      if (!type.applicableLoanCategoryIds || type.applicableLoanCategoryIds.length === 0) {
+        return true;
+      }
+      return categoryId != null && type.applicableLoanCategoryIds.includes(categoryId);
     });
 
-    return {
-      required,
-      documents: documents.map((doc) => DocumentResponseDto.fromEntity(doc)),
-    };
+    const documentsByTypeCode = new Map<string, DocumentEntity[]>();
+    for (const document of documents) {
+      const list = documentsByTypeCode.get(document.documentTypeCode) ?? [];
+      list.push(document);
+      documentsByTypeCode.set(document.documentTypeCode, list);
+    }
+
+    const groupsByCategory = new Map<string, DocumentTypeOverviewDto[]>();
+    for (const type of relevantTypes) {
+      const uploadedForType = documentsByTypeCode.get(type.code) ?? [];
+
+      const typeDto = new DocumentTypeOverviewDto();
+      typeDto.code = type.code;
+      typeDto.label = type.label;
+      typeDto.isRequired = type.isRequired;
+      typeDto.maxUploads = type.maxUploads;
+      typeDto.slots = Array.from({ length: type.maxUploads }, (_, index) => {
+        const slotIndex = index + 1;
+        const match = uploadedForType.find((doc) => doc.slotIndex === slotIndex);
+        return {
+          slotIndex,
+          isUploaded: Boolean(match),
+          document: match ? DocumentResponseDto.fromEntity(match) : undefined,
+        };
+      });
+
+      const bucket = groupsByCategory.get(type.category) ?? [];
+      bucket.push(typeDto);
+      groupsByCategory.set(type.category, bucket);
+    }
+
+    const categories: DocumentCategoryGroupDto[] = CATEGORY_ORDER.filter((category) =>
+      groupsByCategory.has(category),
+    ).map((category) => {
+      const group = new DocumentCategoryGroupDto();
+      group.category = category as DocumentCategoryGroupDto['category'];
+      group.types = groupsByCategory.get(category)!;
+      return group;
+    });
+
+    const overview = new DocumentsOverviewResponseDto();
+    overview.categories = categories;
+    return overview;
   }
 
   /**
-   * Uploads a document. If the user already has a document of this
-   * type, the old file is deleted from storage and the DB row is
-   * replaced — this is what makes "replace document" work: the same
-   * endpoint handles both first upload and replacement.
+   * Uploads a document into a specific (or auto-assigned) slot.
+   * Uploading into an already-occupied slot replaces it — this is
+   * what makes "replace document" work, same as the original
+   * single-slot behavior, just slot-aware now.
    */
   async upload(
     user: UserEntity,
@@ -64,7 +146,39 @@ export class DocumentsService {
       throw new BadRequestException('No file was provided.');
     }
 
-    const existing = await this.documentRepository.findByOwnerAndType(user.id, dto.documentType);
+    const type = await this.documentTypeRepository.findByCode(dto.documentTypeCode);
+    if (!type || !type.isActive) {
+      throw new BadRequestException(`Unknown or inactive document type: ${dto.documentTypeCode}.`);
+    }
+
+    let slotIndex = dto.slotIndex;
+    if (slotIndex != null) {
+      if (slotIndex < 1 || slotIndex > type.maxUploads) {
+        throw new BadRequestException(
+          `slotIndex must be between 1 and ${type.maxUploads} for ${type.code}.`,
+        );
+      }
+    } else {
+      const existing = await this.documentRepository.findAllByOwner(user.id);
+      const occupiedSlots = new Set(
+        existing.filter((doc) => doc.documentTypeCode === type.code).map((doc) => doc.slotIndex),
+      );
+      const freeSlot = Array.from({ length: type.maxUploads }, (_, index) => index + 1).find(
+        (candidate) => !occupiedSlots.has(candidate),
+      );
+      if (freeSlot == null) {
+        throw new ConflictException(
+          `All ${type.maxUploads} upload slot(s) for ${type.label} are full — specify slotIndex to replace one.`,
+        );
+      }
+      slotIndex = freeSlot;
+    }
+
+    const existingAtSlot = await this.documentRepository.findByOwnerTypeAndSlot(
+      user.id,
+      type.code,
+      slotIndex,
+    );
 
     const stored = await this.storageService.save({
       buffer: file.buffer,
@@ -73,9 +187,9 @@ export class DocumentsService {
       folder: `documents/${user.id}`,
     });
 
-    if (existing) {
-      await this.storageService.delete(existing.storagePath);
-      const updated = await this.documentRepository.update(existing.id, {
+    if (existingAtSlot) {
+      await this.storageService.delete(existingAtSlot.storagePath);
+      const updated = await this.documentRepository.update(existingAtSlot.id, {
         storagePath: stored.storagePath,
         originalFileName: file.originalname,
         mimeType: file.mimetype,
@@ -90,7 +204,9 @@ export class DocumentsService {
 
     const created = await this.documentRepository.create({
       ownerId: user.id,
-      documentType: dto.documentType,
+      documentType: LEGACY_ENUM_BY_CODE[type.code] ?? DocumentType.OTHER,
+      documentTypeCode: type.code,
+      slotIndex,
       storagePath: stored.storagePath,
       originalFileName: file.originalname,
       mimeType: file.mimetype,
@@ -98,6 +214,13 @@ export class DocumentsService {
       uploadedAt: new Date(),
     });
     return DocumentResponseDto.fromEntity(created);
+  }
+
+  /** Deletes a document outright — storage file + row. Ownership-checked. */
+  async delete(user: UserEntity, documentId: string): Promise<void> {
+    const document = await this.getOwnedDocumentOrThrow(user, documentId);
+    await this.storageService.delete(document.storagePath);
+    await this.documentRepository.deleteById(document.id);
   }
 
   /** Returns the entity (with storagePath) for streaming — ownership-checked. */
