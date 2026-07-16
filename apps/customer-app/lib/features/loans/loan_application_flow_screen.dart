@@ -825,6 +825,13 @@ class _LoanRequirementStepState extends State<_LoanRequirementStep> {
           validator: (value) {
             final amount = double.tryParse(value ?? '');
             if (amount == null || amount <= 0) return 'Enter a valid amount.';
+            final category = widget.category;
+            if (category != null &&
+                (amount < category.minAmount || amount > category.maxAmount)) {
+              return 'Enter an amount between '
+                  '${Formatters.currency(category.minAmount.toStringAsFixed(2))} and '
+                  '${Formatters.currency(category.maxAmount.toStringAsFixed(2))}.';
+            }
             return null;
           },
         ),
@@ -836,6 +843,12 @@ class _LoanRequirementStepState extends State<_LoanRequirementStep> {
           validator: (value) {
             final months = int.tryParse(value ?? '');
             if (months == null || months <= 0) return 'Enter a valid number of months.';
+            final category = widget.category;
+            if (category != null &&
+                (months < category.minTermMonths || months > category.maxTermMonths)) {
+              return 'Enter a term between ${category.minTermMonths} and '
+                  '${category.maxTermMonths} months.';
+            }
             return null;
           },
         ),
@@ -1155,7 +1168,7 @@ class _DocumentsStep extends ConsumerWidget {
 
 // --- Step 10: Review ---
 
-class _ReviewStep extends StatelessWidget {
+class _ReviewStep extends ConsumerWidget {
   const _ReviewStep({required this.category, required this.controller, required this.state});
 
   final LoanCategory? category;
@@ -1169,10 +1182,21 @@ class _ReviewStep extends StatelessWidget {
     }
   }
 
+  /// Bank account numbers are shown masked here for the same reason
+  /// Profile's read view masks them — this is a review screen someone
+  /// might glance at over the user's shoulder, not a form field.
+  String? _maskAccountNumber(String? value) {
+    if (value == null || value.isEmpty) return null;
+    if (value.length <= 4) return value;
+    return '•••• •••• ${value.substring(value.length - 4)}';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final textTheme = Theme.of(context).textTheme;
     final steps = state.steps;
+    final documentsOverview =
+        ref.watch(documentsOverviewProvider(state.categoryId)).valueOrNull;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -1186,19 +1210,25 @@ class _ReviewStep extends StatelessWidget {
               _ReviewRow(label: 'Gender', value: state.gender),
               _ReviewRow(label: 'Marital status', value: state.maritalStatus),
               _ReviewRow(label: "Father's name", value: state.fatherName),
+              _ReviewRow(label: "Mother's name", value: state.motherName),
             ]),
           if (steps.contains(WizardStep.address))
             _ReviewSection(title: 'Address', rows: [
               _ReviewRow(label: 'Current address',
-                  value: [state.addressLine1, state.city, state.state]
+                  value: [state.addressLine1, state.city, state.state, state.postalCode]
                       .whereType<String>()
                       .join(', ')),
               _ReviewRow(label: 'Residence type', value: state.residenceType),
+              _ReviewRow(label: 'Permanent address', value: state.permanentAddress),
             ]),
           if (steps.contains(WizardStep.employment))
             _ReviewSection(title: 'Employment', rows: [
               _ReviewRow(label: 'Employment type', value: state.employmentStatus),
               _ReviewRow(label: 'Company', value: state.companyName),
+              _ReviewRow(label: 'Designation', value: state.designation),
+              _ReviewRow(label: 'Joining date', value: state.joiningDate),
+              _ReviewRow(label: 'Office address', value: state.officeAddress),
+              _ReviewRow(label: 'Office phone', value: state.officePhone),
             ]),
           if (steps.contains(WizardStep.income))
             _ReviewSection(title: 'Income', rows: [
@@ -1207,14 +1237,37 @@ class _ReviewStep extends StatelessWidget {
                   value: state.monthlyIncome != null
                       ? Formatters.currency(state.monthlyIncome!.toStringAsFixed(2))
                       : null),
+              _ReviewRow(
+                  label: 'Additional income',
+                  value: state.additionalIncome != null
+                      ? Formatters.currency(state.additionalIncome!.toStringAsFixed(2))
+                      : null),
+              _ReviewRow(label: 'Bank account', value: _maskAccountNumber(state.bankAccountNumber)),
+              _ReviewRow(label: 'IFSC code', value: state.bankIfscCode),
+              _ReviewRow(label: 'Account holder', value: state.bankAccountHolderName),
             ]),
           if (steps.contains(WizardStep.existingLoans) &&
-              (state.currentMonthlyEmi != null || state.existingLoansOutstanding != null))
+              (state.currentMonthlyEmi != null ||
+                  state.existingLoansOutstanding != null ||
+                  state.creditCardCount != null ||
+                  state.creditCardOutstanding != null))
             _ReviewSection(title: 'Existing loans', rows: [
               _ReviewRow(
                   label: 'Current EMI',
                   value: state.currentMonthlyEmi != null
                       ? Formatters.currency(state.currentMonthlyEmi!.toStringAsFixed(2))
+                      : null),
+              _ReviewRow(
+                  label: 'Outstanding amount',
+                  value: state.existingLoansOutstanding != null
+                      ? Formatters.currency(state.existingLoansOutstanding!.toStringAsFixed(2))
+                      : null),
+              _ReviewRow(
+                  label: 'Credit cards', value: state.creditCardCount?.toString()),
+              _ReviewRow(
+                  label: 'Card outstanding',
+                  value: state.creditCardOutstanding != null
+                      ? Formatters.currency(state.creditCardOutstanding!.toStringAsFixed(2))
                       : null),
             ]),
           _ReviewSection(title: 'Loan requirement', rows: [
@@ -1233,10 +1286,30 @@ class _ReviewStep extends StatelessWidget {
             _ReviewSection(title: 'Nominee', rows: [
               _ReviewRow(label: 'Name', value: state.nomineeName),
               _ReviewRow(label: 'Relationship', value: state.nomineeRelationship),
+              _ReviewRow(label: 'Phone', value: state.nomineePhone),
             ]),
-          if (steps.contains(WizardStep.references) && state.reference1Name != null)
+          if (steps.contains(WizardStep.references))
             _ReviewSection(title: 'References', rows: [
-              _ReviewRow(label: 'Reference 1', value: state.reference1Name),
+              _ReviewRow(label: 'Reference 1 name', value: state.reference1Name),
+              _ReviewRow(label: 'Reference 1 phone', value: state.reference1Phone),
+              _ReviewRow(
+                  label: 'Reference 1 relationship', value: state.reference1Relationship),
+              _ReviewRow(label: 'Reference 2 name', value: state.reference2Name),
+              _ReviewRow(label: 'Reference 2 phone', value: state.reference2Phone),
+              _ReviewRow(
+                  label: 'Reference 2 relationship', value: state.reference2Relationship),
+            ]),
+          if (steps.contains(WizardStep.documents) && documentsOverview != null)
+            _ReviewSection(title: 'Documents', rows: [
+              _ReviewRow(
+                label: 'Uploaded',
+                value: () {
+                  final types = documentsOverview.categories.expand((g) => g.types);
+                  final required = types.where((t) => t.isRequired);
+                  final uploaded = required.where((t) => t.isComplete).length;
+                  return '$uploaded of ${required.length} required documents';
+                }(),
+              ),
             ]),
           if (state.amount != null && state.termMonths != null)
             LoanCostBreakdownCard(

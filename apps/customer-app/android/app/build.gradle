@@ -7,7 +7,11 @@ plugins {
 
 android {
     namespace = "com.loanmanager.loan_manager_customer_app"
-    compileSdk = flutter.compileSdkVersion
+    // Overridden above flutter.compileSdkVersion (34 on this Flutter
+    // version): file_picker (added for the Document Manager's Files/PDF
+    // picker) pulls in flutter_plugin_android_lifecycle, which requires
+    // compiling against API 36+.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

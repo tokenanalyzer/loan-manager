@@ -282,7 +282,7 @@ class ProfileViewScreen extends ConsumerWidget {
             ),
             if (EnvConfig.firebaseEnabled)
               AppCard(
-                onTap: () => getIt<CustomerAuthRepository>().signOut(),
+                onTap: () => _confirmSignOut(context),
                 child: const ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.logout, color: AppColors.error),
@@ -303,6 +303,26 @@ class ProfileViewScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+
+  Future<void> _confirmSignOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sign out?'),
+        content: const Text("You'll need to sign in again to continue."),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Sign out', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await getIt<CustomerAuthRepository>().signOut();
+    }
   }
 
   static String _initialsFor(String? fullName) {

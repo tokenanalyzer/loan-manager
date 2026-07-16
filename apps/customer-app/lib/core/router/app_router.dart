@@ -27,6 +27,7 @@ import '../../features/tools/emi_calculator_screen.dart';
 import '../bootstrap/app_bootstrap_state.dart';
 import '../config/env_config.dart';
 import '../di/injection.dart';
+import '../models/document.dart';
 import '../navigation/app_shell.dart';
 import '../widgets/page_transitions.dart';
 
@@ -177,7 +178,7 @@ final GoRouter appRouter = GoRouter(
       name: 'document-preview',
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
-        child: DocumentPreviewScreen(documentId: state.pathParameters['id']!),
+        child: DocumentPreviewScreen(document: state.extra as AppDocument),
       ),
     ),
 

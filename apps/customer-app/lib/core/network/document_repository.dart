@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
 import '../models/document.dart';
@@ -53,4 +56,20 @@ class DocumentRepository extends BaseRepository {
   /// directly by an `Image.network`/webview-style preview widget.
   String contentUrl(String documentId) =>
       '${apiClient.dio.options.baseUrl}/v1/documents/$documentId/content';
+
+  /// Fetches a document's raw bytes for in-app preview (image or PDF)
+  /// — goes through `ApiClient.request` (not a raw `Image.network`
+  /// call) so the shared auth interceptor attaches the bearer token
+  /// automatically, the same way every other authenticated request
+  /// does, instead of the preview screen manually fetching a Firebase
+  /// ID token itself.
+  Future<ApiResult<Uint8List>> fetchContent(String documentId) {
+    return apiClient.request<Uint8List>(
+      (dio) => dio.get<List<int>>(
+        '/v1/documents/$documentId/content',
+        options: Options(responseType: ResponseType.bytes),
+      ),
+      mapper: (data) => Uint8List.fromList(data as List<int>),
+    );
+  }
 }

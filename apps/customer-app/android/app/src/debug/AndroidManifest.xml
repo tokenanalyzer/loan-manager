@@ -4,4 +4,13 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Debug builds point at a plain-HTTP LAN dev backend
+         (env/development.json's API_BASE_URL, e.g. http://192.168.x.x:3000).
+         Android blocks cleartext traffic by default for apps targeting
+         API 28+, which silently fails every network call with no
+         backend-visible trace (blocked before the socket even opens) —
+         debug-only, since production/staging use https:// and get no
+         such allowance. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

@@ -6,6 +6,7 @@ import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/constants/category_style.dart';
 import '../../core/models/document.dart';
+import '../../core/models/lending_partner.dart';
 import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/animated_currency.dart';
 import '../../core/widgets/app_card.dart';
@@ -16,6 +17,7 @@ import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
 import '../documents/documents_controller.dart';
 import 'home_controller.dart';
+import 'lending_partners_provider.dart';
 
 /// The Home dashboard — the app's first impression. Every section
 /// below is built from real data (or simply not rendered if that data
@@ -671,69 +673,136 @@ class _LoansForYouSection extends StatelessWidget {
   }
 }
 
-class _LendingPartnersSection extends StatelessWidget {
+/// Lending partners — fully dynamic, backed by `lendingPartnersProvider`.
+/// While no partner catalog exists yet (see `LendingPartnerRepository`),
+/// this renders one premium "coming soon" card, never fake disabled
+/// bank tiles; the day the backend adds real partners, this same
+/// widget renders them as a horizontal list — no Flutter changes.
+class _LendingPartnersSection extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final partnersAsync = ref.watch(lendingPartnersProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SectionHeader(title: 'Lending partners'),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-              child: AppCard(
-                child: Column(
-                  children: [
-                    Icon(Icons.account_balance_outlined, color: colorScheme.primary),
-                    const SizedBox(height: 6),
-                    Text('Loan Manager', style: textTheme.labelMedium, textAlign: TextAlign.center),
-                    const SizedBox(height: 2),
-                    Text('Active', style: textTheme.bodySmall?.copyWith(color: AppColors.success)),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Opacity(
-                opacity: 0.5,
-                child: AppCard(
-                  child: Column(
-                    children: [
-                      Icon(Icons.account_balance_outlined, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(height: 6),
-                      Text('New partner', style: textTheme.labelMedium, textAlign: TextAlign.center),
-                      const SizedBox(height: 2),
-                      Text('Coming soon', style: textTheme.bodySmall),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Opacity(
-                opacity: 0.5,
-                child: AppCard(
-                  child: Column(
-                    children: [
-                      Icon(Icons.account_balance_outlined, color: colorScheme.onSurfaceVariant),
-                      const SizedBox(height: 6),
-                      Text('New partner', style: textTheme.labelMedium, textAlign: TextAlign.center),
-                      const SizedBox(height: 2),
-                      Text('Coming soon', style: textTheme.bodySmall),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+        partnersAsync.when(
+          loading: () => const SkeletonCard(),
+          error: (error, stackTrace) => const _LendingPartnersComingSoonCard(),
+          data: (partners) => partners.isEmpty
+              ? const _LendingPartnersComingSoonCard()
+              : _LendingPartnersList(partners: partners),
         ),
       ],
+    );
+  }
+}
+
+class _LendingPartnersComingSoonCard extends StatelessWidget {
+  const _LendingPartnersComingSoonCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return AppCard(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: AppColors.accentGoldLight,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.workspace_premium_outlined,
+                color: AppColors.accentGold, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('More lending partners coming soon',
+                    style: textTheme.titleSmall),
+                const SizedBox(height: 2),
+                Text(
+                  "We're onboarding more banks and NBFCs to bring you a wider choice of rates and offers.",
+                  style: textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LendingPartnersList extends StatelessWidget {
+  const _LendingPartnersList({required this.partners});
+
+  final List<LendingPartner> partners;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 132,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: partners.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) => _PartnerCard(partner: partners[index]),
+      ),
+    );
+  }
+}
+
+class _PartnerCard extends StatelessWidget {
+  const _PartnerCard({required this.partner});
+
+  final LendingPartner partner;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SizedBox(
+      width: 160,
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (partner.logoUrl != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.network(
+                  partner.logoUrl!,
+                  height: 28,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Icon(Icons.account_balance_outlined, color: colorScheme.primary),
+                ),
+              )
+            else
+              Icon(Icons.account_balance_outlined, color: colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(partner.name,
+                style: textTheme.labelMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
+            if (partner.interestRateLabel != null) ...[
+              const SizedBox(height: 2),
+              Text(partner.interestRateLabel!,
+                  style: textTheme.bodySmall?.copyWith(color: AppColors.success)),
+            ],
+            if (partner.offerLabel != null) ...[
+              const SizedBox(height: 2),
+              Text(partner.offerLabel!,
+                  style: textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -835,22 +904,26 @@ class _RecentDocumentsSection extends StatelessWidget {
             children: [
               for (var i = 0; i < documents.length; i++) ...[
                 if (i > 0) const Divider(height: 20),
-                Row(
-                  children: [
-                    Icon(Icons.description_outlined,
-                        size: 20, color: Theme.of(context).colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        documents[i].originalFileName,
-                        style: textTheme.bodyMedium,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => context.push('/documents/${documents[i].id}', extra: documents[i]),
+                  child: Row(
+                    children: [
+                      Icon(Icons.description_outlined,
+                          size: 20, color: Theme.of(context).colorScheme.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          documents[i].originalFileName,
+                          style: textTheme.bodyMedium,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                    ),
-                    Text(Formatters.relativeTime(documents[i].uploadedAt),
-                        style: textTheme.labelSmall),
-                  ],
+                      Text(Formatters.relativeTime(documents[i].uploadedAt),
+                          style: textTheme.labelSmall),
+                    ],
+                  ),
                 ),
               ],
             ],

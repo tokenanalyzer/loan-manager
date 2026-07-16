@@ -5,6 +5,7 @@ import '../auth/customer_auth_repository.dart';
 import '../di/injection.dart';
 import '../network/customer_profile_repository.dart';
 import '../network/document_repository.dart';
+import '../network/lending_partner_repository.dart';
 import '../network/loan_application_repository.dart';
 import '../network/notification_repository.dart';
 import '../network/user_repository.dart';
@@ -33,6 +34,10 @@ final customerProfileRepositoryProvider = Provider<CustomerProfileRepository>(
 
 final documentRepositoryProvider = Provider<DocumentRepository>(
   (ref) => getIt<DocumentRepository>(),
+);
+
+final lendingPartnerRepositoryProvider = Provider<LendingPartnerRepository>(
+  (ref) => getIt<LendingPartnerRepository>(),
 );
 
 final notificationRepositoryProvider = Provider<NotificationRepository>(

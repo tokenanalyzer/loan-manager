@@ -15,6 +15,11 @@ dependencies:
   go_router: ^14.2.7
   get_it: ^7.7.0
 
+  # Direct dependency (already transitive via shared_flutter) — used
+  # explicitly in document_repository.dart for authenticated byte
+  # downloads (document preview), not just relied on incidentally.
+  dio: ^5.5.0
+
   # Phase 6: Riverpod is the reactive UI-state layer for new screens
   # (controllers as StateNotifier/AsyncNotifier). It does not replace
   # GetIt — Riverpod providers wrap the existing GetIt singletons
@@ -27,6 +32,22 @@ dependencies:
 
   # Document capture (camera/gallery) for the Documents feature.
   image_picker: ^1.1.2
+
+  # Files/PDF picker for the Documents feature (camera/gallery cover
+  # photos; this covers "choose an existing PDF or image from device
+  # storage").
+  file_picker: ^10.3.3
+
+  # In-app PDF viewer for the Documents feature — pure Dart/FFI
+  # (pdfium), MIT license, no license-key registration required
+  # (unlike Syncfusion), so a document never has to leave the app or
+  # fail to preview just because it's a PDF instead of an image.
+  pdfx: ^2.6.0
+
+  # Pinch-to-zoom image viewer for the Documents feature — already a
+  # transitive dependency of pdfx; declared directly since it's used
+  # explicitly, not just relied on incidentally.
+  photo_view: ^0.15.0
 
   # Contact Support: composes a real mailto: — no fake "ticket sent" screen.
   url_launcher: ^6.3.0

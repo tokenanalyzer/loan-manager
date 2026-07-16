@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/constants/document_category_style.dart';
 import '../../core/models/document.dart';
+import '../../core/utils/document_validation.dart';
 import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/fade_slide_in.dart';
@@ -13,6 +15,8 @@ import '../../core/widgets/section_header.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
 import 'documents_controller.dart';
+
+enum _UploadSource { camera, gallery, files }
 
 /// The document manager — fully catalog-driven: every category, type,
 /// required/optional flag, and slot count comes from
@@ -33,7 +37,7 @@ class DocumentsChecklist extends ConsumerWidget {
 
   Future<void> _pickAndUpload(
       BuildContext context, WidgetRef ref, String documentTypeCode, int slotIndex) async {
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = await showModalBottomSheet<_UploadSource>(
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
@@ -43,12 +47,18 @@ class DocumentsChecklist extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
               title: const Text('Take a photo'),
-              onTap: () => Navigator.of(context).pop(ImageSource.camera),
+              onTap: () => Navigator.of(context).pop(_UploadSource.camera),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library_outlined),
               title: const Text('Choose from gallery'),
-              onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+              onTap: () => Navigator.of(context).pop(_UploadSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.insert_drive_file_outlined),
+              title: const Text('Choose a file'),
+              subtitle: const Text('PDF, JPG, JPEG, or PNG'),
+              onTap: () => Navigator.of(context).pop(_UploadSource.files),
             ),
           ],
         ),
@@ -56,14 +66,40 @@ class DocumentsChecklist extends ConsumerWidget {
     );
     if (source == null) return;
 
-    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
-    if (picked == null) return;
+    final filePath = await _pickFilePath(source);
+    if (filePath == null) return;
+
+    final validationError = await validatePickedFile(filePath);
+    if (validationError != null) {
+      ref.read(documentsUploadStateProvider.notifier).state =
+          DocumentsUploadState(errorMessage: validationError);
+      return;
+    }
 
     await ref.read(documentsUploadControllerProvider(categoryId)).upload(
           documentTypeCode: documentTypeCode,
           slotIndex: slotIndex,
-          filePath: picked.path,
+          filePath: filePath,
         );
+  }
+
+  Future<String?> _pickFilePath(_UploadSource source) async {
+    switch (source) {
+      case _UploadSource.camera:
+        final picked =
+            await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85);
+        return picked?.path;
+      case _UploadSource.gallery:
+        final picked =
+            await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+        return picked?.path;
+      case _UploadSource.files:
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: kAllowedDocumentExtensions,
+        );
+        return result?.files.single.path;
+    }
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref, String documentId) async {
@@ -132,7 +168,8 @@ class DocumentsChecklist extends ConsumerWidget {
                     onUpload: (slotIndex) =>
                         _pickAndUpload(context, ref, group.types[i].code, slotIndex),
                     onDelete: (documentId) => _confirmDelete(context, ref, documentId),
-                    onPreview: (documentId) => context.push('/documents/$documentId'),
+                    onPreview: (document) =>
+                        context.push('/documents/${document.id}', extra: document),
                   ),
                 ),
               ),
@@ -159,7 +196,7 @@ class _DocumentTypeCard extends StatelessWidget {
   final DocumentsUploadState uploadState;
   final void Function(int slotIndex) onUpload;
   final void Function(String documentId) onDelete;
-  final void Function(String documentId) onPreview;
+  final void Function(AppDocument document) onPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -205,7 +242,7 @@ class _DocumentTypeCard extends StatelessWidget {
                   ? () => onDelete(type.slots[i].document!.id)
                   : null,
               onPreview: type.slots[i].document != null
-                  ? () => onPreview(type.slots[i].document!.id)
+                  ? () => onPreview(type.slots[i].document!)
                   : null,
             ),
           ],
@@ -287,6 +324,17 @@ class _SlotRow extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (slot.isUploaded) ...[
+                  Text(
+                    [
+                      'Uploaded',
+                      if (Formatters.fileSize(slot.document!.fileSizeBytes) != null)
+                        Formatters.fileSize(slot.document!.fileSizeBytes)!,
+                    ].join(' · '),
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: AppColors.success),
+                  ),
+                ],
                 if (isUploading) ...[
                   const SizedBox(height: 6),
                   ClipRRect(

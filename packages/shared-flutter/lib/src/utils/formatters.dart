@@ -82,6 +82,18 @@ abstract final class Formatters {
     return '${date(value)} · $hour:$minute $period';
   }
 
+  /// Renders a byte count (backend `fileSizeBytes`, a NUMERIC-as-string
+  /// like `AppDocument.fileSizeBytes`) as e.g. "340 KB" / "2.4 MB" —
+  /// document upload cards show this next to the file name.
+  static String? fileSize(String? bytes) {
+    final value = bytes != null ? int.tryParse(bytes) : null;
+    if (value == null) return null;
+
+    if (value < 1024) return '$value B';
+    if (value < 1024 * 1024) return '${(value / 1024).toStringAsFixed(1)} KB';
+    return '${(value / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
   static String relativeTime(DateTime value) {
     final diff = DateTime.now().difference(value);
     if (diff.inMinutes < 1) return 'Just now';

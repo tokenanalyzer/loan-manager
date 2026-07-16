@@ -6,6 +6,7 @@ import '../auth/customer_auth_repository.dart';
 import '../config/env_config.dart';
 import '../network/customer_profile_repository.dart';
 import '../network/document_repository.dart';
+import '../network/lending_partner_repository.dart';
 import '../network/loan_application_repository.dart';
 import '../network/notification_repository.dart';
 import '../network/user_repository.dart';
@@ -42,6 +43,10 @@ void configureDependencies() {
 
   getIt.registerLazySingleton<DocumentRepository>(
     () => DocumentRepository(getIt<ApiClient>()),
+  );
+
+  getIt.registerLazySingleton<LendingPartnerRepository>(
+    () => LendingPartnerRepository(getIt<ApiClient>()),
   );
 
   getIt.registerLazySingleton<NotificationRepository>(
