@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <application
-        android:label="loan_manager_customer_app"
+        android:label="Loan Manager"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -61,6 +61,13 @@ final GoRouter appRouter = GoRouter(
       return isSplash ? null : '/splash';
     }
 
+    // Keeps the branding splash animation on-screen for its full
+    // duration even when Firebase auth resolves almost instantly —
+    // see `main.dart`'s Timer and `AppBootstrapState.splashMinimumElapsed`.
+    if (!AppBootstrapState.splashMinimumElapsed) {
+      return isSplash ? null : '/splash';
+    }
+
     if (authState is AuthAuthenticated) {
       return (isSplash || isOnboarding || isAuthRoute) ? '/' : null;
     }
@@ -73,9 +80,11 @@ final GoRouter appRouter = GoRouter(
   },
   routes: [
     GoRoute(
-        path: '/splash',
-        name: 'splash',
-        builder: (context, state) => const SplashScreen()),
+      path: '/splash',
+      name: 'splash',
+      pageBuilder: (context, state) =>
+          fadeThroughPage(key: state.pageKey, child: const SplashScreen()),
+    ),
     GoRoute(
       path: '/onboarding',
       name: 'onboarding',
