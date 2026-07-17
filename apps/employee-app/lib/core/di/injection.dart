@@ -5,7 +5,9 @@ import 'package:shared_flutter/shared_flutter.dart';
 import '../auth/employee_auth_repository.dart';
 import '../config/env_config.dart';
 import '../network/customer_repository.dart';
+import '../network/document_repository.dart';
 import '../network/loan_application_repository.dart';
+import '../network/notification_repository.dart';
 
 /// Dependency injection.
 ///
@@ -41,6 +43,14 @@ void configureDependencies() {
 
   getIt.registerLazySingleton<CustomerRepository>(
     () => CustomerRepository(getIt<ApiClient>()),
+  );
+
+  getIt.registerLazySingleton<DocumentRepository>(
+    () => DocumentRepository(getIt<ApiClient>()),
+  );
+
+  getIt.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepository(getIt<ApiClient>()),
   );
 
   if (EnvConfig.firebaseEnabled) {

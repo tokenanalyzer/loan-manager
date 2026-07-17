@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/models/loan_application.dart';
 import '../../core/network/loan_application_repository.dart';
+import 'applications_controller.dart';
 
 /// Detail view + approve/reject actions for a single application.
 ///
@@ -11,18 +13,18 @@ import '../../core/network/loan_application_repository.dart';
 /// (who can review, what a decision requires, state-transition
 /// enforcement) live on the backend — this screen just calls the
 /// endpoint and surfaces whatever it returns.
-class ApplicationReviewDetailScreen extends StatefulWidget {
+class ApplicationReviewDetailScreen extends ConsumerStatefulWidget {
   const ApplicationReviewDetailScreen({required this.applicationId, super.key});
 
   final String applicationId;
 
   @override
-  State<ApplicationReviewDetailScreen> createState() =>
+  ConsumerState<ApplicationReviewDetailScreen> createState() =>
       _ApplicationReviewDetailScreenState();
 }
 
 class _ApplicationReviewDetailScreenState
-    extends State<ApplicationReviewDetailScreen> {
+    extends ConsumerState<ApplicationReviewDetailScreen> {
   late Future<LoanApplication> _future;
   final _interestRateController = TextEditingController();
   bool _isSubmitting = false;
@@ -66,10 +68,13 @@ class _ApplicationReviewDetailScreenState
 
     if (!mounted) return;
     result.when(
-      success: (_) => setState(() {
-        _isSubmitting = false;
-        _future = _load();
-      }),
+      success: (_) {
+        setState(() {
+          _isSubmitting = false;
+          _future = _load();
+        });
+        ref.read(applicationsControllerProvider.notifier).refresh();
+      },
       failure: (error) => setState(() {
         _isSubmitting = false;
         _errorMessage = error.message;
@@ -88,10 +93,13 @@ class _ApplicationReviewDetailScreenState
 
     if (!mounted) return;
     result.when(
-      success: (_) => setState(() {
-        _isSubmitting = false;
-        _future = _load();
-      }),
+      success: (_) {
+        setState(() {
+          _isSubmitting = false;
+          _future = _load();
+        });
+        ref.read(applicationsControllerProvider.notifier).refresh();
+      },
       failure: (error) => setState(() {
         _isSubmitting = false;
         _errorMessage = error.message;

@@ -49,6 +49,21 @@ export class DocumentsController {
     return this.documentsService.getOverview(user, categoryId);
   }
 
+  /**
+   * Staff read-only view of a specific customer's documents — needed
+   * for KYC/loan review (Employee App). Distinct path segment
+   * (`staff/customer/:customerId`) so it can't collide with the
+   * customer-scoped `:id/content` route below.
+   */
+  @Get('staff/customer/:customerId')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getOverviewForCustomer(
+    @Param('customerId', ParseUUIDPipe) customerId: string,
+    @Query('categoryId') categoryId?: string,
+  ): Promise<DocumentsOverviewResponseDto> {
+    return this.documentsService.getOverviewForCustomer(customerId, categoryId);
+  }
+
   @Post()
   @Auth(UserRole.CUSTOMER)
   @UseInterceptors(
@@ -97,15 +112,35 @@ export class DocumentsController {
     @Res() res: Response,
   ): Promise<void> {
     const document = await this.documentsService.getOwnedDocumentOrThrow(user, id);
-    const { stream } = await this.storageService.getReadStream(document.storagePath);
+    await this.streamDocument(document.storagePath, document.mimeType, document.originalFileName, res);
+  }
+
+  /** Staff read-only equivalent of `getContent` — no ownership check. */
+  @Get('staff/:id/content')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getContentForStaff(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const document = await this.documentsService.getDocumentForStaffOrThrow(id);
+    await this.streamDocument(document.storagePath, document.mimeType, document.originalFileName, res);
+  }
+
+  private async streamDocument(
+    storagePath: string,
+    mimeType: string | null | undefined,
+    originalFileName: string,
+    res: Response,
+  ): Promise<void> {
+    const { stream } = await this.storageService.getReadStream(storagePath);
 
     // Strip characters that could break out of the quoted-string
     // header value (quotes, CR/LF) — the filename is user-supplied
     // (the original upload's filename) and must never be interpolated
     // into a header raw.
-    const safeFileName = document.originalFileName.replace(/["\r\n]/g, '');
+    const safeFileName = originalFileName.replace(/["\r\n]/g, '');
 
-    res.setHeader('Content-Type', document.mimeType ?? 'application/octet-stream');
+    res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${safeFileName}"`);
     stream.pipe(res);
   }

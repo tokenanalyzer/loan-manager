@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
 import 'core/app.dart';
@@ -31,5 +32,5 @@ Future<void> main() async {
 
   logger.info('Loan Manager — Employee App starting.');
 
-  runApp(const EmployeeApp());
+  runApp(const ProviderScope(child: EmployeeApp()));
 }

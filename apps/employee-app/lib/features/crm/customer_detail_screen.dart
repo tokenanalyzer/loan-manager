@@ -1,24 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/models/customer_profile.dart';
 import '../../core/models/customer_summary.dart';
+import '../../core/models/document.dart';
 import '../../core/network/customer_repository.dart';
+import '../../core/riverpod/providers.dart';
+import '../../core/widgets/state_views.dart';
+import '../documents/document_preview_screen.dart';
+import 'customers_controller.dart';
 
 /// CRM: a single customer's identity + profile, plus the KYC review
 /// action (verify/reject a customer's self-attested PAN + Aadhaar
 /// submission — see the backend's `CustomersService.reviewKyc`).
-class CustomerDetailScreen extends StatefulWidget {
+class CustomerDetailScreen extends ConsumerStatefulWidget {
   const CustomerDetailScreen({required this.customerId, super.key});
 
   final String customerId;
 
   @override
-  State<CustomerDetailScreen> createState() => _CustomerDetailScreenState();
+  ConsumerState<CustomerDetailScreen> createState() =>
+      _CustomerDetailScreenState();
 }
 
-class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
+class _CustomerDetailScreenState extends ConsumerState<CustomerDetailScreen> {
   late Future<(CustomerSummary, CustomerProfile?)> _future;
   bool _isReviewing = false;
   String? _reviewError;
@@ -55,10 +62,13 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
     if (!mounted) return;
     result.when(
-      success: (_) => setState(() {
-        _isReviewing = false;
-        _future = _load();
-      }),
+      success: (_) {
+        setState(() {
+          _isReviewing = false;
+          _future = _load();
+        });
+        ref.read(customersControllerProvider.notifier).refresh();
+      },
       failure: (error) => setState(() {
         _isReviewing = false;
         _reviewError = error.message;
@@ -107,10 +117,13 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
 
     if (!mounted) return;
     result.when(
-      success: (_) => setState(() {
-        _isReviewing = false;
-        _future = _load();
-      }),
+      success: (_) {
+        setState(() {
+          _isReviewing = false;
+          _future = _load();
+        });
+        ref.read(customersControllerProvider.notifier).refresh();
+      },
       failure: (error) => setState(() {
         _isReviewing = false;
         _reviewError = error.message;
@@ -212,10 +225,94 @@ class _CustomerDetailScreenState extends State<CustomerDetailScreen> {
                       'Monthly income: ${Formatters.currency(profile.monthlyIncome!)}',
                       style: textTheme.bodyMedium),
               ],
+              const SizedBox(height: 24),
+              Text('Documents', style: textTheme.titleMedium),
+              const SizedBox(height: 8),
+              _DocumentsSection(customerId: widget.customerId),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+/// Uploaded-documents list for a single customer — read-only, staff
+/// review context. Fetched independently from the profile/KYC
+/// `_future` above so a document-preview round trip doesn't force a
+/// reload of the whole screen.
+class _DocumentsSection extends ConsumerStatefulWidget {
+  const _DocumentsSection({required this.customerId});
+
+  final String customerId;
+
+  @override
+  ConsumerState<_DocumentsSection> createState() => _DocumentsSectionState();
+}
+
+class _DocumentsSectionState extends ConsumerState<_DocumentsSection> {
+  late Future<DocumentsOverview> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = _load();
+  }
+
+  Future<DocumentsOverview> _load() async {
+    final result = await ref
+        .read(documentRepositoryProvider)
+        .getOverviewForCustomer(widget.customerId);
+    return result.when(success: (data) => data, failure: (error) => throw error);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<DocumentsOverview>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: LoadingView(),
+          );
+        }
+        if (snapshot.hasError) {
+          return ErrorView(
+            message: 'Could not load documents: ${snapshot.error}',
+            onRetry: () => setState(() => _future = _load()),
+          );
+        }
+
+        final uploaded = snapshot.data!.uploadedDocuments;
+        if (uploaded.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text('No documents uploaded yet.'),
+          );
+        }
+
+        return Column(
+          children: [
+            for (final (typeLabel, document) in uploaded)
+              Card(
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: Icon(document.mimeType == 'application/pdf'
+                      ? Icons.picture_as_pdf_outlined
+                      : Icons.image_outlined),
+                  title: Text(typeLabel),
+                  subtitle: Text(document.originalFileName),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(
+                    builder: (context) =>
+                        DocumentPreviewScreen(document: document),
+                  )),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 }

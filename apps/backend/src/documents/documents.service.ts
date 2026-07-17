@@ -74,9 +74,30 @@ export class DocumentsService {
     user: UserEntity,
     categoryId?: string,
   ): Promise<DocumentsOverviewResponseDto> {
+    return this.buildOverview(user.id, categoryId);
+  }
+
+  /**
+   * Staff read-only equivalent of `getOverview` — same catalog ×
+   * uploads cross-reference, keyed by an explicit customer id instead
+   * of the caller's own id. No ownership check: callers are gated to
+   * `UserRole.EMPLOYEE`/`ADMIN` at the controller (see
+   * `DocumentsController`'s `staff/customer/:customerId` route).
+   */
+  async getOverviewForCustomer(
+    customerId: string,
+    categoryId?: string,
+  ): Promise<DocumentsOverviewResponseDto> {
+    return this.buildOverview(customerId, categoryId);
+  }
+
+  private async buildOverview(
+    ownerId: string,
+    categoryId?: string,
+  ): Promise<DocumentsOverviewResponseDto> {
     const [types, documents] = await Promise.all([
       this.documentTypeRepository.findAllActive(),
-      this.documentRepository.findAllByOwner(user.id),
+      this.documentRepository.findAllByOwner(ownerId),
     ]);
 
     const relevantTypes = types.filter((type) => {
@@ -231,6 +252,19 @@ export class DocumentsService {
     }
     if (document.ownerId !== user.id) {
       throw new ForbiddenException('You do not have access to this document.');
+    }
+    return document;
+  }
+
+  /**
+   * Staff read-only equivalent of `getOwnedDocumentOrThrow` — existence
+   * check only, no ownership check (staff may view any customer's
+   * document; role is enforced at the controller).
+   */
+  async getDocumentForStaffOrThrow(documentId: string): Promise<DocumentEntity> {
+    const document = await this.documentRepository.findOneById(documentId);
+    if (!document) {
+      throw new NotFoundException('Document not found.');
     }
     return document;
   }
