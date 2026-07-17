@@ -1,3 +1,148 @@
+# Work Summary — 2026-07-16/17
+
+Session scope: Customer App **production freeze** sprint — finished the
+Document Manager (PDF support was the one major gap left from 2026-07-15),
+completed the loan wizard's Review step, added a real (if backend-less)
+dynamic Lending Partners section, added a sign-out confirmation, fixed two
+Android build/runtime issues found during on-device testing, and produced
+`CUSTOMER_APP_RELEASE_CHECKLIST.md`. Explicitly out of scope per instruction:
+DSA App, Employee App, Bank Portal, Super Admin Panel, Splash Screen.
+
+**Committed and pushed** — `4e3e6f1` on `main`
+("feat(customer-app): production checkpoint before splash screen"), 21 files,
+667 insertions / 122 deletions. `origin/main` confirmed up to date.
+
+## 1. Document Manager — PDF support (the headline gap)
+
+- Added `file_picker` (Files/PDF picker — camera and gallery already
+  existed) and `pdfx` (in-app PDF viewer, pdfium/FFI, no license key
+  required, unlike Syncfusion) + `photo_view` (pinch-zoom image viewer).
+- `documents_checklist.dart`: upload bottom sheet is now 3 options
+  (Camera / Gallery / Choose a file, filtered to PDF/JPG/JPEG/PNG); added
+  client-side pre-upload validation (`core/utils/document_validation.dart`
+  — 10 MB cap + extension allowlist, mirroring the backend's existing
+  limits) so bad files are rejected instantly instead of after a failed
+  upload; file size now displayed on every uploaded slot
+  (`Formatters.fileSize`, new, in `shared-flutter`).
+- `document_preview_screen.dart` rewritten: takes the full `AppDocument`
+  via route `extra` (not just an id) and fetches bytes through
+  `DocumentRepository.fetchContent` — routed through the shared
+  `ApiClient` so the auth interceptor attaches the bearer token
+  automatically, replacing the old ad-hoc Firebase-token/`Image.network`
+  approach. Renders images via `PhotoView`/`Image.memory` and PDFs via
+  `pdfx`'s `PdfViewPinch` — both pinch-to-zoom.
+- Home's Recent Documents rows are now tappable into preview (previously
+  dead).
+- **Verified end-to-end on-device**: camera capture upload, file-picker
+  image upload, file-picker PDF upload (pushed a hand-built minimal PDF via
+  `adb push`, selected via the native SAF "Choose a file" picker), image
+  preview, PDF preview (rendered correctly), replace, delete — every one
+  confirmed working with real device screenshots.
+
+## 2. Loan wizard — validation + completed Review step
+
+- `_LoanRequirementStepState` (`loan_application_flow_screen.dart`): amount
+  and term now validated against the selected category's
+  `minAmount`/`maxAmount`/`minTermMonths`/`maxTermMonths` client-side (was
+  previously only a client-side round-trip discovered as a gap; the
+  category bounds were already enforced backend-side). Verified on-device
+  with a Home Loan (₹10,000, below the ₹5,00,000 floor) — exact error
+  message rendered correctly.
+- `_ReviewStep` rewritten as a `ConsumerWidget`: now shows every field
+  actually collected — mother's name, PIN code, permanent address,
+  designation, joining date, office address/phone, additional income,
+  masked bank account/IFSC/holder name, credit card count/outstanding, both
+  references (name/phone/relationship), and a documents-uploaded summary.
+  Previously several collected fields were silently missing from review.
+  Purely additive to the existing `_ReviewSection`/`_ReviewRow` pattern —
+  no controller/state changes needed, since every field was already in
+  `LoanApplicationFormState`.
+- Verified on-device up through Step 9 (Documents) for a full fresh Home
+  Loan application: prefill from profile, range validation, Nominee/
+  References prefill, and the Documents step's existing required-document
+  gate (Property Papers/Sale Agreement/Registry Document rendering
+  correctly as Home-specific, multi-slot Salary Slip and Other Document
+  rendering "N of 3 uploaded" correctly). **Review step itself (Step 10)
+  was not visually reached on-device** — session was stopped mid-upload of
+  the last required Home-specific document; logic is code-verified and the
+  Documents-step gating (a pre-existing, unrelated feature) worked
+  correctly right up to that point.
+
+## 3. Home — dynamic Lending Partners (Flutter-only, per explicit instruction)
+
+- No backend table/migration/endpoint added this sprint (explicitly
+  deferred to a future Bank Portal/Admin Panel sprint). Instead: a real,
+  fully-wired `LendingPartnerRepository`/`lendingPartnersProvider` that
+  calls `GET /v1/lending-partners` and **fails soft to an empty list**
+  today (the endpoint doesn't exist yet) — the day it ships, this section
+  starts showing real partners with zero Flutter changes.
+- `_LendingPartnersSection` rewritten: no more two fake greyed-out "Coming
+  soon" bank tiles. Empty state is one premium, intentional
+  "More lending partners coming soon" card (gold-accent icon, matches the
+  existing design system's "premium touch" color usage); non-empty state
+  renders a horizontal partner list (logo/rate/offer).
+- Verified on-device — card renders correctly.
+
+## 4. Profile — sign-out confirmation
+
+- `profile_view_screen.dart`: sign-out now requires an `AlertDialog`
+  confirmation (same shape as `documents_checklist.dart`'s existing
+  `_confirmDelete`) before calling `signOut()` — previously a single
+  accidental tap immediately ended the session with no recovery.
+- Not yet re-verified on-device after this specific change (session ended
+  before reaching Profile in the manual walkthrough) — code-reviewed only.
+
+## 5. Two real Android issues found and fixed during on-device testing
+
+**Issue 1 — build failure from the new `file_picker` dependency.**
+`file_picker`'s transitive `flutter_plugin_android_lifecycle` dependency
+requires `compileSdk 36`; this project's `compileSdk` (via
+`flutter.compileSdkVersion`) resolved to 34 on the installed Flutter
+version. Fixed two ways: bumped `file_picker` from `^8.1.2` to `^10.3.3`
+(newer major, built against a compatible SDK) and set
+`compileSdk = 36` explicitly in `android/app/build.gradle` (overriding the
+Flutter-tool default, with a comment explaining why).
+
+**Issue 2 — every network call silently failing on-device (the big one).**
+Google Sign-In succeeded (confirmed via native Firebase Auth logs — "Notifying
+id token listeners"), but the app never reached Home; it silently bounced
+back to the Sign-in screen. Root cause: Android blocks cleartext (plain
+`http://`) traffic by default for apps targeting API 28+, and the manifest
+had no allowance for it — so the wizard's `POST /v1/auth/session` (and
+every other API call) failed at the OS network layer before ever opening a
+socket, with **zero trace in backend logs** (confirmed via `adb shell curl`
+against the same URL succeeding, and `ping` failing due to Windows Firewall
+blocking ICMP specifically — ruled out as a red herring). Fixed by adding
+`android:usesCleartextTraffic="true"` to
+`android/app/src/debug/AndroidManifest.xml` only (debug-only — production/
+staging use `https://` and get no such allowance, matching
+`env/production.json`/`env/staging.json`). This had been silently broken
+for the device-testing workflow this whole time; not caused by this
+sprint's changes, but only surfaced once a real sign-in flow was driven
+end-to-end on a fresh install.
+
+## 6. Final verification (all green, twice — once mid-session, once at checkpoint)
+
+- `cd apps/backend && npm run typecheck && npm run build` — clean.
+- `cd apps/customer-app && flutter analyze` — no issues.
+- `cd apps/customer-app && flutter test` — all tests pass.
+- Note: an earlier `dart format .` pass reformatted the entire repo due to a
+  Dart SDK/dart_style version mismatch between the local toolchain and
+  whatever the repo was last formatted with (CI pins Flutter 3.24.0; local
+  is 3.44.6) — reverted everything except the files actually touched this
+  sprint, to keep the diff scoped. Worth noting for whoever next runs
+  `dart format` locally: expect wide reformatting noise unless using a
+  matching SDK version.
+
+## Known dev-DB clutter (carried over, still not cleaned up)
+
+Same duplicate test loan applications from 2026-07-15 remain (one Home
+Loan, one Business Loan, two Personal Loans). This session added no new
+test loan applications (only got partway through one on-device Home Loan
+attempt that was never submitted — abandoned at the Documents step).
+
+---
+
 # Work Summary — 2026-07-15
 
 Session scope: Customer App production sprint, continued across two parts —

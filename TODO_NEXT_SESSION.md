@@ -1,87 +1,103 @@
 # TODO — Next Session
 
-## 0. First thing: decide how to commit the accumulated work
-Nothing across the last two sessions (2026-07-14 and 2026-07-15) is
-committed — `git status` shows the full uncommitted diff spanning Google
-Sign-In, India localization, the premium Customer App redesign, bottom
-navigation, the full 10-step application wizard, and the catalog-driven
-Document Manager. Before starting new work:
-- Review `git diff` with fresh eyes for anything unexpected.
-- Agree on a commit strategy (logical commits per feature area vs. a small
-  number of larger ones) — this is a lot of work to land as one commit.
-- Re-run the full check suite first (see §5) to confirm the working tree is
-  still green before committing anything.
+Next session's stated focus: **Splash Screen, Launcher Icon, Branding
+animation, and final polish** for the Customer App. Branding assets
+(`app_icon.png`, `logo_transparent.png`, `splash_logo.png`) are already in
+`apps/customer-app/assets/branding/` as of the `4e3e6f1` checkpoint, but not
+yet wired into `pubspec.yaml`, `flutter_launcher_icons`/native splash
+config, or any code.
 
-## 1. Dev-DB cleanup (optional, low priority)
-Several duplicate test loan applications exist in the local dev Postgres
-from device-testing mistakes on 2026-07-15 (one Home Loan ₹5,00,000, one
-Business Loan ₹10,00,000, two Personal Loans). Harmless, but worth deleting
-before demoing the app so "Recent activity"/"Active applications" don't look
-cluttered. Left untouched intentionally this session per explicit
-instruction not to modify test data.
+## 0. Commit/push status — resolved
+Everything through 2026-07-16/17 is committed and pushed: `4e3e6f1` on
+`main`, confirmed even with `origin/main`. No uncommitted work outstanding.
+`flutter analyze`, `flutter test`, backend `build`, and backend `typecheck`
+all pass cleanly as of this checkpoint — no known production blockers.
 
-## 2. Immediate follow-ups from today's bug fixes
-- The Documents-step required-document gate (fixed 2026-07-15 in
-  `loan_application_flow_screen.dart`) is a **client-side** check only. The
-  backend's `LoanApplicationsService`/`DocumentsService` submit path still
-  has no server-side enforcement that required documents exist before a
-  loan application can move to `submitted`. Low urgency (only one client
-  exists today), but worth closing before any second consumer of the submit
-  endpoint appears (DSA App, admin resubmission flow, etc.) — otherwise the
-  same bug reappears one layer down.
+## 1. Finish the on-device manual QA pass (deferred from 2026-07-16/17)
+The Document Manager (camera/gallery/file-PDF upload, preview, replace,
+delete) is fully verified on-device. The loan wizard was verified through
+Step 9 (Documents) for Home Loan only. Still needed before calling the
+Customer App fully QA'd:
+- Reach and visually confirm the completed **Review step** (Step 10) — was
+  mid-upload of Sale Agreement/Registry Document (Home-specific required
+  docs) when the session stopped. Logic is code-reviewed and correct; just
+  needs eyes-on confirmation.
+- Walk the wizard for the remaining 5 loan categories: **Personal,
+  Business, Education, Vehicle, Gold** (only Home Loan was walked this
+  session).
+- **Profile screen** — the new sign-out confirmation dialog hasn't been
+  tapped on-device yet (code-reviewed only).
+- **Notifications screen** — not touched this session.
+- A backend dev server (`npm run dev`) may still be running locally from
+  this session on port 3000 — verify/restart before resuming device
+  testing (`cd apps/backend && npm run dev`), and confirm
+  `env/development.json`'s `API_BASE_URL` still matches this machine's LAN
+  IP (it's hardcoded, e.g. `http://192.168.1.9:3000/api` — breaks silently
+  if the machine's IP changes, since Android also silently drops cleartext
+  traffic to a *wrong* IP the same way it did to a *blocked* one — see next
+  item).
+- Remember: **Android blocks cleartext HTTP by default** —
+  `android/app/src/debug/AndroidManifest.xml` now has
+  `usesCleartextTraffic="true"` fixing this for debug builds. If a fresh
+  device/emulator ever silently fails all API calls again after a real
+  Firebase sign-in succeeds, this is the first thing to check.
+
+## 2. Splash Screen / Launcher Icon / Branding (next session's focus)
+- Wire `assets/branding/app_icon.png` into the Android/iOS launcher icon
+  pipeline (likely `flutter_launcher_icons` package — not yet a
+  dependency).
+- Wire `assets/branding/splash_logo.png` into a native splash screen
+  (likely `flutter_native_splash` — not yet a dependency) — currently the
+  app shows a plain Dart-drawn "Loan Manager" splash
+  (`features/auth/splash_screen.dart`), not a native one, so there's a
+  visible flash/transition today worth eliminating.
+- "Branding animation" — clarify scope with the user before starting
+  (logo animation on splash? a specific micro-interaction?).
+- Declare the new assets in `pubspec.yaml`'s `flutter: assets:` section if
+  referenced directly in Dart (currently they aren't).
+
+## 3. Dev-DB cleanup (optional, low priority, carried over)
+Same duplicate test loan applications from 2026-07-15 remain (one Home
+Loan ₹5,00,000, one Business Loan ₹10,00,000, two Personal Loans). Harmless
+but worth deleting before demoing so "Recent activity"/"Active
+applications" don't look cluttered. Still untouched intentionally.
+
+## 4. Deferred backend/architecture items (carried over from 2026-07-15)
+- The Documents-step required-document gate is **client-side only** — the
+  backend submit path still has no server-side enforcement that required
+  documents exist before a loan application can move to `submitted`. Low
+  urgency (one client today), but close before a second consumer of the
+  submit endpoint appears (DSA App, admin resubmission, etc.).
 - No live-device walkthrough has been done for the **employee-app** side of
-  the new document catalog — it still points at whatever the old
-  hardcoded-enum document endpoints returned. Confirm whether employee-app
-  reads `documents` at all; if so, it needs the same catalog-aware update.
-- Admin CRUD for `document_types` (`document-types.controller.ts`,
-  `@Auth(UserRole.ADMIN)`) was built this session but has no UI anywhere
-  yet (no admin-panel screen). Fine for now since new types are single-row
-  DB inserts in the interim, but flag if the admin panel work starts.
+  the document catalog — confirm whether it needs the same catalog-aware
+  update.
+- Admin CRUD for `document_types` and the future `lending_partners` table
+  (once built) both have no admin-panel UI yet — flag when Admin Panel work
+  starts.
+- `GET /v1/lending-partners` doesn't exist yet — `LendingPartnerRepository`
+  is fully wired client-side and fails soft to empty today; needs the
+  actual table/migration/endpoint from a future Bank Portal/Admin Panel
+  sprint. See `WORK_SUMMARY.md` §3 (2026-07-16/17) for the exact shape
+  expected.
 
-## 3. Employee-app parity gaps (carried over from 2026-07-14)
-- Add bank account / nominee fields to
-  `apps/employee-app/lib/core/models/customer_profile.dart` and the
-  customer-detail screen, mirroring what customer-app already has — staff
-  currently can't see this data at all.
-- No live-device walkthrough has been done for the employee-app KYC
-  verify/reject UI added 2026-07-14 — worth a quick manual pass.
+## 5. Roadmap (per user's stated direction) — unchanged, still not started
+Customer App is feature-complete pending final QA/polish. Stated next
+phases after Splash Screen/branding work:
+1. **DSA App** — loan officer/agent-facing app for sourcing applications.
+2. **Bank Portal** — where real partner banks/lenders onboard; also what
+   turns Lending Partners from "coming soon" into real data.
+3. **Super Admin Panel** — builds on `apps/admin-panel` (React); natural
+   home for document-types and lending-partners catalog management UI.
 
-## 4. Roadmap (per user's stated direction)
-Customer App is now at production quality (bottom nav, full application
-wizard, catalog-driven documents, verified end-to-end). Stated next phases:
-1. **DSA App** — loan officer / agent-facing app for sourcing applications.
-   Likely the best starting point: `loan-applications`, `customers`, and now
-   `documents` all already have real backend surfaces: mostly needs a
-   staff-scoped view/flow rather than new domain modules.
-2. **Bank Portal** — where real partner banks/lenders onboard. Also what
-   unblocks turning the Home screen's "Lending Partners" section from
-   honest placeholders into real data (data change only, no redesign
-   needed once this exists).
-3. **Super Admin Panel** — builds on the existing `apps/admin-panel`
-   (React), out of scope so far. Would also be the natural home for a
-   document-types catalog management UI (see §2).
-
-## 5. Testing follow-ups
-Before continuing, re-run and confirm all green (all passed at the end of
-the 2026-07-15 session):
-- `cd apps/backend && npm run typecheck && npm run build`
-- `cd apps/customer-app && flutter analyze && flutter test`
-- Backend dev server was stopped at end of session
-  (`npm run dev` / `nest start --watch`) — restart it before resuming
-  device testing: `cd apps/backend && npm run dev`.
-- The customer-app device build installed 2026-07-15 has both bug fixes
-  live; no rebuild needed unless further Dart changes are made (Dart source
-  edits do **not** hot-reload into an installed APK without an attached
-  `flutter run` session — rebuild via
-  `flutter build apk --debug --dart-define-from-file=env/development.json`
-  then `adb install -r` if the device needs updating again).
-
-## 6. Deferred product/compliance work (carried over)
-- **CIBIL / credit bureau integration** — Home screen's "Credit Profile"
-  card deliberately uses an honest "Profile Strength" meter, not a real
-  score. Separate vendor + compliance workstream.
+## 6. Known limitations (carried over)
+- `apps/customer-app/env/production.json` has `FIREBASE_ENABLED: false`
+  with no real project ID — must be a real, configured Firebase project
+  before actual production release. Auth is a deliberate no-op without it.
+- No automated test coverage beyond one smoke test.
+- **CIBIL/credit bureau integration** — Home's "Credit Profile" card uses
+  an honest "Profile Strength" meter, not a real score. Separate vendor/
+  compliance workstream.
 - **Payments/repayment tracking** — loans model disbursement but not
   repayment schedule/collections.
 - See `docs/architecture-review-2026-07.md` for the fuller architecture
-  backlog (product catalog table, staff provisioning, pagination,
-  notification fan-out, storage service abstraction).
+  backlog.
