@@ -1,8 +1,10 @@
+import type { UserProfile } from '@loan-manager/shared-types';
 import { User, onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
 import { apiClient, clearAuthTokenProvider, setAuthTokenProvider } from '../lib/api-client';
 import { logger } from '../lib/logger';
+
 import { firebaseAuth } from './firebase';
 
 export type AuthStatus = 'unauthenticated' | 'syncing' | 'authenticated' | 'error';
@@ -10,6 +12,8 @@ export type AuthStatus = 'unauthenticated' | 'syncing' | 'authenticated' | 'erro
 export interface AuthContextValue {
   status: AuthStatus;
   user: User | null;
+  /** The backend's role/identity record (`POST /v1/auth/session`) — drives role-based routing. */
+  profile: UserProfile | null;
   errorMessage: string | null;
   signOut: () => Promise<void>;
 }
@@ -30,6 +34,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }): JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('unauthenticated');
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
       if (!nextUser) {
         clearAuthTokenProvider();
         setUser(null);
+        setProfile(null);
         setErrorMessage(null);
         setStatus('unauthenticated');
         return;
@@ -50,8 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
       setAuthTokenProvider(() => nextUser.getIdToken());
 
       try {
-        await apiClient.post('/v1/auth/session');
+        const response = await apiClient.post<UserProfile>('/v1/auth/session');
         setUser(nextUser);
+        setProfile(response.data);
         setStatus('authenticated');
       } catch (error) {
         logger.error('Session sync failed', { error: String(error) });
@@ -67,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
     () => ({
       status,
       user,
+      profile,
       errorMessage,
       signOut: async () => {
         if (firebaseAuth) {
@@ -74,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         }
       },
     }),
-    [status, user, errorMessage],
+    [status, user, profile, errorMessage],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

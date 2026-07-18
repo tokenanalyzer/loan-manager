@@ -8,4 +8,5 @@
  * begins in a later phase.
  */
 export * from './api-response';
+export * from './auth';
 export * from './lead-assignment';

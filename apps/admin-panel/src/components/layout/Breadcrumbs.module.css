@@ -1,0 +1,33 @@
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-secondary);
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.separator {
+  color: var(--color-text-tertiary);
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.crumb:hover {
+  color: var(--color-primary);
+}
+
+.current {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}

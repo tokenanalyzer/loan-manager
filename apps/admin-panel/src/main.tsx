@@ -1,15 +1,17 @@
 /**
  * Application entry point.
  *
- * Phase 4 wraps the router in AuthProvider, so ProtectedRoute and
- * LoginPage can read auth state via useAuth(). No admin UI/screens
- * beyond the minimal StatusPage placeholder are implemented yet.
+ * Wraps the router in AuthProvider, so ProtectedRoute and LoginPage
+ * can read auth state via useAuth(). `theme/global.css` (which
+ * imports `tokens.css`) is the one global stylesheet for the whole
+ * portal shell.
  */
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { AppRouter } from './app/router';
 import { AuthProvider } from './core/auth-context';
+import './theme/global.css';
 
 const rootElement = document.getElementById('root');
 

@@ -1,8 +1,8 @@
+import type { ApiErrorResponse } from '@loan-manager/shared-types';
 import axios, { AxiosError, AxiosInstance } from 'axios';
 
-import type { ApiErrorResponse } from '@loan-manager/shared-types';
-
 import { env } from '../core/env';
+
 import { logger } from './logger';
 
 /**
@@ -54,6 +54,14 @@ apiClient.interceptors.response.use(
     const message = error.response?.data?.message ?? error.message;
 
     logger.error('API request failed', { status, message, url: error.config?.url });
+
+    // A 401 while a token provider is registered means a previously-valid
+    // session stopped being valid mid-use (expired/revoked) — distinct
+    // from never having signed in, which never gets this far since no
+    // provider is registered yet. Route to Session Expired, not Login.
+    if (status === 401 && authTokenProvider && window.location.pathname !== '/session-expired') {
+      window.location.assign('/session-expired');
+    }
 
     return Promise.reject(error);
   },

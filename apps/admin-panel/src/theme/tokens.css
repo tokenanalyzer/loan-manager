@@ -1,0 +1,93 @@
+/**
+ * Design tokens — ported 1:1 from the Customer App's shared Flutter
+ * theme (packages/shared-flutter/lib/src/theme/{app_colors,app_theme}.dart)
+ * so the Employee Portal/CRM/Super Admin web platform and the Customer
+ * App read as one product. Do not invent new colors/radii here —
+ * change the Flutter source first, then mirror it here.
+ */
+:root {
+  /* Brand */
+  --color-primary: #2b2e7a;
+  --color-primary-dark: #1c1e52;
+  --color-primary-light: #4a4eb0;
+  --color-accent-gold: #c9971f;
+  --color-accent-gold-light: #f4e4bc;
+  --color-secondary: #0e9f6e;
+
+  /* Surfaces */
+  --color-background: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #ffffff;
+  --color-border: #e5e7ef;
+
+  /* Text */
+  --color-text-primary: #14162e;
+  --color-text-secondary: #666b85;
+  --color-text-tertiary: #9498ad;
+  --color-text-on-primary: #ffffff;
+
+  /* Status */
+  --color-success: #0e9f6e;
+  --color-warning: #f59e0b;
+  --color-error: #dc2626;
+
+  /* Typography — Roboto, matching AppTextStyles */
+  --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+
+  --font-size-display-sm: 2rem; /* 32 */
+  --font-size-headline-lg: 1.75rem; /* 28 */
+  --font-size-headline-md: 1.375rem; /* 22 */
+  --font-size-title-lg: 1.1875rem; /* 19 */
+  --font-size-title-md: 1rem; /* 16 */
+  --font-size-title-sm: 0.875rem; /* 14 */
+  --font-size-body-lg: 1rem; /* 16 */
+  --font-size-body-md: 0.875rem; /* 14 */
+  --font-size-body-sm: 0.75rem; /* 12 */
+  --font-size-label-lg: 0.875rem; /* 14 */
+  --font-size-label-md: 0.8125rem; /* 13 */
+  --font-size-label-sm: 0.75rem; /* 12 */
+
+  /* Radius — cards 18, buttons/inputs 14, pills 999 (AppTheme) */
+  --radius-card: 18px;
+  --radius-control: 14px;
+  --radius-pill: 999px;
+
+  /* Spacing scale (4px base, matches button/input padding in AppTheme) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Shadows — CardTheme elevation 6, shadowColor primary @ 10% */
+  --shadow-card: 0 2px 8px rgba(43, 46, 122, 0.08), 0 8px 24px rgba(43, 46, 122, 0.1);
+  --shadow-elevated: 0 4px 16px rgba(43, 46, 122, 0.12), 0 12px 32px rgba(43, 46, 122, 0.14);
+
+  /* Layout */
+  --layout-sidebar-width: 264px;
+  --layout-sidebar-width-collapsed: 76px;
+  --layout-topbar-height: 64px;
+  --layout-max-content-width: 1280px;
+
+  --breakpoint-tablet: 1024px;
+  --breakpoint-mobile: 768px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #4a4eb0;
+    --color-background: #0f1123;
+    --color-surface: #1a1d3a;
+    --color-surface-elevated: #23264a;
+    --color-border: #32355c;
+
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #c7c9de;
+    --color-text-tertiary: #9498ad;
+
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
+  }
+}

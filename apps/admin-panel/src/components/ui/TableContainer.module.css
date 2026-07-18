@@ -1,0 +1,37 @@
+.wrapper {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-body-md);
+}
+
+.table :global(th) {
+  text-align: left;
+  font-size: var(--font-size-label-md);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  padding: var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.table :global(td) {
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.table :global(tr:last-child td) {
+  border-bottom: none;
+}
+
+.table :global(tbody tr:hover) {
+  background: var(--color-background);
+}

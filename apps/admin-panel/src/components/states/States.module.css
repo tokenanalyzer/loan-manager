@@ -1,0 +1,70 @@
+.inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+.icon {
+  color: var(--color-text-tertiary);
+}
+
+.title {
+  font-size: var(--font-size-title-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.message {
+  font-size: var(--font-size-body-md);
+  color: var(--color-text-secondary);
+  max-width: 420px;
+}
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.fullPage {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  padding: var(--space-6);
+}
+
+.fullPageCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  text-align: center;
+  max-width: 420px;
+}
+
+.fullPageIconWrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-background);
+  color: var(--color-primary);
+}
