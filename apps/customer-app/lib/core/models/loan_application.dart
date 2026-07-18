@@ -64,6 +64,10 @@ class LoanApplication {
     this.purpose,
     this.categoryId,
     this.reviewedAt,
+    this.rejectionReason,
+    this.queryMessage,
+    this.queryRaisedAt,
+    this.queryRespondedAt,
     this.loanId,
     this.loan,
   });
@@ -78,6 +82,13 @@ class LoanApplication {
   final String status;
   final DateTime submittedAt;
   final DateTime? reviewedAt;
+  final String? rejectionReason;
+
+  /// Customer↔Employee query workflow — set when [status] is
+  /// `query_raised`; mirrors the backend's `LoanApplicationResponseDto`.
+  final String? queryMessage;
+  final DateTime? queryRaisedAt;
+  final DateTime? queryRespondedAt;
   final String? loanId;
   final LoanDetails? loan;
 
@@ -94,6 +105,14 @@ class LoanApplication {
       submittedAt: DateTime.parse(json['submittedAt'] as String),
       reviewedAt: json['reviewedAt'] != null
           ? DateTime.parse(json['reviewedAt'] as String)
+          : null,
+      rejectionReason: json['rejectionReason'] as String?,
+      queryMessage: json['queryMessage'] as String?,
+      queryRaisedAt: json['queryRaisedAt'] != null
+          ? DateTime.parse(json['queryRaisedAt'] as String)
+          : null,
+      queryRespondedAt: json['queryRespondedAt'] != null
+          ? DateTime.parse(json['queryRespondedAt'] as String)
           : null,
       loanId: json['loanId'] as String?,
       loan: json['loan'] != null

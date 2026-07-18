@@ -79,6 +79,30 @@ export class LoanApplicationEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', nullable: true })
   internalNotesUpdatedAt?: Date | null;
 
+  /** Customer↔Employee query workflow — set when status transitions to QUERY_RAISED, cleared only implicitly (message stays for history once resolved). */
+  @Column({ type: 'text', nullable: true })
+  queryMessage?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  queryRaisedById?: string | null;
+
+  @ManyToOne('UserEntity', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({
+    name: 'query_raised_by_id',
+    foreignKeyConstraintName: 'fk_loan_applications_query_raised_by',
+  })
+  queryRaisedBy?: UserEntity | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  queryRaisedAt?: Date | null;
+
+  /** Set when the customer re-uploads a document while a query is open — see LoanApplicationsService.resolveQueriesForCustomer. */
+  @Column({ type: 'timestamptz', nullable: true })
+  queryRespondedAt?: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  rejectionReason?: string | null;
+
   @OneToOne('LoanEntity', (loan: LoanEntity) => loan.application)
   loan?: LoanEntity;
 }

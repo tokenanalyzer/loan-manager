@@ -27,6 +27,23 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
     });
   }
 
+  /** Used by the Customer↔Employee query workflow to find what a document re-upload should resolve. */
+  async findAllByApplicantAndStatus(
+    applicantId: string,
+    status: LoanApplicationStatus,
+  ): Promise<LoanApplicationEntity[]> {
+    return this.repository.find({ where: { applicantId, status } });
+  }
+
+  /** Document Management Center — an employee may only access a customer's documents if assigned to at least one of their leads (any status, so historical access survives a later decision). */
+  async existsAssignedToEmployeeAndApplicant(
+    employeeId: string,
+    applicantId: string,
+  ): Promise<boolean> {
+    const count = await this.repository.count({ where: { assignedToId: employeeId, applicantId } });
+    return count > 0;
+  }
+
   /** Admin-only (see LoanApplicationsService.findAllForUser) — loads assignment/applicant info for the Lead Assignment screens. */
   async findAllForReview(): Promise<LoanApplicationEntity[]> {
     return this.repository.find({
@@ -45,7 +62,10 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
   }
 
   async findOneWithLoan(id: string): Promise<LoanApplicationEntity | null> {
-    return this.repository.findOne({ where: { id }, relations: ['loan', 'applicant'] });
+    return this.repository.findOne({
+      where: { id },
+      relations: ['loan', 'applicant', 'reviewedBy', 'queryRaisedBy'],
+    });
   }
 
   async findOneWithAssignee(id: string): Promise<LoanApplicationEntity | null> {

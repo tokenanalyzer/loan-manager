@@ -47,43 +47,6 @@
   font-weight: 500;
 }
 
-.docList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.docRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
-}
-
-.docMeta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.docName {
-  font-size: var(--font-size-body-md);
-  color: var(--color-text-primary);
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.docType {
-  font-size: var(--font-size-body-sm);
-  color: var(--color-text-secondary);
-}
-
 .notesTextarea {
   width: 100%;
   min-height: 160px;
@@ -145,6 +108,35 @@
 }
 
 .timelineMeta {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-secondary);
+}
+
+.reviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  margin-top: var(--space-4);
+}
+
+.bannerTitle {
+  font-size: var(--font-size-body-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.bannerMeta {
   font-size: var(--font-size-body-sm);
   color: var(--color-text-secondary);
 }

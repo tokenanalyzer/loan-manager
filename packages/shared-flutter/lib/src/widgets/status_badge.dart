@@ -19,6 +19,7 @@ class StatusBadge extends StatelessWidget {
     final (label, color) = switch (status) {
       'submitted' => ('Submitted', AppColors.textTertiary),
       'under_review' => ('Under review', AppColors.warning),
+      'query_raised' => ('Action needed', AppColors.accentGold),
       'approved' => ('Approved', AppColors.success),
       'rejected' => ('Not approved', AppColors.error),
       'withdrawn' => ('Withdrawn', AppColors.textTertiary),

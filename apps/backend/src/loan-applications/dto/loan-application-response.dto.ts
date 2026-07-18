@@ -20,6 +20,7 @@ export class LoanApplicationResponseDto {
   applicantId!: string;
   applicantName!: string | null;
   reviewedById!: string | null;
+  reviewedByName!: string | null;
   requestedAmount!: string;
   requestedTermMonths!: number;
   purpose!: string | null;
@@ -27,6 +28,7 @@ export class LoanApplicationResponseDto {
   status!: LoanApplicationStatus;
   submittedAt!: Date;
   reviewedAt!: Date | null;
+  rejectionReason!: string | null;
   /** Null = Unassigned. Set/changed only via the Lead Assignment module. */
   assignedToId!: string | null;
   assignedToName!: string | null;
@@ -34,6 +36,12 @@ export class LoanApplicationResponseDto {
   /** The assigned employee's private working notes — never shown to the customer. */
   internalNotes!: string | null;
   internalNotesUpdatedAt!: Date | null;
+  /** Customer↔Employee query workflow. */
+  queryMessage!: string | null;
+  queryRaisedById!: string | null;
+  queryRaisedByName!: string | null;
+  queryRaisedAt!: Date | null;
+  queryRespondedAt!: Date | null;
   loanId?: string;
   loan?: LoanResponseDto;
 
@@ -42,6 +50,7 @@ export class LoanApplicationResponseDto {
     applicantId: string;
     applicant?: { fullName?: string | null } | null;
     reviewedById?: string | null;
+    reviewedBy?: { fullName?: string | null } | null;
     requestedAmount: string;
     requestedTermMonths: number;
     purpose?: string | null;
@@ -49,11 +58,17 @@ export class LoanApplicationResponseDto {
     status: LoanApplicationStatus;
     submittedAt: Date;
     reviewedAt?: Date | null;
+    rejectionReason?: string | null;
     assignedToId?: string | null;
     assignedTo?: { fullName?: string | null } | null;
     assignedAt?: Date | null;
     internalNotes?: string | null;
     internalNotesUpdatedAt?: Date | null;
+    queryMessage?: string | null;
+    queryRaisedById?: string | null;
+    queryRaisedBy?: { fullName?: string | null } | null;
+    queryRaisedAt?: Date | null;
+    queryRespondedAt?: Date | null;
     loan?: {
       id: string;
       loanNumber: string;
@@ -70,6 +85,7 @@ export class LoanApplicationResponseDto {
     dto.applicantId = entity.applicantId;
     dto.applicantName = entity.applicant?.fullName ?? null;
     dto.reviewedById = entity.reviewedById ?? null;
+    dto.reviewedByName = entity.reviewedBy?.fullName ?? null;
     dto.requestedAmount = entity.requestedAmount;
     dto.requestedTermMonths = entity.requestedTermMonths;
     dto.purpose = entity.purpose ?? null;
@@ -77,11 +93,17 @@ export class LoanApplicationResponseDto {
     dto.status = entity.status;
     dto.submittedAt = entity.submittedAt;
     dto.reviewedAt = entity.reviewedAt ?? null;
+    dto.rejectionReason = entity.rejectionReason ?? null;
     dto.assignedToId = entity.assignedToId ?? null;
     dto.assignedToName = entity.assignedTo?.fullName ?? null;
     dto.assignedAt = entity.assignedAt ?? null;
     dto.internalNotes = entity.internalNotes ?? null;
     dto.internalNotesUpdatedAt = entity.internalNotesUpdatedAt ?? null;
+    dto.queryMessage = entity.queryMessage ?? null;
+    dto.queryRaisedById = entity.queryRaisedById ?? null;
+    dto.queryRaisedByName = entity.queryRaisedBy?.fullName ?? null;
+    dto.queryRaisedAt = entity.queryRaisedAt ?? null;
+    dto.queryRespondedAt = entity.queryRespondedAt ?? null;
     dto.loanId = entity.loan?.id;
 
     if (entity.loan) {

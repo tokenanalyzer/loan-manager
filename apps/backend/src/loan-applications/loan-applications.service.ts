@@ -10,6 +10,7 @@ import { DataSource } from 'typeorm';
 
 import { formatInr } from '../common/utils/currency.util';
 import {
+  AuditLogEntity,
   LoanApplicationEntity,
   LoanApplicationStatus,
   LoanEntity,
@@ -124,6 +125,19 @@ export class LoanApplicationsService {
   }
 
   /**
+   * Document Management Center's Secure Access / Role-based
+   * Permissions — an employee may view/verify a customer's documents
+   * only if assigned to at least one of that customer's leads (any
+   * status; a decided lead's documents stay reachable for the record).
+   */
+  async isEmployeeAssignedToCustomer(employeeId: string, customerId: string): Promise<boolean> {
+    return this.loanApplicationRepository.existsAssignedToEmployeeAndApplicant(
+      employeeId,
+      customerId,
+    );
+  }
+
+  /**
    * Employee Workspace — replaces the lead's internal note. Ownership
    * is re-checked here (not just at the controller's `@Auth`) for the
    * same reason as `findOneForUser`: this is the "Lead Locking"
@@ -157,14 +171,20 @@ export class LoanApplicationsService {
   }
 
   /**
-   * Approve or reject a submitted application.
+   * Approve, reject, or raise a query on a submitted application.
    *
    * Approval creates a real LoanEntity linked back to this
    * application (loanNumber generated, principal/term copied from the
    * requested values, interest rate supplied by the reviewer) and
-   * marks the application APPROVED. Rejection just marks it REJECTED.
-   * Either way, `reviewedById`/`reviewedAt` are stamped from the
-   * reviewer's own identity — never from client-supplied data.
+   * marks the application APPROVED. Rejection marks it REJECTED
+   * (final — no further customer action). Raising a query marks it
+   * QUERY_RAISED and notifies the customer with the reviewer's
+   * message; the customer re-uploads documents to respond, which
+   * `resolveQueriesForCustomer` picks up and moves the application
+   * back to UNDER_REVIEW for another look. Every decision writes an
+   * AuditLogEntity row, and `reviewedById`/`reviewedAt` (or
+   * `queryRaisedById`/`queryRaisedAt`) are stamped from the reviewer's
+   * own identity — never from client-supplied data.
    */
   async review(
     id: string,
@@ -189,6 +209,9 @@ export class LoanApplicationsService {
       // Also enforced by ReviewLoanApplicationDto's @ValidateIf, kept
       // here too as a defensive guard against the DTO changing later.
       throw new ConflictException('interestRate is required to approve an application.');
+    }
+    if (dto.decision === 'query' && !dto.queryMessage) {
+      throw new ConflictException('queryMessage is required to raise a query.');
     }
 
     // All decision-path writes run atomically. If any step throws, the
@@ -216,6 +239,15 @@ export class LoanApplicationsService {
           reviewedAt: now,
         });
 
+        await manager.save(
+          manager.create(AuditLogEntity, {
+            actorId: reviewer.id,
+            action: 'loan_application_approved',
+            entityName: 'loan_applications',
+            entityId: application.id,
+          }),
+        );
+
         await this.notificationsService.createForUser(
           {
             userId: application.applicantId,
@@ -229,17 +261,62 @@ export class LoanApplicationsService {
         return;
       }
 
+      if (dto.decision === 'query') {
+        await manager.update(LoanApplicationEntity, application.id, {
+          status: LoanApplicationStatus.QUERY_RAISED,
+          queryMessage: dto.queryMessage,
+          queryRaisedById: reviewer.id,
+          queryRaisedAt: now,
+          queryRespondedAt: null,
+        });
+
+        await manager.save(
+          manager.create(AuditLogEntity, {
+            actorId: reviewer.id,
+            action: 'loan_application_query_raised',
+            entityName: 'loan_applications',
+            entityId: application.id,
+            metadata: { queryMessage: dto.queryMessage },
+          }),
+        );
+
+        await this.notificationsService.createForUser(
+          {
+            userId: application.applicantId,
+            title: 'Action needed on your application',
+            body: dto.queryMessage!,
+            relatedEntityType: 'loan_application',
+            relatedEntityId: application.id,
+          },
+          manager,
+        );
+        return;
+      }
+
       await manager.update(LoanApplicationEntity, application.id, {
         status: LoanApplicationStatus.REJECTED,
         reviewedById: reviewer.id,
         reviewedAt: now,
+        rejectionReason: dto.rejectionReason ?? null,
       });
+
+      await manager.save(
+        manager.create(AuditLogEntity, {
+          actorId: reviewer.id,
+          action: 'loan_application_rejected',
+          entityName: 'loan_applications',
+          entityId: application.id,
+          metadata: { rejectionReason: dto.rejectionReason ?? null },
+        }),
+      );
 
       await this.notificationsService.createForUser(
         {
           userId: application.applicantId,
           title: 'Loan application update',
-          body: `Your application for ${formatInr(application.requestedAmount)} was not approved this time.`,
+          body:
+            `Your application for ${formatInr(application.requestedAmount)} was not approved this time.` +
+            (dto.rejectionReason ? ` ${dto.rejectionReason}` : ''),
           relatedEntityType: 'loan_application',
           relatedEntityId: application.id,
         },
@@ -252,5 +329,55 @@ export class LoanApplicationsService {
       throw new NotFoundException('Loan application not found after update.');
     }
     return updated;
+  }
+
+  /**
+   * Called by DocumentsService after a customer uploads/replaces a
+   * document — documents aren't scoped to a specific application, so
+   * this resolves *every* QUERY_RAISED application for that customer
+   * back to UNDER_REVIEW, on the assumption a re-upload is the
+   * customer's response to whatever was queried. Notifies the
+   * assigned employee so it reappears as needing another look.
+   */
+  async resolveQueriesForCustomer(customerId: string): Promise<void> {
+    const queried = await this.loanApplicationRepository.findAllByApplicantAndStatus(
+      customerId,
+      LoanApplicationStatus.QUERY_RAISED,
+    );
+    if (queried.length === 0) {
+      return;
+    }
+
+    const now = new Date();
+    await this.dataSource.transaction(async (manager) => {
+      for (const application of queried) {
+        await manager.update(LoanApplicationEntity, application.id, {
+          status: LoanApplicationStatus.UNDER_REVIEW,
+          queryRespondedAt: now,
+        });
+
+        await manager.save(
+          manager.create(AuditLogEntity, {
+            actorId: customerId,
+            action: 'loan_application_query_responded',
+            entityName: 'loan_applications',
+            entityId: application.id,
+          }),
+        );
+
+        if (application.assignedToId) {
+          await this.notificationsService.createForUser(
+            {
+              userId: application.assignedToId,
+              title: 'Customer responded to your query',
+              body: 'The customer re-uploaded documents — this lead is ready for another look.',
+              relatedEntityType: 'loan_application',
+              relatedEntityId: application.id,
+            },
+            manager,
+          );
+        }
+      }
+    });
   }
 }

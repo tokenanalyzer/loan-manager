@@ -7,6 +7,11 @@ export class DocumentResponseDto {
   mimeType!: string | null;
   fileSizeBytes!: string | null;
   uploadedAt!: Date;
+  verificationStatus!: 'pending' | 'verified' | 'rejected';
+  verificationNote!: string | null;
+  verifiedById!: string | null;
+  verifiedByName!: string | null;
+  verifiedAt!: Date | null;
 
   static fromEntity(entity: {
     id: string;
@@ -17,6 +22,11 @@ export class DocumentResponseDto {
     mimeType?: string | null;
     fileSizeBytes?: string | null;
     uploadedAt: Date;
+    verificationStatus?: 'pending' | 'verified' | 'rejected';
+    verificationNote?: string | null;
+    verifiedById?: string | null;
+    verifiedBy?: { fullName?: string | null } | null;
+    verifiedAt?: Date | null;
   }): DocumentResponseDto {
     const dto = new DocumentResponseDto();
     dto.id = entity.id;
@@ -27,6 +37,11 @@ export class DocumentResponseDto {
     dto.mimeType = entity.mimeType ?? null;
     dto.fileSizeBytes = entity.fileSizeBytes ?? null;
     dto.uploadedAt = entity.uploadedAt;
+    dto.verificationStatus = entity.verificationStatus ?? 'pending';
+    dto.verificationNote = entity.verificationNote ?? null;
+    dto.verifiedById = entity.verifiedById ?? null;
+    dto.verifiedByName = entity.verifiedBy?.fullName ?? null;
+    dto.verifiedAt = entity.verifiedAt ?? null;
     return dto;
   }
 }

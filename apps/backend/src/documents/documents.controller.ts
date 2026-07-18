@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Res,
@@ -22,8 +23,10 @@ import { StorageService } from '../storage/storage.service';
 
 import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_FILE_SIZE_BYTES } from './documents.constants';
 import { DocumentsService } from './documents.service';
+import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
 import { DocumentsOverviewResponseDto } from './dto/documents-overview-response.dto';
+import { UpdateDocumentVerificationDto } from './dto/update-document-verification.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 
 /**
@@ -112,18 +115,47 @@ export class DocumentsController {
     @Res() res: Response,
   ): Promise<void> {
     const document = await this.documentsService.getOwnedDocumentOrThrow(user, id);
+    await this.documentsService.logDownload(document, user);
     await this.streamDocument(document.storagePath, document.mimeType, document.originalFileName, res);
   }
 
-  /** Staff read-only equivalent of `getContent` — no ownership check. */
+  /**
+   * Staff equivalent of `getContent` — Secure Access: an employee can
+   * only reach a document belonging to a customer they're assigned a
+   * lead for (see `DocumentsService.getDocumentForStaffOrThrow`);
+   * admins can reach any. Every successful access is Download-Audited.
+   */
   @Get('staff/:id/content')
   @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
   async getContentForStaff(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() staff: UserEntity,
     @Res() res: Response,
   ): Promise<void> {
-    const document = await this.documentsService.getDocumentForStaffOrThrow(id);
+    const document = await this.documentsService.getDocumentForStaffOrThrow(id, staff);
+    await this.documentsService.logDownload(document, staff);
     await this.streamDocument(document.storagePath, document.mimeType, document.originalFileName, res);
+  }
+
+  /** Verification Status — staff-only, ownership-scoped (see DocumentsService.updateVerification). */
+  @Patch('staff/:id/verification')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async updateVerification(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() staff: UserEntity,
+    @Body() dto: UpdateDocumentVerificationDto,
+  ): Promise<DocumentResponseDto> {
+    return this.documentsService.updateVerification(id, staff, dto);
+  }
+
+  /** Download Audit, surfaced — every download/verification event on this document. */
+  @Get('staff/:id/audit')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getAudit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() staff: UserEntity,
+  ): Promise<DocumentAuditEntryDto[]> {
+    return this.documentsService.getAuditForDocument(id, staff);
   }
 
   private async streamDocument(

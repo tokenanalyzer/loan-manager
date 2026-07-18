@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:shared_flutter/shared_flutter.dart';
 
@@ -10,6 +11,7 @@ import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/fade_slide_in.dart';
 import '../../core/widgets/loan_cost_breakdown_card.dart';
+import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
 import 'status_timeline.dart';
@@ -120,6 +122,36 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                   ],
                 ),
               ),
+              if (application.status == 'query_raised') ...[
+                const SizedBox(height: 20),
+                FadeSlideIn(
+                  child: AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: AppColors.accentGold),
+                            const SizedBox(width: 8),
+                            Text('Action needed', style: textTheme.titleMedium),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          application.queryMessage ??
+                              'Please re-upload the requested documents.',
+                          style: textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        PrimaryButton(
+                          label: 'Re-upload documents',
+                          onPressed: () => context.push('/documents'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               Text('Status', style: textTheme.titleMedium),
               const SizedBox(height: 12),
@@ -130,6 +162,9 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                       status: application.status,
                       submittedAt: application.submittedAt,
                       reviewedAt: application.reviewedAt,
+                      queryMessage: application.queryMessage,
+                      queryRaisedAt: application.queryRaisedAt,
+                      queryRespondedAt: application.queryRespondedAt,
                     ),
                   ),
                 ),

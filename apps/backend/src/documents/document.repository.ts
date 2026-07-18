@@ -12,7 +12,15 @@ export class DocumentRepository extends BaseRepository<DocumentEntity> {
   }
 
   async findAllByOwner(ownerId: string): Promise<DocumentEntity[]> {
-    return this.repository.find({ where: { ownerId }, order: { uploadedAt: 'DESC' } });
+    return this.repository.find({
+      where: { ownerId },
+      order: { uploadedAt: 'DESC' },
+      relations: ['verifiedBy'],
+    });
+  }
+
+  async findOneWithVerifier(id: string): Promise<DocumentEntity | null> {
+    return this.repository.findOne({ where: { id }, relations: ['verifiedBy'] });
   }
 
   async findByOwnerTypeAndSlot(

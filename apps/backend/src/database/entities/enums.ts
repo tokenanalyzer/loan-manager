@@ -33,6 +33,8 @@ export enum WorkStatus {
 export enum LoanApplicationStatus {
   SUBMITTED = 'submitted',
   UNDER_REVIEW = 'under_review',
+  /** Employee raised a query — waiting on the customer to re-upload/clarify. See LoanApplicationsService.resolveQueriesForCustomer. */
+  QUERY_RAISED = 'query_raised',
   APPROVED = 'approved',
   REJECTED = 'rejected',
   WITHDRAWN = 'withdrawn',

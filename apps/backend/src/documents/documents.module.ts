@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { DocumentEntity, DocumentTypeEntity } from '../database/entities';
+import { AuditLogEntity, DocumentEntity, DocumentTypeEntity } from '../database/entities';
+import { LoanApplicationsModule } from '../loan-applications/loan-applications.module';
 
 import { DocumentTypeRepository } from './document-type.repository';
 import { DocumentTypesController } from './document-types.controller';
@@ -11,7 +12,10 @@ import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([DocumentEntity, DocumentTypeEntity])],
+  imports: [
+    TypeOrmModule.forFeature([DocumentEntity, DocumentTypeEntity, AuditLogEntity]),
+    LoanApplicationsModule,
+  ],
   controllers: [DocumentsController, DocumentTypesController],
   providers: [
     DocumentRepository,

@@ -30,6 +30,19 @@ export async function updateLeadNotes(id: string, notes: string): Promise<LeadSu
   return data;
 }
 
+/** Employee review — Approve / Reject / Raise Query, all via the one existing review endpoint. */
+export interface ReviewLeadPayload {
+  decision: 'approve' | 'reject' | 'query';
+  interestRate?: number;
+  queryMessage?: string;
+  rejectionReason?: string;
+}
+
+export async function reviewLead(id: string, payload: ReviewLeadPayload): Promise<LeadSummary> {
+  const { data } = await apiClient.patch<LeadSummary>(`/v1/loan-applications/${id}/review`, payload);
+  return data;
+}
+
 /** Activity History / Timeline — reuses the Lead Assignment audit trail. */
 export async function fetchLeadHistory(id: string): Promise<LeadAssignmentHistoryEntry[]> {
   const { data } = await apiClient.get<LeadAssignmentHistoryEntry[]>(
@@ -74,47 +87,5 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
   const { data } = await apiClient.get<CustomerProfile | null>(
     `/v1/customers/${customerId}/profile`,
   );
-  return data;
-}
-
-/** Document Viewer. */
-export interface DocumentSlot {
-  slotIndex: number;
-  isUploaded: boolean;
-  document?: {
-    id: string;
-    documentTypeCode: string;
-    label: string | null;
-    originalFileName: string;
-    mimeType: string | null;
-    fileSizeBytes: string | null;
-    uploadedAt: string;
-  };
-}
-
-export interface DocumentTypeOverview {
-  code: string;
-  label: string;
-  isRequired: boolean;
-  maxUploads: number;
-  slots: DocumentSlot[];
-}
-
-export interface DocumentsOverview {
-  categories: { category: string; types: DocumentTypeOverview[] }[];
-}
-
-export async function fetchCustomerDocuments(customerId: string): Promise<DocumentsOverview> {
-  const { data } = await apiClient.get<DocumentsOverview>(
-    `/v1/documents/staff/customer/${customerId}`,
-  );
-  return data;
-}
-
-/** Fetches a document's bytes for in-page preview (the endpoint needs a bearer token, so a plain <img>/<iframe> src can't be used directly). */
-export async function fetchDocumentBlob(documentId: string): Promise<Blob> {
-  const { data } = await apiClient.get<Blob>(`/v1/documents/staff/${documentId}/content`, {
-    responseType: 'blob',
-  });
   return data;
 }

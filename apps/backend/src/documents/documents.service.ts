@@ -5,18 +5,23 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
-import { DocumentEntity, DocumentType, UserEntity } from '../database/entities';
+import { AuditLogEntity, DocumentEntity, DocumentType, UserEntity, UserRole } from '../database/entities';
+import { LoanApplicationsService } from '../loan-applications/loan-applications.service';
 import { StorageService } from '../storage/storage.service';
 
 import { DocumentTypeRepository } from './document-type.repository';
 import { DocumentRepository } from './document.repository';
+import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
 import {
   DocumentCategoryGroupDto,
   DocumentsOverviewResponseDto,
   DocumentTypeOverviewDto,
 } from './dto/documents-overview-response.dto';
+import { UpdateDocumentVerificationDto } from './dto/update-document-verification.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 
 /** Fixed display order for the 6 categories — the one place this app agrees "identity comes first." */
@@ -61,6 +66,8 @@ export class DocumentsService {
     private readonly documentRepository: DocumentRepository,
     private readonly documentTypeRepository: DocumentTypeRepository,
     private readonly storageService: StorageService,
+    private readonly loanApplicationsService: LoanApplicationsService,
+    @InjectRepository(AuditLogEntity) private readonly auditLogRepository: Repository<AuditLogEntity>,
   ) {}
 
   /**
@@ -157,6 +164,13 @@ export class DocumentsService {
    * Uploading into an already-occupied slot replaces it — this is
    * what makes "replace document" work, same as the original
    * single-slot behavior, just slot-aware now.
+   *
+   * Also the customer's side of the Raise Query workflow: any upload
+   * resolves every one of this customer's QUERY_RAISED applications
+   * back to UNDER_REVIEW (see `LoanApplicationsService.
+   * resolveQueriesForCustomer` — documents aren't scoped to a specific
+   * application, so a re-upload is treated as "responded to whatever
+   * was queried").
    */
   async upload(
     user: UserEntity,
@@ -220,6 +234,7 @@ export class DocumentsService {
       if (!updated) {
         throw new NotFoundException('Document not found after update.');
       }
+      await this.loanApplicationsService.resolveQueriesForCustomer(user.id);
       return DocumentResponseDto.fromEntity(updated);
     }
 
@@ -234,6 +249,7 @@ export class DocumentsService {
       fileSizeBytes: String(file.size),
       uploadedAt: new Date(),
     });
+    await this.loanApplicationsService.resolveQueriesForCustomer(user.id);
     return DocumentResponseDto.fromEntity(created);
   }
 
@@ -257,15 +273,86 @@ export class DocumentsService {
   }
 
   /**
-   * Staff read-only equivalent of `getOwnedDocumentOrThrow` — existence
-   * check only, no ownership check (staff may view any customer's
-   * document; role is enforced at the controller).
+   * Staff equivalent of `getOwnedDocumentOrThrow` — Secure Access /
+   * Role-based Permissions for the Document Management Center. Admins
+   * may access any document; an employee only a document belonging to
+   * a customer they're assigned a lead for (role is enforced at the
+   * controller first via `@Auth`, this is the ownership layer on top).
    */
-  async getDocumentForStaffOrThrow(documentId: string): Promise<DocumentEntity> {
+  async getDocumentForStaffOrThrow(documentId: string, staff: UserEntity): Promise<DocumentEntity> {
     const document = await this.documentRepository.findOneById(documentId);
     if (!document) {
       throw new NotFoundException('Document not found.');
     }
+    if (staff.role === UserRole.EMPLOYEE) {
+      const hasAccess = await this.loanApplicationsService.isEmployeeAssignedToCustomer(
+        staff.id,
+        document.ownerId,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this document.');
+      }
+    }
     return document;
+  }
+
+  /** Download Audit — called once access to `document`'s bytes has actually been granted. */
+  async logDownload(document: DocumentEntity, actor: UserEntity): Promise<void> {
+    await this.auditLogRepository.save(
+      this.auditLogRepository.create({
+        actorId: actor.id,
+        action: 'document_downloaded',
+        entityName: 'documents',
+        entityId: document.id,
+        metadata: { ownerId: document.ownerId, originalFileName: document.originalFileName },
+      }),
+    );
+  }
+
+  /** Verification Status — staff-only, ownership-scoped the same way as `getDocumentForStaffOrThrow`. */
+  async updateVerification(
+    documentId: string,
+    staff: UserEntity,
+    dto: UpdateDocumentVerificationDto,
+  ): Promise<DocumentResponseDto> {
+    const document = await this.getDocumentForStaffOrThrow(documentId, staff);
+
+    const updated = await this.documentRepository.update(documentId, {
+      verificationStatus: dto.status,
+      verificationNote: dto.note ?? null,
+      verifiedById: staff.id,
+      verifiedAt: new Date(),
+    });
+    if (!updated) {
+      throw new NotFoundException('Document not found after update.');
+    }
+
+    await this.auditLogRepository.save(
+      this.auditLogRepository.create({
+        actorId: staff.id,
+        action: 'document_verification_updated',
+        entityName: 'documents',
+        entityId: documentId,
+        metadata: { status: dto.status, note: dto.note ?? null, ownerId: document.ownerId },
+      }),
+    );
+
+    const withVerifier = await this.documentRepository.findOneWithVerifier(documentId);
+    return DocumentResponseDto.fromEntity(withVerifier ?? updated);
+  }
+
+  /** Download Audit, surfaced — every download/verification event recorded for this document. */
+  async getAuditForDocument(
+    documentId: string,
+    staff: UserEntity,
+  ): Promise<DocumentAuditEntryDto[]> {
+    await this.getDocumentForStaffOrThrow(documentId, staff);
+
+    const entries = await this.auditLogRepository.find({
+      where: { entityName: 'documents', entityId: documentId },
+      order: { createdAt: 'DESC' },
+      relations: ['actor'],
+    });
+    return entries.map((entry) => DocumentAuditEntryDto.fromEntity(entry));
   }
 }

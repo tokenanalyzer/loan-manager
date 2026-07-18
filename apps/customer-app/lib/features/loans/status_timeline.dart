@@ -115,9 +115,13 @@ List<TimelineStep> buildApplicationTimeline({
   required String status,
   required DateTime submittedAt,
   DateTime? reviewedAt,
+  String? queryMessage,
+  DateTime? queryRaisedAt,
+  DateTime? queryRespondedAt,
 }) {
   final isDecided = status == 'approved' || status == 'rejected';
   final isRejected = status == 'rejected';
+  final hasQuery = status == 'query_raised' || queryRaisedAt != null;
 
   return [
     TimelineStep(
@@ -128,11 +132,20 @@ List<TimelineStep> buildApplicationTimeline({
     ),
     TimelineStep(
       label: 'Under review',
-      message: isDecided || status == 'under_review'
+      message: isDecided || status == 'under_review' || hasQuery
           ? 'Our team reviewed your application.'
           : "We'll start reviewing shortly.",
-      isComplete: isDecided || status == 'under_review',
+      isComplete: isDecided || status == 'under_review' || hasQuery,
     ),
+    if (hasQuery)
+      TimelineStep(
+        label: status == 'query_raised' ? 'Action needed' : 'Query resolved',
+        message: status == 'query_raised'
+            ? (queryMessage ?? 'Please re-upload the requested documents.')
+            : 'You responded — thanks! Your application is back under review.',
+        isComplete: true,
+        timestamp: queryRespondedAt ?? queryRaisedAt,
+      ),
     TimelineStep(
       label: switch (status) {
         'approved' => 'Approved',

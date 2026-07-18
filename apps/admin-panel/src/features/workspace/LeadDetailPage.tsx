@@ -8,55 +8,28 @@ import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
 
-import { DocumentViewerModal } from './DocumentViewerModal';
-import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS } from './lead-status-meta';
+import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS, REVIEWABLE_STATUSES } from './lead-status-meta';
 import styles from './LeadDetailPage.module.css';
+import { ReviewModal } from './ReviewModal';
 import { useAutosaveNotes } from './useAutosaveNotes';
 import {
-  fetchCustomerDocuments,
   fetchCustomerProfile,
   fetchCustomerSummary,
   fetchLead,
   fetchLeadHistory,
+  reviewLead,
   type CustomerProfile,
   type CustomerSummary,
-  type DocumentsOverview,
+  type ReviewLeadPayload,
 } from './workspace-api';
-
-interface FlatDocument {
-  id: string;
-  typeLabel: string;
-  originalFileName: string;
-  mimeType: string | null;
-  uploadedAt: string;
-}
 
 interface TimelineEntry {
   key: string;
   title: string;
   meta: string;
   at: string;
-}
-
-function flattenDocuments(overview: DocumentsOverview): FlatDocument[] {
-  const documents: FlatDocument[] = [];
-  for (const category of overview.categories) {
-    for (const type of category.types) {
-      for (const slot of type.slots) {
-        if (slot.isUploaded && slot.document) {
-          documents.push({
-            id: slot.document.id,
-            typeLabel: type.label,
-            originalFileName: slot.document.originalFileName,
-            mimeType: slot.document.mimeType,
-            uploadedAt: slot.document.uploadedAt,
-          });
-        }
-      }
-    }
-  }
-  return documents;
 }
 
 function buildTimeline(lead: LeadSummary, history: LeadAssignmentHistoryEntry[]): TimelineEntry[] {
@@ -77,16 +50,50 @@ function buildTimeline(lead: LeadSummary, history: LeadAssignmentHistoryEntry[])
     });
   }
 
+  if (lead.queryRaisedAt) {
+    entries.push({
+      key: 'query-raised',
+      title: 'Query raised',
+      meta: `By ${lead.queryRaisedByName ?? 'an employee'} · ${lead.queryMessage ?? ''}`,
+      at: lead.queryRaisedAt,
+    });
+  }
+  if (lead.queryRespondedAt) {
+    entries.push({
+      key: 'query-responded',
+      title: 'Customer responded',
+      meta: 'Documents re-uploaded',
+      at: lead.queryRespondedAt,
+    });
+  }
+  if (lead.reviewedAt && lead.status === 'approved') {
+    entries.push({
+      key: 'decision',
+      title: 'Application approved',
+      meta: `By ${lead.reviewedByName ?? 'an employee'}`,
+      at: lead.reviewedAt,
+    });
+  }
+  if (lead.reviewedAt && lead.status === 'rejected') {
+    entries.push({
+      key: 'decision',
+      title: 'Application rejected',
+      meta: `By ${lead.reviewedByName ?? 'an employee'}${lead.rejectionReason ? ` · ${lead.rejectionReason}` : ''}`,
+      at: lead.reviewedAt,
+    });
+  }
+
   return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
 /**
  * Lead Detail — Customer Information, Document Viewer, Timeline /
- * Activity History, and autosaved Internal Notes, all reusing
- * existing endpoints. Lead Locking: the underlying APIs already
- * enforce that only the assigned employee can read/write this lead
- * (403 otherwise) — this page just surfaces that as a clear locked
- * state instead of a raw error.
+ * Activity History, autosaved Internal Notes, and the Employee review
+ * decision (Approve / Reject / Raise Query), all reusing existing
+ * endpoints. Lead Locking: the underlying APIs already enforce that
+ * only the assigned employee can read/write this lead (403
+ * otherwise) — this page just surfaces that as a clear locked state
+ * instead of a raw error.
  */
 export function LeadDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
@@ -95,56 +102,64 @@ export function LeadDetailPage(): JSX.Element {
   const [lead, setLead] = useState<LeadSummary | null>(null);
   const [customer, setCustomer] = useState<CustomerSummary | null>(null);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [documents, setDocuments] = useState<FlatDocument[]>([]);
   const [history, setHistory] = useState<LeadAssignmentHistoryEntry[]>([]);
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewingDocument, setViewingDocument] = useState<FlatDocument | null>(null);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'query' | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+
+  async function load(): Promise<void> {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    setLocked(false);
+    try {
+      const leadData = await fetchLead(id);
+      setLead(leadData);
+
+      const [customerData, profileData, historyData] = await Promise.all([
+        fetchCustomerSummary(leadData.applicantId),
+        fetchCustomerProfile(leadData.applicantId).catch(() => null),
+        fetchLeadHistory(id).catch(() => []),
+      ]);
+      setCustomer(customerData);
+      setProfile(profileData);
+      setHistory(historyData);
+    } catch (err) {
+      if (isForbidden(err)) {
+        setLocked(true);
+      } else {
+        setError('Could not load this lead.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-
-    async function load(): Promise<void> {
-      setLoading(true);
-      setError(null);
-      setLocked(false);
-      try {
-        const leadData = await fetchLead(id!);
-        if (cancelled) return;
-        setLead(leadData);
-
-        const [customerData, profileData, documentsData, historyData] = await Promise.all([
-          fetchCustomerSummary(leadData.applicantId),
-          fetchCustomerProfile(leadData.applicantId).catch(() => null),
-          fetchCustomerDocuments(leadData.applicantId).catch(() => ({ categories: [] })),
-          fetchLeadHistory(id!).catch(() => []),
-        ]);
-        if (cancelled) return;
-        setCustomer(customerData);
-        setProfile(profileData);
-        setDocuments(flattenDocuments(documentsData));
-        setHistory(historyData);
-      } catch (err) {
-        if (cancelled) return;
-        if (isForbidden(err)) {
-          setLocked(true);
-        } else {
-          setError('Could not load this lead.');
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
     void load();
-    return () => {
-      cancelled = true;
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const notes = useAutosaveNotes(id ?? '', lead?.internalNotes ?? null);
+
+  async function handleReviewSubmit(payload: ReviewLeadPayload): Promise<void> {
+    if (!id) return;
+    setReviewBusy(true);
+    setReviewError(null);
+    try {
+      const updated = await reviewLead(id, payload);
+      setLead(updated);
+      setReviewAction(null);
+      void load(); // refresh history/timeline alongside the new status
+    } catch {
+      setReviewError('That action failed. Please try again.');
+    } finally {
+      setReviewBusy(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -176,6 +191,7 @@ export function LeadDetailPage(): JSX.Element {
   }
 
   const timeline = buildTimeline(lead, history);
+  const isReviewable = REVIEWABLE_STATUSES.includes(lead.status);
 
   return (
     <PageContainer
@@ -203,6 +219,31 @@ export function LeadDetailPage(): JSX.Element {
               <Field label="Purpose">{lead.purpose ?? '—'}</Field>
               <Field label="Submitted">{new Date(lead.submittedAt).toLocaleString()}</Field>
             </div>
+
+            {lead.status === 'query_raised' && (
+              <div className={styles.banner}>
+                <span className={styles.bannerTitle}>Waiting on the customer</span>
+                <span className={styles.bannerMeta}>{lead.queryMessage}</span>
+                <span className={styles.bannerMeta}>
+                  Raised by {lead.queryRaisedByName ?? 'you'}
+                  {lead.queryRaisedAt && ` on ${new Date(lead.queryRaisedAt).toLocaleString()}`}
+                </span>
+              </div>
+            )}
+
+            {reviewError && <ErrorState message={reviewError} />}
+
+            {isReviewable && (
+              <div className={styles.reviewActions}>
+                <Button onClick={() => setReviewAction('approve')}>Approve</Button>
+                <Button variant="secondary" onClick={() => setReviewAction('query')}>
+                  Raise Query
+                </Button>
+                <Button variant="danger" onClick={() => setReviewAction('reject')}>
+                  Reject
+                </Button>
+              </div>
+            )}
           </Card>
 
           <Card>
@@ -225,23 +266,7 @@ export function LeadDetailPage(): JSX.Element {
 
           <Card>
             <h2 className={styles.sectionTitle}>Documents</h2>
-            {documents.length === 0 ? (
-              <EmptyState message="No documents uploaded yet." />
-            ) : (
-              <div className={styles.docList}>
-                {documents.map((doc) => (
-                  <div key={doc.id} className={styles.docRow}>
-                    <div className={styles.docMeta}>
-                      <span className={styles.docName}>{doc.originalFileName}</span>
-                      <span className={styles.docType}>{doc.typeLabel}</span>
-                    </div>
-                    <Button size="sm" variant="secondary" onClick={() => setViewingDocument(doc)}>
-                      View
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <DocumentManagementCenter customerId={lead.applicantId} />
           </Card>
         </div>
 
@@ -289,12 +314,12 @@ export function LeadDetailPage(): JSX.Element {
         </div>
       </div>
 
-      {viewingDocument && (
-        <DocumentViewerModal
-          documentId={viewingDocument.id}
-          fileName={viewingDocument.originalFileName}
-          mimeType={viewingDocument.mimeType}
-          onClose={() => setViewingDocument(null)}
+      {reviewAction && (
+        <ReviewModal
+          action={reviewAction}
+          busy={reviewBusy}
+          onSubmit={(payload) => void handleReviewSubmit(payload)}
+          onClose={() => setReviewAction(null)}
         />
       )}
     </PageContainer>

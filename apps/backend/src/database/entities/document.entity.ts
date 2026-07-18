@@ -82,4 +82,21 @@ export class DocumentEntity extends AbstractEntity {
 
   @Column({ type: 'timestamptz', default: () => 'now()' })
   uploadedAt!: Date;
+
+  /** Document Management Center — staff verification, independent of the customer-level KYC status. */
+  @Column({ type: 'varchar', length: 16, default: 'pending' })
+  verificationStatus!: 'pending' | 'verified' | 'rejected';
+
+  @Column({ type: 'text', nullable: true })
+  verificationNote?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  verifiedById?: string | null;
+
+  @ManyToOne('UserEntity', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'verified_by_id', foreignKeyConstraintName: 'fk_documents_verified_by' })
+  verifiedBy?: UserEntity | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  verifiedAt?: Date | null;
 }

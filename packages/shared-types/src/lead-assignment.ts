@@ -8,6 +8,7 @@
 export type LoanApplicationStatus =
   | 'submitted'
   | 'under_review'
+  | 'query_raised'
   | 'approved'
   | 'rejected'
   | 'withdrawn';
@@ -23,12 +24,22 @@ export interface LeadSummary {
   categoryId: string | null;
   status: LoanApplicationStatus;
   submittedAt: string;
+  reviewedAt: string | null;
+  reviewedById: string | null;
+  reviewedByName: string | null;
+  rejectionReason: string | null;
   assignedToId: string | null;
   assignedToName: string | null;
   assignedAt: string | null;
   /** The assigned employee's private working notes — never shown to the customer. */
   internalNotes: string | null;
   internalNotesUpdatedAt: string | null;
+  /** Customer↔Employee query workflow. */
+  queryMessage: string | null;
+  queryRaisedById: string | null;
+  queryRaisedByName: string | null;
+  queryRaisedAt: string | null;
+  queryRespondedAt: string | null;
 }
 
 /** What the admin sees before assigning a lead: identity, live presence, and current workload. */

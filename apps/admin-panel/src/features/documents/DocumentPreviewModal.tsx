@@ -5,16 +5,17 @@ import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 
-import styles from './DocumentViewerModal.module.css';
-import { fetchDocumentBlob } from './workspace-api';
+import styles from './DocumentPreviewModal.module.css';
+import { fetchDocumentBlob, triggerDownload } from './documents-api';
 
 /**
- * Document Viewer — the staff content endpoint requires a bearer
- * token, so it can't be used as a plain `<img>`/`<iframe> src`; this
- * fetches the bytes via the authenticated API client and renders them
- * from an object URL instead, revoked on close.
+ * Document Preview + Download — the staff content endpoint requires a
+ * bearer token, so it can't be used as a plain `<img>`/`<iframe> src`;
+ * this fetches the bytes via the authenticated API client (which is
+ * also how every open counts as a Download-Audited access on the
+ * backend) and renders them from an object URL, revoked on close.
  */
-export function DocumentViewerModal({
+export function DocumentPreviewModal({
   documentId,
   fileName,
   mimeType,
@@ -25,6 +26,7 @@ export function DocumentViewerModal({
   mimeType: string | null;
   onClose: () => void;
 }): JSX.Element {
+  const [blob, setBlob] = useState<Blob | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,9 +35,10 @@ export function DocumentViewerModal({
     let cancelled = false;
 
     fetchDocumentBlob(documentId)
-      .then((blob) => {
+      .then((data) => {
         if (cancelled) return;
-        url = URL.createObjectURL(blob);
+        setBlob(data);
+        url = URL.createObjectURL(data);
         setObjectUrl(url);
       })
       .catch(() => {
@@ -65,18 +68,13 @@ export function DocumentViewerModal({
         {!error && objectUrl && !isImage && !isPdf && (
           <div className={styles.fallback}>
             <p>Preview isn&rsquo;t available for this file type.</p>
-            <Button
-              onClick={() => {
-                const link = document.createElement('a');
-                link.href = objectUrl;
-                link.download = fileName;
-                link.click();
-              }}
-            >
-              Download {fileName}
-            </Button>
           </div>
         )}
+      </div>
+      <div className={styles.footer}>
+        <Button disabled={!blob} onClick={() => blob && triggerDownload(blob, fileName)}>
+          Download
+        </Button>
       </div>
     </Modal>
   );
