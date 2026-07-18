@@ -13,6 +13,6 @@ import { LoanRepository } from './loan.repository';
   imports: [TypeOrmModule.forFeature([LoanApplicationEntity, LoanEntity]), NotificationsModule],
   controllers: [LoanApplicationsController],
   providers: [LoanApplicationRepository, LoanRepository, LoanApplicationsService],
-  exports: [LoanApplicationsService],
+  exports: [LoanApplicationsService, LoanApplicationRepository],
 })
 export class LoanApplicationsModule {}

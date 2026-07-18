@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import { BaseRepository } from '../common/repository/base.repository';
-import { LoanApplicationEntity } from '../database/entities';
+import { LoanApplicationEntity, LoanApplicationStatus } from '../database/entities';
+
+/** Statuses that still represent open, actionable work for whoever it's assigned to. */
+export const ACTIVE_LOAN_APPLICATION_STATUSES = [
+  LoanApplicationStatus.SUBMITTED,
+  LoanApplicationStatus.UNDER_REVIEW,
+];
 
 @Injectable()
 export class LoanApplicationRepository extends BaseRepository<LoanApplicationEntity> {
@@ -21,14 +27,69 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
     });
   }
 
+  /** Admin-only (see LoanApplicationsService.findAllForUser) — loads assignment/applicant info for the Lead Assignment screens. */
   async findAllForReview(): Promise<LoanApplicationEntity[]> {
     return this.repository.find({
       order: { submittedAt: 'ASC' },
+      relations: ['loan', 'applicant', 'assignedTo'],
+    });
+  }
+
+  /** Employees/admins only ever see leads assigned to that one employee. */
+  async findAllAssignedTo(employeeId: string): Promise<LoanApplicationEntity[]> {
+    return this.repository.find({
+      where: { assignedToId: employeeId },
+      order: { assignedAt: 'DESC' },
       relations: ['loan'],
     });
   }
 
   async findOneWithLoan(id: string): Promise<LoanApplicationEntity | null> {
     return this.repository.findOne({ where: { id }, relations: ['loan'] });
+  }
+
+  async findOneWithAssignee(id: string): Promise<LoanApplicationEntity | null> {
+    return this.repository.findOne({
+      where: { id },
+      relations: ['applicant', 'assignedTo'],
+    });
+  }
+
+  /** The CRM/Super Admin "Unassigned Leads" screen — newest submissions first. */
+  async findUnassigned(): Promise<LoanApplicationEntity[]> {
+    return this.repository.find({
+      where: { assignedToId: IsNull() },
+      order: { submittedAt: 'ASC' },
+      relations: ['applicant'],
+    });
+  }
+
+  async findActiveAssignedTo(employeeId: string): Promise<LoanApplicationEntity[]> {
+    return this.repository.find({
+      where: { assignedToId: employeeId, status: In(ACTIVE_LOAN_APPLICATION_STATUSES) },
+      relations: ['applicant'],
+    });
+  }
+
+  async countAssignedTo(employeeId: string): Promise<number> {
+    return this.repository.count({
+      where: { assignedToId: employeeId, status: In(ACTIVE_LOAN_APPLICATION_STATUSES) },
+    });
+  }
+
+  async countPendingAssignedTo(employeeId: string): Promise<number> {
+    return this.repository.count({
+      where: { assignedToId: employeeId, status: LoanApplicationStatus.SUBMITTED },
+    });
+  }
+
+  /** "Today's Workload" — leads handed to this employee today. */
+  async countAssignedToday(employeeId: string, dayStart: Date, dayEnd: Date): Promise<number> {
+    return this.repository
+      .createQueryBuilder('application')
+      .where('application.assigned_to_id = :employeeId', { employeeId })
+      .andWhere('application.assigned_at >= :dayStart', { dayStart })
+      .andWhere('application.assigned_at < :dayEnd', { dayEnd })
+      .getCount();
   }
 }

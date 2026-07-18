@@ -28,7 +28,7 @@ export class LoanApplicationsController {
     return LoanApplicationResponseDto.fromEntity(application);
   }
 
-  /** Customers see only their own; employees/admins see everything. */
+  /** Customers see only their own; employees see only assigned leads; admins see everything. */
   @Get()
   @Auth()
   async findAll(@CurrentAppUser() user: UserEntity): Promise<LoanApplicationResponseDto[]> {

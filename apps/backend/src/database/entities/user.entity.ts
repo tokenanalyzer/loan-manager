@@ -50,6 +50,10 @@ export class UserEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', nullable: true })
   deletionRequestedAt?: Date | null;
 
+  /** Stamped on every synced authenticated request (see AuthService.syncFromFirebaseToken) — powers the Lead Assignment module's Online/Offline presence indicator. */
+  @Column({ type: 'timestamptz', nullable: true })
+  lastActiveAt?: Date | null;
+
   @OneToOne('CustomerProfileEntity', (profile: CustomerProfileEntity) => profile.user)
   customerProfile?: CustomerProfileEntity;
 

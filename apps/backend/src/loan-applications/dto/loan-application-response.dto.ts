@@ -18,6 +18,7 @@ export class LoanResponseDto {
 export class LoanApplicationResponseDto {
   id!: string;
   applicantId!: string;
+  applicantName!: string | null;
   reviewedById!: string | null;
   requestedAmount!: string;
   requestedTermMonths!: number;
@@ -26,12 +27,17 @@ export class LoanApplicationResponseDto {
   status!: LoanApplicationStatus;
   submittedAt!: Date;
   reviewedAt!: Date | null;
+  /** Null = Unassigned. Set/changed only via the Lead Assignment module. */
+  assignedToId!: string | null;
+  assignedToName!: string | null;
+  assignedAt!: Date | null;
   loanId?: string;
   loan?: LoanResponseDto;
 
   static fromEntity(entity: {
     id: string;
     applicantId: string;
+    applicant?: { fullName?: string | null } | null;
     reviewedById?: string | null;
     requestedAmount: string;
     requestedTermMonths: number;
@@ -40,6 +46,9 @@ export class LoanApplicationResponseDto {
     status: LoanApplicationStatus;
     submittedAt: Date;
     reviewedAt?: Date | null;
+    assignedToId?: string | null;
+    assignedTo?: { fullName?: string | null } | null;
+    assignedAt?: Date | null;
     loan?: {
       id: string;
       loanNumber: string;
@@ -54,6 +63,7 @@ export class LoanApplicationResponseDto {
     const dto = new LoanApplicationResponseDto();
     dto.id = entity.id;
     dto.applicantId = entity.applicantId;
+    dto.applicantName = entity.applicant?.fullName ?? null;
     dto.reviewedById = entity.reviewedById ?? null;
     dto.requestedAmount = entity.requestedAmount;
     dto.requestedTermMonths = entity.requestedTermMonths;
@@ -62,6 +72,9 @@ export class LoanApplicationResponseDto {
     dto.status = entity.status;
     dto.submittedAt = entity.submittedAt;
     dto.reviewedAt = entity.reviewedAt ?? null;
+    dto.assignedToId = entity.assignedToId ?? null;
+    dto.assignedToName = entity.assignedTo?.fullName ?? null;
+    dto.assignedAt = entity.assignedAt ?? null;
     dto.loanId = entity.loan?.id;
 
     if (entity.loan) {

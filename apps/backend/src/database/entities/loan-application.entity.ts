@@ -57,6 +57,21 @@ export class LoanApplicationEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', nullable: true })
   reviewedAt?: Date | null;
 
+  /** Null = Unassigned. Set by the Lead Assignment module, never by the applicant/reviewer flow. */
+  @Index('idx_loan_applications_assigned_to')
+  @Column({ type: 'uuid', nullable: true })
+  assignedToId?: string | null;
+
+  @ManyToOne('UserEntity', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({
+    name: 'assigned_to_id',
+    foreignKeyConstraintName: 'fk_loan_applications_assigned_to',
+  })
+  assignedTo?: UserEntity | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  assignedAt?: Date | null;
+
   @OneToOne('LoanEntity', (loan: LoanEntity) => loan.application)
   loan?: LoanEntity;
 }

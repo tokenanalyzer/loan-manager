@@ -10,6 +10,7 @@ export * from './document.entity';
 export * from './document-type.entity';
 export * from './employee-profile.entity';
 export * from './enums';
+export * from './lead-assignment.entity';
 export * from './loan-application.entity';
 export * from './loan.entity';
 export * from './notification.entity';
@@ -21,6 +22,7 @@ import { CustomerProfileEntity } from './customer-profile.entity';
 import { DocumentEntity } from './document.entity';
 import { DocumentTypeEntity } from './document-type.entity';
 import { EmployeeProfileEntity } from './employee-profile.entity';
+import { LeadAssignmentEntity } from './lead-assignment.entity';
 import { LoanApplicationEntity } from './loan-application.entity';
 import { LoanEntity } from './loan.entity';
 import { NotificationEntity } from './notification.entity';
@@ -38,4 +40,5 @@ export const ALL_ENTITIES = [
   DocumentTypeEntity,
   AuditLogEntity,
   NotificationEntity,
+  LeadAssignmentEntity,
 ];

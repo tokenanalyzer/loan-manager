@@ -25,4 +25,13 @@ export class UserRepository extends BaseRepository<UserEntity> {
   async findAllByRole(role: UserRole): Promise<UserEntity[]> {
     return this.repository.find({ where: { role }, order: { createdAt: 'DESC' } });
   }
+
+  /** Used by the Lead Assignment module's employee picker (needs `employeeCode`). */
+  async findAllByRoleWithEmployeeProfile(role: UserRole): Promise<UserEntity[]> {
+    return this.repository.find({
+      where: { role },
+      order: { createdAt: 'DESC' },
+      relations: ['employeeProfile'],
+    });
+  }
 }

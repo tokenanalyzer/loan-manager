@@ -23,7 +23,12 @@ export class AuthService {
   async syncFromFirebaseToken(decoded: DecodedIdToken): Promise<UserEntity> {
     const existing = await this.userRepository.findByFirebaseUid(decoded.uid);
     if (existing) {
-      return existing;
+      // Stamped on every synced authenticated request — powers the Lead
+      // Assignment module's Online/Offline presence indicator.
+      const withPresence = await this.userRepository.update(existing.id, {
+        lastActiveAt: new Date(),
+      });
+      return withPresence ?? existing;
     }
 
     return this.userRepository.create({

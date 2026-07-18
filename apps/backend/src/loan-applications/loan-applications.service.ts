@@ -89,10 +89,18 @@ export class LoanApplicationsService {
     });
   }
 
-  /** Customers see only their own applications; staff see everything. */
+  /**
+   * Customers see only their own applications. Employees — per the
+   * Lead Assignment module — see only leads assigned to them, never
+   * unassigned leads or leads assigned to other employees. Admins
+   * still see everything, since assignment/reassignment is their job.
+   */
   async findAllForUser(user: UserEntity): Promise<LoanApplicationEntity[]> {
     if (user.role === UserRole.CUSTOMER) {
       return this.loanApplicationRepository.findAllByApplicant(user.id);
+    }
+    if (user.role === UserRole.EMPLOYEE) {
+      return this.loanApplicationRepository.findAllAssignedTo(user.id);
     }
     return this.loanApplicationRepository.findAllForReview();
   }
@@ -105,6 +113,10 @@ export class LoanApplicationsService {
 
     if (user.role === UserRole.CUSTOMER && application.applicantId !== user.id) {
       throw new ForbiddenException('You do not have access to this loan application.');
+    }
+
+    if (user.role === UserRole.EMPLOYEE && application.assignedToId !== user.id) {
+      throw new ForbiddenException('This lead is not assigned to you.');
     }
 
     return application;
