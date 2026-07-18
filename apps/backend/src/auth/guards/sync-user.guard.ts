@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { UserEntity } from '../../database/entities';
 import { AuthService } from '../auth.service';
@@ -22,6 +28,12 @@ export interface RequestWithAppUser extends RequestWithFirebaseUser {
  * endpoints, so a first-time caller of *any* protected endpoint gets
  * find-or-created identically (always as UserRole.CUSTOMER — see
  * AuthService for why).
+ *
+ * Also enforces `isActive` here — the one place every protected
+ * request passes through — so "Disable Employee" (Work Status &
+ * Break Management's Admin Override) is airtight even if the
+ * best-effort Firebase token revocation that goes with it doesn't
+ * land immediately.
  */
 @Injectable()
 export class SyncUserGuard implements CanActivate {
@@ -29,7 +41,11 @@ export class SyncUserGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithAppUser>();
-    request.appUser = await this.authService.syncFromFirebaseToken(request.firebaseUser);
+    const appUser = await this.authService.syncFromFirebaseToken(request.firebaseUser);
+    if (!appUser.isActive) {
+      throw new UnauthorizedException('This account has been disabled.');
+    }
+    request.appUser = appUser;
     return true;
   }
 }

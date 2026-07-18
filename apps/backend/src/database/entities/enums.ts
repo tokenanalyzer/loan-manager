@@ -12,6 +12,24 @@ export enum UserRole {
   ADMIN = 'admin',
 }
 
+/**
+ * Employee Work Status / Break Management. `ONLINE`/`BUSY` are
+ * manually-settable non-break statuses; the five break types below
+ * put the Employee Portal into Break Mode (see `WORK_STATUS_BREAK_TYPES`
+ * in the work-status module); `OFFLINE` is derived from presence
+ * (`UserEntity.lastActiveAt`), never stored/set directly.
+ */
+export enum WorkStatus {
+  ONLINE = 'online',
+  BUSY = 'busy',
+  TEA_BREAK = 'tea_break',
+  LUNCH_BREAK = 'lunch_break',
+  MEETING = 'meeting',
+  TRAINING = 'training',
+  AWAY = 'away',
+  OFFLINE = 'offline',
+}
+
 export enum LoanApplicationStatus {
   SUBMITTED = 'submitted',
   UNDER_REVIEW = 'under_review',

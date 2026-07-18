@@ -26,12 +26,16 @@ export class UserRepository extends BaseRepository<UserEntity> {
     return this.repository.find({ where: { role }, order: { createdAt: 'DESC' } });
   }
 
-  /** Used by the Lead Assignment module's employee picker (needs `employeeCode`). */
+  /** Used by the Lead Assignment employee picker and Work Status dashboard (need `employeeCode`). */
   async findAllByRoleWithEmployeeProfile(role: UserRole): Promise<UserEntity[]> {
     return this.repository.find({
       where: { role },
       order: { createdAt: 'DESC' },
       relations: ['employeeProfile'],
     });
+  }
+
+  async findOneWithEmployeeProfile(id: string): Promise<UserEntity | null> {
+    return this.repository.findOne({ where: { id }, relations: ['employeeProfile'] });
   }
 }

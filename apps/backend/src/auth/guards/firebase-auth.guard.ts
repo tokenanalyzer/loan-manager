@@ -55,7 +55,10 @@ export class FirebaseAuthGuard implements CanActivate {
     }
 
     try {
-      const decoded = await getAuth(this.firebaseApp).verifyIdToken(token);
+      // `checkRevoked: true` also rejects tokens whose refresh tokens were
+      // revoked (Force Logout / Disable Employee — see WorkStatusService),
+      // rather than accepting them until their natural ~1hr expiry.
+      const decoded = await getAuth(this.firebaseApp).verifyIdToken(token, true);
       request.firebaseUser = decoded;
       return true;
     } catch (error) {

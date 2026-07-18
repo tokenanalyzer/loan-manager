@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, OneToOne, Unique } from 'typeorm';
 
 import { AbstractEntity } from './abstract.entity';
+import { WorkStatus } from './enums';
 import type { UserEntity } from './user.entity';
 
 /**
@@ -32,4 +33,11 @@ export class EmployeeProfileEntity extends AbstractEntity {
 
   @Column({ type: 'date', nullable: true })
   hireDate?: string | null;
+
+  /** Manually set (ONLINE/BUSY/break types) by the employee — see the work-status module. Never OFFLINE (that's derived from presence). */
+  @Column({ type: 'varchar', length: 32, default: WorkStatus.ONLINE })
+  currentStatus!: WorkStatus;
+
+  @Column({ type: 'timestamptz', default: () => 'now()' })
+  currentStatusSince!: Date;
 }

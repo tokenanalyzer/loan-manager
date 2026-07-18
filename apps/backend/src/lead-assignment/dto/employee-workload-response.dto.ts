@@ -1,4 +1,4 @@
-import { PRESENCE_ONLINE_THRESHOLD_MINUTES } from '../lead-assignment.constants';
+import { PRESENCE_ONLINE_THRESHOLD_MINUTES } from '../../common/constants/presence.constants';
 
 /**
  * What the admin must see before assigning a lead: identity, live

@@ -15,6 +15,7 @@ import { LoanApplicationsModule } from './loan-applications/loan-applications.mo
 import { LoggerModule } from './logger/logger.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { StorageModule } from './storage/storage.module';
+import { WorkStatusModule } from './work-status/work-status.module';
 
 /**
  * Root application module.
@@ -56,6 +57,7 @@ import { StorageModule } from './storage/storage.module';
     LoanApplicationsModule,
     DocumentsModule,
     LeadAssignmentModule,
+    WorkStatusModule,
   ],
   providers: [
     {
