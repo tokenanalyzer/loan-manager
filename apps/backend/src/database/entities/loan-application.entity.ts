@@ -72,6 +72,13 @@ export class LoanApplicationEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', nullable: true })
   assignedAt?: Date | null;
 
+  /** The assigned employee's private working notes on this lead — never visible to the customer. */
+  @Column({ type: 'text', nullable: true })
+  internalNotes?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  internalNotesUpdatedAt?: Date | null;
+
   @OneToOne('LoanEntity', (loan: LoanEntity) => loan.application)
   loan?: LoanEntity;
 }

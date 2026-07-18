@@ -66,11 +66,19 @@ export class LeadAssignmentController {
     return this.leadAssignmentService.transferAllActiveLeads(employeeId, dto.toEmployeeId, admin);
   }
 
+  /**
+   * The one endpoint on this admin-only controller also reachable by
+   * an employee — Employee Workspace's Activity History/Timeline for
+   * their own lead. `@Auth` here overrides the class-level admin-only
+   * default; ownership is enforced in the service.
+   */
   @Get('leads/:id/history')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
   async getAssignmentHistory(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() user: UserEntity,
   ): Promise<AssignmentHistoryResponseDto[]> {
-    const history = await this.leadAssignmentService.getAssignmentHistory(id);
+    const history = await this.leadAssignmentService.getAssignmentHistory(id, user);
     return history.map((entry) => AssignmentHistoryResponseDto.fromEntity(entry));
   }
 }

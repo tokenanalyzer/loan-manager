@@ -26,6 +26,9 @@ export interface LeadSummary {
   assignedToId: string | null;
   assignedToName: string | null;
   assignedAt: string | null;
+  /** The assigned employee's private working notes — never shown to the customer. */
+  internalNotes: string | null;
+  internalNotesUpdatedAt: string | null;
 }
 
 /** What the admin sees before assigning a lead: identity, live presence, and current workload. */

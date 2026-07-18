@@ -17,6 +17,8 @@ export interface NavItem {
  */
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Leads', path: '/leads', icon: 'inbox', roles: ['admin'] },
+  { label: 'Employee Status', path: '/employee-status', icon: 'clock', roles: ['admin'] },
+  { label: 'My Leads', path: '/my-leads', icon: 'inbox', roles: ['employee'] },
 ];
 
 export function getNavItemsForRole(role: UserRole | undefined): NavItem[] {

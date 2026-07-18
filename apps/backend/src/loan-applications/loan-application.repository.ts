@@ -40,12 +40,12 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
     return this.repository.find({
       where: { assignedToId: employeeId },
       order: { assignedAt: 'DESC' },
-      relations: ['loan'],
+      relations: ['loan', 'applicant'],
     });
   }
 
   async findOneWithLoan(id: string): Promise<LoanApplicationEntity | null> {
-    return this.repository.findOne({ where: { id }, relations: ['loan'] });
+    return this.repository.findOne({ where: { id }, relations: ['loan', 'applicant'] });
   }
 
   async findOneWithAssignee(id: string): Promise<LoanApplicationEntity | null> {

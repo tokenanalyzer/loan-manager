@@ -31,6 +31,9 @@ export class LoanApplicationResponseDto {
   assignedToId!: string | null;
   assignedToName!: string | null;
   assignedAt!: Date | null;
+  /** The assigned employee's private working notes — never shown to the customer. */
+  internalNotes!: string | null;
+  internalNotesUpdatedAt!: Date | null;
   loanId?: string;
   loan?: LoanResponseDto;
 
@@ -49,6 +52,8 @@ export class LoanApplicationResponseDto {
     assignedToId?: string | null;
     assignedTo?: { fullName?: string | null } | null;
     assignedAt?: Date | null;
+    internalNotes?: string | null;
+    internalNotesUpdatedAt?: Date | null;
     loan?: {
       id: string;
       loanNumber: string;
@@ -75,6 +80,8 @@ export class LoanApplicationResponseDto {
     dto.assignedToId = entity.assignedToId ?? null;
     dto.assignedToName = entity.assignedTo?.fullName ?? null;
     dto.assignedAt = entity.assignedAt ?? null;
+    dto.internalNotes = entity.internalNotes ?? null;
+    dto.internalNotesUpdatedAt = entity.internalNotesUpdatedAt ?? null;
     dto.loanId = entity.loan?.id;
 
     if (entity.loan) {

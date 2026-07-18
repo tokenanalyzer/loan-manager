@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, In } from 'typeorm';
 
@@ -230,10 +236,22 @@ export class LeadAssignmentService {
     return { transferred: activeLeads.length };
   }
 
-  async getAssignmentHistory(applicationId: string): Promise<LeadAssignmentEntity[]> {
+  /**
+   * Also used by the Employee Workspace's Activity History/Timeline
+   * (reusing this endpoint rather than duplicating history-assembly
+   * logic) — an employee may only view history for a lead currently
+   * assigned to them; admins can view any.
+   */
+  async getAssignmentHistory(
+    applicationId: string,
+    requester: UserEntity,
+  ): Promise<LeadAssignmentEntity[]> {
     const application = await this.loanApplicationRepository.findOneById(applicationId);
     if (!application) {
       throw new NotFoundException('Loan application not found.');
+    }
+    if (requester.role === UserRole.EMPLOYEE && application.assignedToId !== requester.id) {
+      throw new ForbiddenException('This lead is not assigned to you.');
     }
     return this.leadAssignmentHistoryRepository.findAllByApplication(applicationId);
   }

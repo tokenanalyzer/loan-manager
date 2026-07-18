@@ -7,6 +7,7 @@ import { UserEntity, UserRole } from '../database/entities';
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { LoanApplicationResponseDto } from './dto/loan-application-response.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
+import { UpdateNotesDto } from './dto/update-notes.dto';
 import { LoanApplicationsService } from './loan-applications.service';
 
 /**
@@ -54,6 +55,18 @@ export class LoanApplicationsController {
     @Body() dto: ReviewLoanApplicationDto,
   ): Promise<LoanApplicationResponseDto> {
     const application = await this.loanApplicationsService.review(id, reviewer, dto);
+    return LoanApplicationResponseDto.fromEntity(application);
+  }
+
+  /** Employee Workspace — autosaved internal notes on a lead assigned to the caller. */
+  @Patch(':id/notes')
+  @Auth(UserRole.EMPLOYEE)
+  async updateNotes(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() employee: UserEntity,
+    @Body() dto: UpdateNotesDto,
+  ): Promise<LoanApplicationResponseDto> {
+    const application = await this.loanApplicationsService.updateNotes(id, employee, dto);
     return LoanApplicationResponseDto.fromEntity(application);
   }
 }

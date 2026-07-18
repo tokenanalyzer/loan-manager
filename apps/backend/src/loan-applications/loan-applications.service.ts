@@ -21,6 +21,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
+import { UpdateNotesDto } from './dto/update-notes.dto';
 import { LOAN_CATEGORY_BOUNDS } from './loan-application.constants';
 import { LoanApplicationRepository } from './loan-application.repository';
 import { LoanRepository } from './loan.repository';
@@ -120,6 +121,39 @@ export class LoanApplicationsService {
     }
 
     return application;
+  }
+
+  /**
+   * Employee Workspace — replaces the lead's internal note. Ownership
+   * is re-checked here (not just at the controller's `@Auth`) for the
+   * same reason as `findOneForUser`: this is the "Lead Locking"
+   * guarantee — if the lead gets reassigned away from this employee
+   * mid-session, the next autosave 403s instead of silently writing
+   * notes onto a lead that's no longer theirs.
+   */
+  async updateNotes(
+    id: string,
+    employee: UserEntity,
+    dto: UpdateNotesDto,
+  ): Promise<LoanApplicationEntity> {
+    const application = await this.loanApplicationRepository.findOneWithLoan(id);
+    if (!application) {
+      throw new NotFoundException('Loan application not found.');
+    }
+    if (application.assignedToId !== employee.id) {
+      throw new ForbiddenException('This lead is not assigned to you.');
+    }
+
+    await this.loanApplicationRepository.update(id, {
+      internalNotes: dto.notes,
+      internalNotesUpdatedAt: new Date(),
+    });
+
+    const updated = await this.loanApplicationRepository.findOneWithLoan(id);
+    if (!updated) {
+      throw new NotFoundException('Loan application not found after update.');
+    }
+    return updated;
   }
 
   /**

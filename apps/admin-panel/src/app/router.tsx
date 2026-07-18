@@ -2,6 +2,9 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 import { LoginPage } from '../features/auth/LoginPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
+import { EmployeeStatusPage } from '../features/work-status/EmployeeStatusPage';
+import { LeadDetailPage } from '../features/workspace/LeadDetailPage';
+import { MyLeadsPage } from '../features/workspace/MyLeadsPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AccessDeniedPage } from '../pages/AccessDeniedPage';
 import { DashboardPlaceholderPage } from '../pages/DashboardPlaceholderPage';
@@ -36,6 +39,30 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute roles={['admin']}>
             <LeadsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee-status',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <EmployeeStatusPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-leads',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <MyLeadsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-leads/:id',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <LeadDetailPage />
           </ProtectedRoute>
         ),
       },
