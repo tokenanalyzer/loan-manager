@@ -10,9 +10,7 @@ export function AccessDeniedPage(): JSX.Element {
       icon="lock"
       title="Access denied"
       message="Your account doesn't have permission to view this page."
-      action={
-        <Button onClick={() => navigate('/', { replace: true })}>Back to dashboard</Button>
-      }
+      action={<Button onClick={() => navigate('/', { replace: true })}>Back to dashboard</Button>}
     />
   );
 }

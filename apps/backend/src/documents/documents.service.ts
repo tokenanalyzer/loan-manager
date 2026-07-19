@@ -8,7 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { AuditLogEntity, DocumentEntity, DocumentType, UserEntity, UserRole } from '../database/entities';
+import {
+  AuditLogEntity,
+  DocumentEntity,
+  DocumentType,
+  UserEntity,
+  UserRole,
+} from '../database/entities';
 import { LoanApplicationsService } from '../loan-applications/loan-applications.service';
 import { StorageService } from '../storage/storage.service';
 
@@ -67,7 +73,8 @@ export class DocumentsService {
     private readonly documentTypeRepository: DocumentTypeRepository,
     private readonly storageService: StorageService,
     private readonly loanApplicationsService: LoanApplicationsService,
-    @InjectRepository(AuditLogEntity) private readonly auditLogRepository: Repository<AuditLogEntity>,
+    @InjectRepository(AuditLogEntity)
+    private readonly auditLogRepository: Repository<AuditLogEntity>,
   ) {}
 
   /**
@@ -77,10 +84,7 @@ export class DocumentsService {
    * types tagged for that category; omit it for the general
    * (non-application-scoped) Documents tab view.
    */
-  async getOverview(
-    user: UserEntity,
-    categoryId?: string,
-  ): Promise<DocumentsOverviewResponseDto> {
+  async getOverview(user: UserEntity, categoryId?: string): Promise<DocumentsOverviewResponseDto> {
     return this.buildOverview(user.id, categoryId);
   }
 

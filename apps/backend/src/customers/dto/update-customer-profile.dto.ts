@@ -130,7 +130,9 @@ export class UpdateCustomerProfileDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9][0-9]{9}$/, { message: 'nomineePhone must be a valid 10-digit Indian mobile number.' })
+  @Matches(/^[6-9][0-9]{9}$/, {
+    message: 'nomineePhone must be a valid 10-digit Indian mobile number.',
+  })
   nomineePhone?: string;
 
   // --- Full application-form fields (Phase 1) ---
@@ -196,7 +198,9 @@ export class UpdateCustomerProfileDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9][0-9]{9}$/, { message: 'officePhone must be a valid 10-digit Indian mobile number.' })
+  @Matches(/^[6-9][0-9]{9}$/, {
+    message: 'officePhone must be a valid 10-digit Indian mobile number.',
+  })
   officePhone?: string;
 
   @IsOptional()
@@ -232,7 +236,9 @@ export class UpdateCustomerProfileDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9][0-9]{9}$/, { message: 'reference1Phone must be a valid 10-digit Indian mobile number.' })
+  @Matches(/^[6-9][0-9]{9}$/, {
+    message: 'reference1Phone must be a valid 10-digit Indian mobile number.',
+  })
   reference1Phone?: string;
 
   @IsOptional()
@@ -247,7 +253,9 @@ export class UpdateCustomerProfileDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[6-9][0-9]{9}$/, { message: 'reference2Phone must be a valid 10-digit Indian mobile number.' })
+  @Matches(/^[6-9][0-9]{9}$/, {
+    message: 'reference2Phone must be a valid 10-digit Indian mobile number.',
+  })
   reference2Phone?: string;
 
   @IsOptional()

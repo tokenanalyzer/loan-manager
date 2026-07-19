@@ -85,7 +85,11 @@ export function ReviewModal({
           <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="submit" variant={action === 'reject' ? 'danger' : 'primary'} disabled={busy}>
+          <Button
+            type="submit"
+            variant={action === 'reject' ? 'danger' : 'primary'}
+            disabled={busy}
+          >
             {busy ? 'Submitting…' : title}
           </Button>
         </FormActions>

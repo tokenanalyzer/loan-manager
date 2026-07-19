@@ -7,9 +7,7 @@ import { EmployeeBreakEntity } from '../database/entities';
 
 @Injectable()
 export class EmployeeBreakRepository extends BaseRepository<EmployeeBreakEntity> {
-  constructor(
-    @InjectRepository(EmployeeBreakEntity) repository: Repository<EmployeeBreakEntity>,
-  ) {
+  constructor(@InjectRepository(EmployeeBreakEntity) repository: Repository<EmployeeBreakEntity>) {
     super(repository);
   }
 

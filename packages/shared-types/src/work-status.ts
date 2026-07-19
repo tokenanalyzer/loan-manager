@@ -5,14 +5,7 @@
  */
 
 export type WorkStatus =
-  | 'online'
-  | 'busy'
-  | 'tea_break'
-  | 'lunch_break'
-  | 'meeting'
-  | 'training'
-  | 'away'
-  | 'offline';
+  'online' | 'busy' | 'tea_break' | 'lunch_break' | 'meeting' | 'training' | 'away' | 'offline';
 
 export const BREAK_WORK_STATUSES: WorkStatus[] = [
   'tea_break',

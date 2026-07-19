@@ -114,7 +114,10 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
     }
   }
 
-  async function handleVerifySubmit(status: DocumentVerificationStatus, note: string): Promise<void> {
+  async function handleVerifySubmit(
+    status: DocumentVerificationStatus,
+    note: string,
+  ): Promise<void> {
     if (!verifying) return;
     setVerifyBusy(true);
     try {
@@ -156,7 +159,9 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
         >
           <div style={{ minWidth: 0, flex: 1 }}>
             <div className={styles.fileName}>{doc.originalFileName}</div>
-            <div style={{ fontSize: 'var(--font-size-body-sm)', color: 'var(--color-text-secondary)' }}>
+            <div
+              style={{ fontSize: 'var(--font-size-body-sm)', color: 'var(--color-text-secondary)' }}
+            >
               {doc.typeLabel} · {formatFileSize(doc.fileSizeBytes)} ·{' '}
               {new Date(doc.uploadedAt).toLocaleDateString()}
             </div>

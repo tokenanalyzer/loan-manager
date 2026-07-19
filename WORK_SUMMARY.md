@@ -171,6 +171,7 @@ Backend (`apps/backend`), Customer App (`apps/customer-app`), and
 ## 2. Sprint 2 Phase 1 — UI polish + full application wizard
 
 Backend (additive, one migration):
+
 - `1783772100000-ExtendCustomerProfileForApplicationForm.ts` — ~24 nullable
   columns on `customer_profiles` (personal, address, employment, income,
   existing-obligations, nominee phone, two references).
@@ -180,6 +181,7 @@ Backend (additive, one migration):
   to `PATCH /v1/customers/me`.
 
 Frontend:
+
 - New `core/constants/application_wizard_steps.dart` — `WizardStep` enum +
   `stepsForCategory(categoryId)`, tailoring the step sequence per loan
   category (Gold/Vehicle skip reference/EMI-obligation checks; Education
@@ -203,6 +205,7 @@ per the user's explicit architectural rules (no hardcoded types, DB-config
 new types without code changes, admin-manageable, backward compatible).
 
 Backend:
+
 - Two migrations: `1783772200000-CreateDocumentTypesCatalog.ts` (new
   `document_types` table, ~22 seeded rows across 6 categories) and
   `1783772300000-ExtendDocumentsForCatalog.ts` (adds `document_type_code`,
@@ -219,6 +222,7 @@ Backend:
   byte-identical to the old enum values).
 
 Frontend:
+
 - `core/models/document.dart` rewritten (`AppDocument`, `DocumentSlot`,
   `DocumentTypeOverview` with `isComplete`/`uploadedCount`,
   `DocumentCategory`, `DocumentsOverview`).
@@ -242,6 +246,7 @@ field as a string, so class-validator rejected `slotIndex` and NestJS
 returned a validation error as `message: string[]` — but the Flutter
 `ApiClient._extractMessage()` only handled `message: string`, so every
 upload failed with a generic, unhelpful "Request failed." Fixed both sides:
+
 - `apps/backend/src/documents/dto/upload-document.dto.ts` — added
   `@Type(() => Number)`.
 - `packages/shared-flutter/lib/src/network/api_client.dart` —
