@@ -116,7 +116,12 @@ export class DocumentsController {
   ): Promise<void> {
     const document = await this.documentsService.getOwnedDocumentOrThrow(user, id);
     await this.documentsService.logDownload(document, user);
-    await this.streamDocument(document.storagePath, document.mimeType, document.originalFileName, res);
+    await this.streamDocument(
+      document.storagePath,
+      document.mimeType,
+      document.originalFileName,
+      res,
+    );
   }
 
   /**
@@ -134,7 +139,12 @@ export class DocumentsController {
   ): Promise<void> {
     const document = await this.documentsService.getDocumentForStaffOrThrow(id, staff);
     await this.documentsService.logDownload(document, staff);
-    await this.streamDocument(document.storagePath, document.mimeType, document.originalFileName, res);
+    await this.streamDocument(
+      document.storagePath,
+      document.mimeType,
+      document.originalFileName,
+      res,
+    );
   }
 
   /** Verification Status — staff-only, ownership-scoped (see DocumentsService.updateVerification). */

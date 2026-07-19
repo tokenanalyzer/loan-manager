@@ -5,6 +5,7 @@ Status as of this production-freeze sprint. Scope was the Customer App only — 
 ## Completed Features
 
 ### Document Manager (this sprint)
+
 - Upload sources: **Camera**, **Gallery**, and **Files** (new — `file_picker`, restricted to PDF/JPG/JPEG/PNG via `FileType.custom`).
 - Client-side validation before every upload attempt: file extension allowlist and 10 MB size cap (mirrors the backend's `MAX_DOCUMENT_FILE_SIZE_BYTES`/`ALLOWED_DOCUMENT_MIME_TYPES`), with friendly inline error messages instead of a failed upload round-trip.
 - In-app **PDF viewer** (new — `pdfx`, pinch-to-zoom, pdfium/FFI — no license key required) and in-app **image viewer** (new — `photo_view`, pinch-to-zoom). Nothing forces the user out of the app to view a document.
@@ -12,28 +13,32 @@ Status as of this production-freeze sprint. Scope was the Customer App only — 
 - File size now displayed next to the file name on every uploaded slot (`Formatters.fileSize`, new).
 - Upload/Replace/Delete/Preview/Progress/Status were already implemented pre-sprint and remain unchanged.
 - Recent Documents on Home is now tappable straight into preview (previously dead rows).
-- Document *types* were already fully catalog-driven server-side (`GET /v1/documents`) before this sprint and already covered the full required list (Identity, Income incl. 3-slot Salary Slip, Employment, Balance Transfer, Home/Vehicle/Business/Gold loan-specific docs, 3-slot Other) — no backend changes were needed here.
+- Document _types_ were already fully catalog-driven server-side (`GET /v1/documents`) before this sprint and already covered the full required list (Identity, Income incl. 3-slot Salary Slip, Employment, Balance Transfer, Home/Vehicle/Business/Gold loan-specific docs, 3-slot Other) — no backend changes were needed here.
 
 ### Application Wizard
+
 - Loan Requirement step now validates the requested amount and term against the selected category's `minAmount`/`maxAmount`/`minTermMonths`/`maxTermMonths` client-side, with a friendly currency-formatted message, instead of only failing on submit.
 - Review step now shows every field actually collected: mother's name, PIN code, permanent address, designation, joining date, office address/phone, additional income, masked bank account/IFSC/holder name, credit card count/outstanding, both references (name/phone/relationship), and a documents-uploaded summary. Previously several collected fields were silently missing from the review screen.
 - Submit flow, regex validation (PAN/Aadhaar/PIN/phone/IFSC/bank account), and dynamic per-category steps were already solid pre-sprint — no mock/fake success path exists anywhere in the flow.
 
 ### Home
+
 - Lending Partners section redesigned: no more fake disabled "Coming soon" bank tiles. It now renders one premium, intentional "More lending partners coming soon" card, backed by a real (if currently backend-less) `lendingPartnersProvider` → `LendingPartnerRepository` → `GET /v1/lending-partners`. The call fails soft to an empty list today; the same widget will render a horizontal partner list (logo, rate, offer) with **zero Flutter changes** the day a future sprint adds that endpoint.
 - Everything else on Home (Credit Profile hero, eligibility, quick apply, recent activity, stat row) was already production-quality: theme tokens throughout, no `Colors.*` literals, real stagger animations, no overflow risk found.
 
 ### Profile
+
 - Sign-out now requires an explicit confirmation dialog (previously a single accidental tap signed the user out with no recovery prompt).
 
 ### Audit findings with no code change needed
+
 A full 3-pass audit (Documents, Application Wizard, Home/Profile/Loan-detail/Application-detail) found the app already well past "Flutter demo" quality: consistent design system (`AppCard`, `HeroCard`, `StatusBadge`, `SectionHeader`, `FadeSlideIn`), Indian currency/date formatting throughout, real submit/API flows with no fake delays or mocked success, no `print`/`debugPrint`/`TODO`/Lorem-ipsum/demo banners found anywhere in the app.
 
 ## Remaining Issues
 
 - **On-device manual QA pass is pending** — no Android device was connected during this sprint (per instruction, this happens after implementation). Needs a real-device pass covering: Home, Loans, Documents, Profile, Notifications, every loan category's application flow, PDF upload, image upload, camera upload, gallery upload, file picker, preview, replace, delete, login persistence, navigation, bottom navigation, and responsiveness across screen sizes.
 - `GET /v1/lending-partners` does not exist yet — intentionally deferred (no new backend module this sprint, per instruction). The Home dashboard correctly shows the "coming soon" state until that endpoint ships.
-- Loan Details screen's category-level cost estimate is computed at the category's *minimum* amount (clearly labeled "Estimated cost (at minimum amount)", not misleading, but not adjustable) — candidate for a future slider/amount input.
+- Loan Details screen's category-level cost estimate is computed at the category's _minimum_ amount (clearly labeled "Estimated cost (at minimum amount)", not misleading, but not adjustable) — candidate for a future slider/amount input.
 
 ## Known Limitations
 

@@ -30,7 +30,7 @@ export class EmployeeWorkloadResponseDto {
     dto.lastActiveAt = entity.lastActiveAt ?? null;
     dto.isOnline = Boolean(
       entity.lastActiveAt &&
-        Date.now() - entity.lastActiveAt.getTime() <= PRESENCE_ONLINE_THRESHOLD_MINUTES * 60_000,
+      Date.now() - entity.lastActiveAt.getTime() <= PRESENCE_ONLINE_THRESHOLD_MINUTES * 60_000,
     );
     dto.activeLeadsCount = counts.activeLeadsCount;
     dto.pendingLeadsCount = counts.pendingLeadsCount;

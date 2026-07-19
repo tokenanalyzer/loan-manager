@@ -50,10 +50,19 @@ export function DocumentAuditModal({
       {!error && entries && entries.length > 0 && (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
           {entries.map((entry) => (
-            <li key={entry.id} style={{ borderBottom: '1px solid var(--color-border)', padding: '8px 0' }}>
+            <li
+              key={entry.id}
+              style={{ borderBottom: '1px solid var(--color-border)', padding: '8px 0' }}
+            >
               <div style={{ fontWeight: 500 }}>{ACTION_LABELS[entry.action] ?? entry.action}</div>
-              <div style={{ fontSize: 'var(--font-size-body-sm)', color: 'var(--color-text-secondary)' }}>
-                By {entry.actorName ?? 'an unknown user'} · {new Date(entry.createdAt).toLocaleString()}
+              <div
+                style={{
+                  fontSize: 'var(--font-size-body-sm)',
+                  color: 'var(--color-text-secondary)',
+                }}
+              >
+                By {entry.actorName ?? 'an unknown user'} ·{' '}
+                {new Date(entry.createdAt).toLocaleString()}
               </div>
             </li>
           ))}

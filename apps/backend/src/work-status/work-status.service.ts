@@ -46,7 +46,8 @@ export class WorkStatusService {
     private readonly employeeBreakRepository: EmployeeBreakRepository,
     private readonly userRepository: UserRepository,
     private readonly notificationsService: NotificationsService,
-    @InjectRepository(AuditLogEntity) private readonly auditLogRepository: Repository<AuditLogEntity>,
+    @InjectRepository(AuditLogEntity)
+    private readonly auditLogRepository: Repository<AuditLogEntity>,
     @InjectDataSource() private readonly dataSource: DataSource,
     @Inject(FIREBASE_ADMIN_APP) private readonly firebaseApp: App | null,
     private readonly logger: PinoLogger,
@@ -76,13 +77,20 @@ export class WorkStatusService {
           startedAt: now,
         }),
       );
-      await manager.update(EmployeeProfileEntity, { userId: user.id }, {
-        currentStatus: breakType,
-        currentStatusSince: now,
-      });
+      await manager.update(
+        EmployeeProfileEntity,
+        { userId: user.id },
+        {
+          currentStatus: breakType,
+          currentStatusSince: now,
+        },
+      );
     });
 
-    return MyWorkStatusResponseDto.fromEntity({ currentStatus: breakType, currentStatusSince: now });
+    return MyWorkStatusResponseDto.fromEntity({
+      currentStatus: breakType,
+      currentStatusSince: now,
+    });
   }
 
   async endBreak(user: UserEntity): Promise<MyWorkStatusResponseDto> {
@@ -195,10 +203,14 @@ export class WorkStatusService {
         endedByAdminId,
         durationSeconds,
       });
-      await manager.update(EmployeeProfileEntity, { userId: active.employeeId }, {
-        currentStatus: WorkStatus.ONLINE,
-        currentStatusSince: endedAt,
-      });
+      await manager.update(
+        EmployeeProfileEntity,
+        { userId: active.employeeId },
+        {
+          currentStatus: WorkStatus.ONLINE,
+          currentStatusSince: endedAt,
+        },
+      );
     });
   }
 

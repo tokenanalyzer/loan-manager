@@ -89,9 +89,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/branding/app_icon.png"
-  adaptive_icon_background: "#2D3F6C"
-  adaptive_icon_foreground: "assets/branding/app_icon.png"
+  image_path: 'assets/branding/app_icon.png'
+  adaptive_icon_background: '#2D3F6C'
+  adaptive_icon_foreground: 'assets/branding/app_icon.png'
   min_sdk_android: 21
 
 # flutter_native_splash config — run `dart run flutter_native_splash:create`
@@ -101,12 +101,12 @@ flutter_launcher_icons:
 # screen instead of two. Only the wordmark/tagline animate in below it.
 # `android_12` targets Android 12's new system SplashScreen API.
 flutter_native_splash:
-  color: "#FFFFFF"
+  color: '#FFFFFF'
   image: assets/branding/app_icon.png
   android_12:
     image: assets/branding/app_icon.png
-    color: "#FFFFFF"
-    icon_background_color: "#FFFFFF"
+    color: '#FFFFFF'
+    icon_background_color: '#FFFFFF'
   android: true
   ios: true
   fullscreen: true

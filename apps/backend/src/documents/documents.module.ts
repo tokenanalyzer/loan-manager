@@ -17,12 +17,7 @@ import { DocumentsService } from './documents.service';
     LoanApplicationsModule,
   ],
   controllers: [DocumentsController, DocumentTypesController],
-  providers: [
-    DocumentRepository,
-    DocumentTypeRepository,
-    DocumentsService,
-    DocumentTypesService,
-  ],
+  providers: [DocumentRepository, DocumentTypeRepository, DocumentsService, DocumentTypesService],
   exports: [DocumentsService, DocumentTypesService],
 })
 export class DocumentsModule {}

@@ -6,12 +6,7 @@
  */
 
 export type LoanApplicationStatus =
-  | 'submitted'
-  | 'under_review'
-  | 'query_raised'
-  | 'approved'
-  | 'rejected'
-  | 'withdrawn';
+  'submitted' | 'under_review' | 'query_raised' | 'approved' | 'rejected' | 'withdrawn';
 
 /** A loan application as shown in the Unassigned/Assigned Leads screens. `assignedToId` is null = Unassigned. */
 export interface LeadSummary {

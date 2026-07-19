@@ -49,7 +49,10 @@ export class CustomerProfileEntity extends AbstractEntity {
   kycReviewedById?: string | null;
 
   @ManyToOne('UserEntity', { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'kyc_reviewed_by_id', foreignKeyConstraintName: 'fk_customer_profiles_kyc_reviewer' })
+  @JoinColumn({
+    name: 'kyc_reviewed_by_id',
+    foreignKeyConstraintName: 'fk_customer_profiles_kyc_reviewer',
+  })
   kycReviewedBy?: UserEntity | null;
 
   @Column({ type: 'timestamptz', nullable: true })

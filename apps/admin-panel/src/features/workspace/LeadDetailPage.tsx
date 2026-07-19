@@ -34,12 +34,21 @@ interface TimelineEntry {
 
 function buildTimeline(lead: LeadSummary, history: LeadAssignmentHistoryEntry[]): TimelineEntry[] {
   const entries: TimelineEntry[] = [
-    { key: 'submitted', title: 'Application submitted', meta: 'By the customer', at: lead.submittedAt },
+    {
+      key: 'submitted',
+      title: 'Application submitted',
+      meta: 'By the customer',
+      at: lead.submittedAt,
+    },
   ];
 
   for (const entry of history) {
     const actionLabel =
-      entry.action === 'assign' ? 'Assigned' : entry.action === 'reassign' ? 'Reassigned' : 'Transferred';
+      entry.action === 'assign'
+        ? 'Assigned'
+        : entry.action === 'reassign'
+          ? 'Reassigned'
+          : 'Transferred';
     entries.push({
       key: entry.id,
       title: `${actionLabel} to ${entry.newEmployeeName ?? 'an employee'}`,

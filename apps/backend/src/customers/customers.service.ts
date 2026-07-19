@@ -156,7 +156,7 @@ export class CustomersService {
 
     const updated = await this.customerProfileRepository.update(profile.id, {
       kycStatus: dto.decision === 'verify' ? KycStatus.VERIFIED : KycStatus.REJECTED,
-      kycRejectionReason: dto.decision === 'reject' ? dto.rejectionReason ?? null : null,
+      kycRejectionReason: dto.decision === 'reject' ? (dto.rejectionReason ?? null) : null,
       kycReviewedById: reviewer.id,
       kycReviewedAt: new Date(),
     });

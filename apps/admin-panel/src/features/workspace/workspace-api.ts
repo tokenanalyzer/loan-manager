@@ -39,7 +39,10 @@ export interface ReviewLeadPayload {
 }
 
 export async function reviewLead(id: string, payload: ReviewLeadPayload): Promise<LeadSummary> {
-  const { data } = await apiClient.patch<LeadSummary>(`/v1/loan-applications/${id}/review`, payload);
+  const { data } = await apiClient.patch<LeadSummary>(
+    `/v1/loan-applications/${id}/review`,
+    payload,
+  );
   return data;
 }
 
