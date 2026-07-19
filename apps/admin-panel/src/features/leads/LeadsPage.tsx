@@ -1,5 +1,14 @@
 import type { EmployeeWorkload, LeadSummary } from '@loan-manager/shared-types';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { EmptyState } from '../../components/states/EmptyState';
+import { ErrorState } from '../../components/states/ErrorState';
+import { LoadingState } from '../../components/states/LoadingState';
+import { Button } from '../../components/ui/Button';
+import { Icon } from '../../components/ui/Icon';
+import { PageContainer } from '../../components/ui/PageContainer';
+import { TableContainer } from '../../components/ui/TableContainer';
+import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS } from '../workspace/lead-status-meta';
 
 import { AssignmentHistoryModal } from './AssignmentHistoryModal';
 import { EmployeePickerModal } from './EmployeePickerModal';
@@ -12,6 +21,7 @@ import {
   transferAllActiveLeads,
   transferSelectedLeads,
 } from './leads-api';
+import styles from './LeadsPage.module.css';
 
 type Tab = 'unassigned' | 'assigned';
 
@@ -23,26 +33,31 @@ type PendingAction =
 /**
  * The CRM/Super Admin Lead Assignment screen.
  *
- * Unassigned Leads is the primary requirement; the Assigned tab lets
- * the admin reassign an already-assigned lead or transfer a selected
- * batch. "Transfer all active leads" is a per-employee action in the
- * Employees & Workload panel below, since it operates on an employee,
- * not on a specific lead selection.
+ * Unassigned Leads is the primary requirement — a searchable/filterable
+ * queue an admin works through to assign every incoming lead to an
+ * employee. The Assigned tab reuses the same list/assign machinery to
+ * let the admin reassign an already-assigned lead or transfer a
+ * selected batch. "Transfer all active leads" is a per-employee action
+ * in the Employees & Workload panel below, since it operates on an
+ * employee, not on a specific lead selection.
  */
 export function LeadsPage(): JSX.Element {
   const [tab, setTab] = useState<Tab>('unassigned');
-  const [leads, setLeads] = useState<LeadSummary[]>([]);
+  const [leads, setLeads] = useState<LeadSummary[] | null>(null);
   const [employees, setEmployees] = useState<EmployeeWorkload[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [leadsError, setLeadsError] = useState<string | null>(null);
+  const [employeesError, setEmployeesError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<PendingAction | null>(null);
   const [historyForLeadId, setHistoryForLeadId] = useState<string | null>(null);
 
   const loadLeads = useCallback(async (nextTab: Tab) => {
-    setLoading(true);
-    setError(null);
+    setLeads(null);
+    setLeadsError(null);
     try {
       if (nextTab === 'unassigned') {
         setLeads(await fetchUnassignedLeads());
@@ -52,17 +67,18 @@ export function LeadsPage(): JSX.Element {
       }
       setSelectedIds(new Set());
     } catch {
-      setError('Could not load leads.');
-    } finally {
-      setLoading(false);
+      setLeadsError(
+        nextTab === 'unassigned' ? 'Could not load unassigned leads.' : 'Could not load assigned leads.',
+      );
     }
   }, []);
 
   const loadEmployees = useCallback(async () => {
     try {
       setEmployees(await fetchEmployeesWithWorkload());
+      setEmployeesError(null);
     } catch {
-      setError('Could not load employees.');
+      setEmployeesError('Could not load employees.');
     }
   }, []);
 
@@ -74,7 +90,38 @@ export function LeadsPage(): JSX.Element {
     void loadEmployees();
   }, [loadEmployees]);
 
-  function toggleSelected(id: string) {
+  function switchTab(nextTab: Tab): void {
+    setTab(nextTab);
+    setQuery('');
+    setCategoryFilter('all');
+  }
+
+  function refresh(): void {
+    void Promise.all([loadLeads(tab), loadEmployees()]);
+  }
+
+  const categories = useMemo(() => {
+    if (!leads) return [];
+    return Array.from(
+      new Set(leads.map((lead) => lead.categoryId).filter((id): id is string => Boolean(id))),
+    ).sort();
+  }, [leads]);
+
+  const filtered = useMemo(() => {
+    if (!leads) return [];
+    const normalizedQuery = query.trim().toLowerCase();
+    return leads.filter((lead) => {
+      if (categoryFilter !== 'all' && lead.categoryId !== categoryFilter) return false;
+      if (!normalizedQuery) return true;
+      const haystack = [lead.applicantName, lead.purpose, lead.categoryId]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(normalizedQuery);
+    });
+  }, [leads, query, categoryFilter]);
+
+  function toggleSelected(id: string): void {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -83,10 +130,10 @@ export function LeadsPage(): JSX.Element {
     });
   }
 
-  async function handleEmployeeSelected(employeeId: string) {
+  async function handleEmployeeSelected(employeeId: string): Promise<void> {
     if (!action) return;
     setBusy(true);
-    setError(null);
+    setActionError(null);
     try {
       if (action.kind === 'assign') {
         await assignLead(action.leadId, employeeId);
@@ -98,102 +145,165 @@ export function LeadsPage(): JSX.Element {
       setAction(null);
       await Promise.all([loadLeads(tab), loadEmployees()]);
     } catch {
-      setError('That action failed. Please try again.');
+      setActionError('That action failed. Please try again.');
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 1100 }}>
-      <h1>Lead Assignment</h1>
-
-      <div style={{ marginBottom: '1rem' }}>
-        <button
-          type="button"
-          onClick={() => setTab('unassigned')}
-          style={{ fontWeight: tab === 'unassigned' ? 'bold' : 'normal', marginRight: 8 }}
+    <PageContainer
+      title="Lead Assignment"
+      description="Assign unassigned leads to an employee, or reassign/transfer existing ones."
+      actions={
+        <Button variant="secondary" size="sm" onClick={refresh}>
+          <Icon name="refresh" size={16} />
+          Refresh
+        </Button>
+      }
+    >
+      <div className={styles.tabs}>
+        <Button
+          variant={tab === 'unassigned' ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => switchTab('unassigned')}
         >
           Unassigned Leads
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('assigned')}
-          style={{ fontWeight: tab === 'assigned' ? 'bold' : 'normal' }}
+        </Button>
+        <Button
+          variant={tab === 'assigned' ? 'primary' : 'secondary'}
+          size="sm"
+          onClick={() => switchTab('assigned')}
         >
           Assigned Leads
-        </button>
+        </Button>
       </div>
 
-      {error && <p style={{ color: '#c62828' }}>{error}</p>}
+      {actionError && <ErrorState message={actionError} onRetry={() => setActionError(null)} />}
 
-      {selectedIds.size > 0 && (
-        <div style={{ marginBottom: '0.75rem' }}>
-          <button type="button" onClick={() => setAction({ kind: 'bulk-transfer' })}>
-            Transfer selected ({selectedIds.size})
-          </button>
-        </div>
+      {leadsError && <ErrorState message={leadsError} onRetry={refresh} />}
+
+      {!leadsError && leads === null && <LoadingState message="Loading leads…" />}
+
+      {!leadsError && leads !== null && (
+        <>
+          <div className={styles.toolbar}>
+            <input
+              className={styles.search}
+              type="search"
+              placeholder="Search by applicant, purpose, or category…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <select
+              className={styles.select}
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              <option value="all">All categories</option>
+              {categories.map((categoryId) => (
+                <option key={categoryId} value={categoryId}>
+                  {categoryId}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedIds.size > 0 && (
+            <div className={styles.bulkBar}>
+              <Button size="sm" onClick={() => setAction({ kind: 'bulk-transfer' })}>
+                Transfer selected ({selectedIds.size})
+              </Button>
+            </div>
+          )}
+
+          {filtered.length === 0 ? (
+            <EmptyState
+              message={
+                leads.length === 0
+                  ? tab === 'unassigned'
+                    ? 'No unassigned leads right now — new submissions will appear here.'
+                    : 'No assigned leads yet.'
+                  : 'No leads match your search/filter.'
+              }
+            />
+          ) : (
+            <TableContainer>
+              <thead>
+                <tr>
+                  <th />
+                  <th>Applicant</th>
+                  <th>Amount</th>
+                  <th>Term</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Submitted</th>
+                  {tab === 'assigned' && <th>Assigned To</th>}
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((lead) => (
+                  <tr key={lead.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(lead.id)}
+                        onChange={() => toggleSelected(lead.id)}
+                        aria-label={`Select ${lead.applicantName ?? lead.applicantId}`}
+                      />
+                    </td>
+                    <td>{lead.applicantName ?? lead.applicantId.slice(0, 8)}</td>
+                    <td>{lead.requestedAmount}</td>
+                    <td>{lead.requestedTermMonths} mo</td>
+                    <td>{lead.categoryId ?? '—'}</td>
+                    <td>
+                      <span className={styles.statusBadge}>
+                        <span
+                          className={styles.dot}
+                          style={{ background: LEAD_STATUS_COLORS[lead.status] }}
+                        />
+                        {LEAD_STATUS_LABELS[lead.status]}
+                      </span>
+                    </td>
+                    <td>{new Date(lead.submittedAt).toLocaleDateString()}</td>
+                    {tab === 'assigned' && <td>{lead.assignedToName ?? '—'}</td>}
+                    <td>
+                      <div className={styles.rowActions}>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setAction({ kind: 'assign', leadId: lead.id })}
+                        >
+                          {tab === 'unassigned' ? 'Assign' : 'Reassign'}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setHistoryForLeadId(lead.id)}>
+                          History
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </TableContainer>
+          )}
+        </>
       )}
 
-      {loading ? (
-        <p>Loading…</p>
-      ) : leads.length === 0 ? (
-        <p>{tab === 'unassigned' ? 'No unassigned leads.' : 'No assigned leads.'}</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-          <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid #ccc' }}>
-              <th style={cellStyle} />
-              <th style={cellStyle}>Applicant</th>
-              <th style={cellStyle}>Amount</th>
-              <th style={cellStyle}>Term</th>
-              <th style={cellStyle}>Status</th>
-              <th style={cellStyle}>Submitted</th>
-              {tab === 'assigned' && <th style={cellStyle}>Assigned To</th>}
-              <th style={cellStyle} />
-            </tr>
-          </thead>
-          <tbody>
-            {leads.map((lead) => (
-              <tr key={lead.id} style={{ borderBottom: '1px solid #eee' }}>
-                <td style={cellStyle}>
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(lead.id)}
-                    onChange={() => toggleSelected(lead.id)}
-                  />
-                </td>
-                <td style={cellStyle}>{lead.applicantName ?? lead.applicantId.slice(0, 8)}</td>
-                <td style={cellStyle}>{lead.requestedAmount}</td>
-                <td style={cellStyle}>{lead.requestedTermMonths} mo</td>
-                <td style={cellStyle}>{lead.status}</td>
-                <td style={cellStyle}>{new Date(lead.submittedAt).toLocaleDateString()}</td>
-                {tab === 'assigned' && <td style={cellStyle}>{lead.assignedToName ?? '—'}</td>}
-                <td style={cellStyle}>
-                  <button
-                    type="button"
-                    onClick={() => setAction({ kind: 'assign', leadId: lead.id })}
-                  >
-                    {tab === 'unassigned' ? 'Assign' : 'Reassign'}
-                  </button>{' '}
-                  <button type="button" onClick={() => setHistoryForLeadId(lead.id)}>
-                    History
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      <h2 style={{ marginTop: '2rem' }}>Employees &amp; workload</h2>
-      <EmployeeWorkloadTable
-        employees={employees}
-        action={{
-          mode: 'transferAll',
-          onTransferAll: (fromEmployeeId) => setAction({ kind: 'transfer-all', fromEmployeeId }),
-        }}
-      />
+      <div>
+        <h2 className={styles.sectionTitle}>Employees &amp; workload</h2>
+        {employeesError ? (
+          <ErrorState message={employeesError} onRetry={() => void loadEmployees()} />
+        ) : (
+          <EmployeeWorkloadTable
+            employees={employees}
+            action={{
+              mode: 'transferAll',
+              onTransferAll: (fromEmployeeId) => setAction({ kind: 'transfer-all', fromEmployeeId }),
+            }}
+          />
+        )}
+      </div>
 
       {action && (
         <EmployeePickerModal
@@ -219,8 +329,6 @@ export function LeadsPage(): JSX.Element {
           onClose={() => setHistoryForLeadId(null)}
         />
       )}
-    </main>
+    </PageContainer>
   );
 }
-
-const cellStyle = { padding: '6px 8px' };
