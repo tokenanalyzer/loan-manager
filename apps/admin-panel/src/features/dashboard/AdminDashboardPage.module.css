@@ -1,0 +1,68 @@
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-4);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.statLabel {
+  font-size: var(--font-size-label-md);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.statValue {
+  font-size: var(--font-size-headline-md);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-title-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.quickActions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.activityList {
+  display: flex;
+  flex-direction: column;
+}
+
+.activityRow {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.activityRow:last-child {
+  border-bottom: none;
+}
+
+.activityDescription {
+  font-size: var(--font-size-body-sm);
+  color: var(--color-text-primary);
+}
+
+.activityTimestamp {
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-tertiary);
+}

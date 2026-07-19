@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 import { LoginPage } from '../features/auth/LoginPage';
+import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { EmployeeStatusPage } from '../features/work-status/EmployeeStatusPage';
@@ -35,6 +36,14 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <DashboardPlaceholderPage /> },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <AdminDashboardPage />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: 'notifications',
         element: <NotificationsPage />,
