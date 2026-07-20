@@ -57,6 +57,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: 'leads/:id',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <LeadDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: 'employee-status',
         element: (
           <ProtectedRoute roles={['admin']}>

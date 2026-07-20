@@ -29,6 +29,13 @@
   overflow: auto;
 }
 
+.panelFullscreen {
+  max-width: 95vw;
+  width: 95vw;
+  height: 90vh;
+  max-height: 90vh;
+}
+
 .header {
   display: flex;
   align-items: center;

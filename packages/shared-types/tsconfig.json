@@ -2,7 +2,19 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src"
+    "rootDir": "src",
+    // Override the monorepo base's CommonJS target for this package only.
+    // This package is consumed exclusively by bundlers (admin-panel's
+    // Vite/Rollup build) — CommonJS output re-exported via `export *`
+    // compiles to a runtime loop (`__exportStar`) that Rollup's CJS→ESM
+    // interop cannot always statically discover as a named export
+    // (confirmed: `BREAK_WORK_STATUSES`, the package's only runtime
+    // value export, silently resolved to `undefined` in a Rollup
+    // production build despite the CJS module being correct — verified
+    // by executing the actual compiled output). Native ESM output has no
+    // interop step for Rollup to get wrong.
+    "module": "ESNext",
+    "moduleResolution": "bundler"
   },
   "include": ["src"]
 }

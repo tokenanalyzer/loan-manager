@@ -1,5 +1,6 @@
 import type { EmployeeWorkload, LeadSummary } from '@loan-manager/shared-types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
@@ -42,6 +43,7 @@ type PendingAction =
  * employee, not on a specific lead selection.
  */
 export function LeadsPage(): JSX.Element {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('unassigned');
   const [leads, setLeads] = useState<LeadSummary[] | null>(null);
   const [employees, setEmployees] = useState<EmployeeWorkload[]>([]);
@@ -270,6 +272,9 @@ export function LeadsPage(): JSX.Element {
                     {tab === 'assigned' && <td>{lead.assignedToName ?? '—'}</td>}
                     <td>
                       <div className={styles.rowActions}>
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/leads/${lead.id}`)}>
+                          View
+                        </Button>
                         <Button
                           variant="secondary"
                           size="sm"

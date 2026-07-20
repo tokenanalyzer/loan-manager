@@ -2,6 +2,7 @@
   "name": "@loan-manager/shared-types",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Shared TypeScript types/interfaces consumed by the NestJS backend and React admin panel.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

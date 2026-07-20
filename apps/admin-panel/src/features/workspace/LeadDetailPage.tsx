@@ -1,4 +1,8 @@
-import type { LeadAssignmentHistoryEntry, LeadSummary } from '@loan-manager/shared-types';
+import type {
+  BlockingRequiredDocument,
+  LeadAssignmentHistoryEntry,
+  LeadSummary,
+} from '@loan-manager/shared-types';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -8,6 +12,7 @@ import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { useAuth } from '../../core/auth-context';
 import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
 
 import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS, REVIEWABLE_STATUSES } from './lead-status-meta';
@@ -24,6 +29,14 @@ import {
   type CustomerSummary,
   type ReviewLeadPayload,
 } from './workspace-api';
+
+/** Display labels only — the backend decides which documents actually block approval (LoanApplicationsService.review); this just renders whatever it returns. */
+const BLOCKING_REASON_LABEL: Record<BlockingRequiredDocument['reason'], string> = {
+  missing: 'Not uploaded',
+  pending: 'Awaiting verification',
+  rejected: 'Rejected',
+  reupload_requested: 'Re-upload requested',
+};
 
 interface TimelineEntry {
   key: string;
@@ -88,16 +101,23 @@ function buildTimeline(lead: LeadSummary, history: LeadAssignmentHistoryEntry[])
 
 /**
  * Lead Detail — Customer Information, Document Viewer, Timeline /
- * Activity History, autosaved Internal Notes, and the Employee review
- * decision (Approve / Reject / Raise Query), all reusing existing
- * endpoints. Lead Locking: the underlying APIs already enforce that
- * only the assigned employee can read/write this lead (403
- * otherwise) — this page just surfaces that as a clear locked state
- * instead of a raw error.
+ * Activity History, autosaved Internal Notes, and the review decision
+ * (Approve / Reject / Raise Query), all reusing existing endpoints.
+ * Reachable at both `/my-leads/:id` (employee) and `/leads/:id`
+ * (admin) — the backend already permits both roles on every endpoint
+ * this page calls, so this component is shared as-is; only the "back"
+ * destination is role-aware, since the two roles have different list
+ * screens to return to. Lead Locking: the underlying APIs enforce that
+ * an employee may only read/write leads assigned to them (403
+ * otherwise, admin is never restricted this way) — this page surfaces
+ * that as a clear locked state instead of a raw error.
  */
 export function LeadDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { profile: authProfile } = useAuth();
+  const backPath = authProfile?.role === 'admin' ? '/leads' : '/my-leads';
+  const backLabel = authProfile?.role === 'admin' ? 'Back to Leads' : 'Back to My Leads';
 
   const [lead, setLead] = useState<LeadSummary | null>(null);
   const [customer, setCustomer] = useState<CustomerSummary | null>(null);
@@ -109,6 +129,7 @@ export function LeadDetailPage(): JSX.Element {
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | 'query' | null>(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
+  const [blockingDocuments, setBlockingDocuments] = useState<BlockingRequiredDocument[] | null>(null);
 
   async function load(): Promise<void> {
     if (!id) return;
@@ -149,13 +170,22 @@ export function LeadDetailPage(): JSX.Element {
     if (!id) return;
     setReviewBusy(true);
     setReviewError(null);
+    setBlockingDocuments(null);
     try {
       const updated = await reviewLead(id, payload);
       setLead(updated);
       setReviewAction(null);
       void load(); // refresh history/timeline alongside the new status
-    } catch {
-      setReviewError('That action failed. Please try again.');
+    } catch (err) {
+      // The approval validation gate (LoanApplicationsService.review) returns
+      // a structured { message, blockingDocuments } body on a 409 — surface
+      // both as-is; this page never decides which documents block approval,
+      // only displays what the backend already decided.
+      const data = (
+        err as { response?: { data?: { message?: string; blockingDocuments?: BlockingRequiredDocument[] } } }
+      ).response?.data;
+      setReviewError(data?.message ?? 'That action failed. Please try again.');
+      setBlockingDocuments(data?.blockingDocuments ?? null);
     } finally {
       setReviewBusy(false);
     }
@@ -176,7 +206,7 @@ export function LeadDetailPage(): JSX.Element {
           icon="lock"
           title="This lead is no longer assigned to you"
           message="It may have been reassigned by an administrator. Return to your leads list."
-          action={<Button onClick={() => navigate('/my-leads')}>Back to My Leads</Button>}
+          action={<Button onClick={() => navigate(backPath)}>{backLabel}</Button>}
         />
       </PageContainer>
     );
@@ -198,8 +228,8 @@ export function LeadDetailPage(): JSX.Element {
       title={lead.applicantName ?? 'Lead'}
       description={`${lead.requestedAmount} · ${lead.requestedTermMonths} months`}
       actions={
-        <Button variant="secondary" onClick={() => navigate('/my-leads')}>
-          Back to My Leads
+        <Button variant="secondary" onClick={() => navigate(backPath)}>
+          {backLabel}
         </Button>
       }
     >
@@ -231,7 +261,33 @@ export function LeadDetailPage(): JSX.Element {
               </div>
             )}
 
-            {reviewError && <ErrorState message={reviewError} />}
+            {lead.waitingForCustomer && (
+              <div className={styles.banner}>
+                <span className={styles.bannerTitle}>Waiting for Customer — document re-upload</span>
+                <span className={styles.bannerMeta}>
+                  A document was sent back for re-upload
+                  {lead.waitingForCustomerSince &&
+                    ` on ${new Date(lead.waitingForCustomerSince).toLocaleString()}`}
+                  . This is independent of the lead&rsquo;s review status — see the Documents section
+                  below.
+                </span>
+              </div>
+            )}
+
+            {reviewError && (
+              <>
+                <ErrorState message={reviewError} />
+                {blockingDocuments && blockingDocuments.length > 0 && (
+                  <ul className={styles.blockingList}>
+                    {blockingDocuments.map((doc) => (
+                      <li key={doc.code}>
+                        {doc.label} — {BLOCKING_REASON_LABEL[doc.reason]}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
 
             {isReviewable && (
               <div className={styles.reviewActions}>

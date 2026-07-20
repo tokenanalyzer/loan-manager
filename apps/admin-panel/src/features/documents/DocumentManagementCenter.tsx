@@ -59,12 +59,14 @@ const BADGE_CLASS: Record<DocumentVerificationStatus, string> = {
   pending: styles.badgePending,
   verified: styles.badgeVerified,
   rejected: styles.badgeRejected,
+  reupload_requested: styles.badgeReuploadRequested,
 };
 
 const BADGE_LABEL: Record<DocumentVerificationStatus, string> = {
   pending: 'Pending',
   verified: 'Verified',
   rejected: 'Rejected',
+  reupload_requested: 'Re-upload Requested',
 };
 
 /**
@@ -82,7 +84,9 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
   const [documents, setDocuments] = useState<FlatDocument[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<FlatDocument | null>(null);
-  const [verifying, setVerifying] = useState<FlatDocument | null>(null);
+  const [verifying, setVerifying] = useState<{ doc: FlatDocument; mode: 'verify' | 'requestReupload' } | null>(
+    null,
+  );
   const [viewingAudit, setViewingAudit] = useState<FlatDocument | null>(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
@@ -118,7 +122,7 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
     if (!verifying) return;
     setVerifyBusy(true);
     try {
-      await updateDocumentVerification(verifying.id, status, note || undefined);
+      await updateDocumentVerification(verifying.doc.id, status, note || undefined);
       setVerifying(null);
       await load();
     } catch {
@@ -190,8 +194,17 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
               {downloadingId === doc.id ? 'Downloading…' : 'Download'}
             </Button>
             {canVerify && (
-              <Button size="sm" variant="secondary" onClick={() => setVerifying(doc)}>
+              <Button size="sm" variant="secondary" onClick={() => setVerifying({ doc, mode: 'verify' })}>
                 Verify
+              </Button>
+            )}
+            {canVerify && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setVerifying({ doc, mode: 'requestReupload' })}
+              >
+                Request Re-upload
               </Button>
             )}
             {canVerify && (
@@ -214,8 +227,9 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
 
       {verifying && (
         <VerificationModal
-          fileName={verifying.originalFileName}
-          currentStatus={verifying.verificationStatus}
+          fileName={verifying.doc.originalFileName}
+          currentStatus={verifying.doc.verificationStatus}
+          mode={verifying.mode}
           busy={verifyBusy}
           onSubmit={(status, note) => void handleVerifySubmit(status, note)}
           onClose={() => setVerifying(null)}

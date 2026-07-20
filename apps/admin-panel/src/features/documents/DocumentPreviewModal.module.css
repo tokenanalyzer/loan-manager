@@ -14,10 +14,18 @@
   object-fit: contain;
 }
 
+.imageFullscreen {
+  max-height: 80vh;
+}
+
 .frame {
   width: 100%;
   height: 65vh;
   border: none;
+}
+
+.frameFullscreen {
+  height: 80vh;
 }
 
 .fallback {

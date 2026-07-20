@@ -29,6 +29,7 @@ export function DocumentPreviewModal({
   const [blob, setBlob] = useState<Blob | null>(null);
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [fullScreen, setFullScreen] = useState(false);
 
   useEffect(() => {
     let url: string | null = null;
@@ -55,15 +56,23 @@ export function DocumentPreviewModal({
   const isPdf = mimeType === 'application/pdf';
 
   return (
-    <Modal title={fileName} onClose={onClose}>
+    <Modal title={fileName} onClose={onClose} size={fullScreen ? 'fullscreen' : 'default'}>
       <div className={styles.preview}>
         {error && <ErrorState message={error} />}
         {!error && !objectUrl && <LoadingState message="Loading document…" />}
         {!error && objectUrl && isImage && (
-          <img src={objectUrl} alt={fileName} className={styles.image} />
+          <img
+            src={objectUrl}
+            alt={fileName}
+            className={`${styles.image} ${fullScreen ? styles.imageFullscreen : ''}`}
+          />
         )}
         {!error && objectUrl && isPdf && (
-          <iframe src={objectUrl} title={fileName} className={styles.frame} />
+          <iframe
+            src={objectUrl}
+            title={fileName}
+            className={`${styles.frame} ${fullScreen ? styles.frameFullscreen : ''}`}
+          />
         )}
         {!error && objectUrl && !isImage && !isPdf && (
           <div className={styles.fallback}>
@@ -72,6 +81,9 @@ export function DocumentPreviewModal({
         )}
       </div>
       <div className={styles.footer}>
+        <Button variant="secondary" onClick={() => setFullScreen((value) => !value)}>
+          {fullScreen ? 'Exit Full Screen' : 'Full Screen'}
+        </Button>
         <Button disabled={!blob} onClick={() => blob && triggerDownload(blob, fileName)}>
           Download
         </Button>

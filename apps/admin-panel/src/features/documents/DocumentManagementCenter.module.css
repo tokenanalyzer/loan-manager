@@ -23,6 +23,11 @@
   color: var(--color-error);
 }
 
+.badgeReuploadRequested {
+  background: color-mix(in srgb, var(--color-accent-gold) 16%, transparent);
+  color: var(--color-accent-gold);
+}
+
 .fileName {
   font-weight: 500;
   color: var(--color-text-primary);
