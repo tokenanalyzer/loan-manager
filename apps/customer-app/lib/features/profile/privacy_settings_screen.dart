@@ -93,8 +93,13 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
                           : 'Not yet accepted.',
                       style: textTheme.bodySmall,
                     ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: () => context.push('/legal/privacy-policy'),
+                      child: const Text('Read our Privacy Policy'),
+                    ),
                     if (profile?.dataConsentAcceptedAt == null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 4),
                       OutlinedButton(
                         onPressed: _isSaving ? null : _acceptDataConsent,
                         child: const Text('Accept data processing policy'),
@@ -103,9 +108,20 @@ class _PrivacySettingsScreenState extends ConsumerState<PrivacySettingsScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 12),
+              AppCard(
+                onTap: () => context.push('/legal/consent'),
+                child: const ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.fact_check_outlined),
+                  title: Text('What am I consenting to?'),
+                  trailing: Icon(Icons.chevron_right),
+                ),
+              ),
               const SizedBox(height: 24),
               Text('Danger zone',
-                  style: textTheme.titleSmall?.copyWith(color: AppColors.error)),
+                  style:
+                      textTheme.titleSmall?.copyWith(color: AppColors.error)),
               const SizedBox(height: 8),
               AppCard(
                 onTap: () => context.push('/profile/delete-account'),

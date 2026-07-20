@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/widgets/primary_button.dart';
+import '../legal/legal_config.dart';
 
 /// "Raise a support ticket" implemented as a real `mailto:` composer
 /// opening the device's own email client, pre-filled with the
@@ -20,7 +21,7 @@ class _ContactSupportScreenState extends State<ContactSupportScreen> {
   final _messageController = TextEditingController();
   String? _errorMessage;
 
-  static const _supportEmail = 'support@loanmanager.example.com';
+  static const _supportEmail = LegalConfig.supportEmail;
 
   @override
   void dispose() {

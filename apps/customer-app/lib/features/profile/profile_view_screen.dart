@@ -66,10 +66,12 @@ class ProfileViewScreen extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 28,
-                    backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
+                    backgroundColor:
+                        colorScheme.primary.withValues(alpha: 0.12),
                     child: Text(
                       _initialsFor(user.fullName),
-                      style: textTheme.titleLarge?.copyWith(color: colorScheme.primary),
+                      style: textTheme.titleLarge
+                          ?.copyWith(color: colorScheme.primary),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -96,7 +98,9 @@ class ProfileViewScreen extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const LabeledSection(icon: Icons.verified_user_outlined, label: 'KYC status'),
+                        const LabeledSection(
+                            icon: Icons.verified_user_outlined,
+                            label: 'KYC status'),
                         const SizedBox(height: 6),
                         StatusBadge.forKycStatus(
                             profile?.kycStatus ?? 'not_submitted'),
@@ -122,7 +126,8 @@ class ProfileViewScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const LabeledSection(icon: Icons.badge_outlined, label: 'Identity documents'),
+                  const LabeledSection(
+                      icon: Icons.badge_outlined, label: 'Identity documents'),
                   const SizedBox(height: 10),
                   _FieldRow(
                     label: 'PAN',
@@ -144,16 +149,21 @@ class ProfileViewScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const LabeledSection(icon: Icons.person_outline, label: 'Personal'),
+                    const LabeledSection(
+                        icon: Icons.person_outline, label: 'Personal'),
                     const SizedBox(height: 10),
                     if (profile?.dateOfBirth != null)
-                      _FieldRow(label: 'Date of birth', value: profile!.dateOfBirth!),
+                      _FieldRow(
+                          label: 'Date of birth', value: profile!.dateOfBirth!),
                     if (profile?.gender != null)
                       _FieldRow(label: 'Gender', value: profile!.gender!),
                     if (profile?.maritalStatus != null)
-                      _FieldRow(label: 'Marital status', value: profile!.maritalStatus!),
+                      _FieldRow(
+                          label: 'Marital status',
+                          value: profile!.maritalStatus!),
                     if (profile?.fatherName != null)
-                      _FieldRow(label: "Father's name", value: profile!.fatherName!),
+                      _FieldRow(
+                          label: "Father's name", value: profile!.fatherName!),
                   ],
                 ),
               ),
@@ -161,7 +171,8 @@ class ProfileViewScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const LabeledSection(icon: Icons.home_outlined, label: 'Address'),
+                  const LabeledSection(
+                      icon: Icons.home_outlined, label: 'Address'),
                   const SizedBox(height: 8),
                   Text(
                     profile?.addressLine1 != null
@@ -174,7 +185,8 @@ class ProfileViewScreen extends ConsumerWidget {
                     Text(profile!.residenceType!, style: textTheme.bodySmall),
                   ],
                   const SizedBox(height: 14),
-                  const LabeledSection(icon: Icons.work_outline, label: 'Employment & income'),
+                  const LabeledSection(
+                      icon: Icons.work_outline, label: 'Employment & income'),
                   const SizedBox(height: 10),
                   _FieldRow(
                     label: 'Occupation',
@@ -183,7 +195,8 @@ class ProfileViewScreen extends ConsumerWidget {
                   if (profile?.companyName != null)
                     _FieldRow(label: 'Company', value: profile!.companyName!),
                   if (profile?.designation != null)
-                    _FieldRow(label: 'Designation', value: profile!.designation!),
+                    _FieldRow(
+                        label: 'Designation', value: profile!.designation!),
                   _FieldRow(
                     label: 'Monthly income',
                     value: profile?.monthlyIncome != null
@@ -211,13 +224,17 @@ class ProfileViewScreen extends ConsumerWidget {
                     if (profile?.currentMonthlyEmi != null)
                       _FieldRow(
                           label: 'Current EMI',
-                          value: Formatters.currency(profile!.currentMonthlyEmi!)),
+                          value:
+                              Formatters.currency(profile!.currentMonthlyEmi!)),
                     if (profile?.creditCardCount != null)
-                      _FieldRow(label: 'Credit cards', value: '${profile!.creditCardCount}'),
+                      _FieldRow(
+                          label: 'Credit cards',
+                          value: '${profile!.creditCardCount}'),
                     if (profile?.existingLoansOutstanding != null)
                       _FieldRow(
                           label: 'Other loans outstanding',
-                          value: Formatters.currency(profile!.existingLoansOutstanding!)),
+                          value: Formatters.currency(
+                              profile!.existingLoansOutstanding!)),
                   ],
                 ),
               ),
@@ -225,7 +242,9 @@ class ProfileViewScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const LabeledSection(icon: Icons.account_balance_outlined, label: 'Bank account'),
+                  const LabeledSection(
+                      icon: Icons.account_balance_outlined,
+                      label: 'Bank account'),
                   const SizedBox(height: 8),
                   Text(
                     profile?.bankAccountLast4 != null
@@ -242,31 +261,37 @@ class ProfileViewScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const LabeledSection(icon: Icons.contact_emergency_outlined, label: 'Nominee'),
+                  const LabeledSection(
+                      icon: Icons.contact_emergency_outlined, label: 'Nominee'),
                   const SizedBox(height: 8),
                   Text(
                     profile?.nomineeName ?? 'Not provided yet',
                     style: textTheme.bodyMedium,
                   ),
                   if (profile?.nomineeRelationship != null)
-                    Text(profile!.nomineeRelationship!, style: textTheme.bodySmall),
+                    Text(profile!.nomineeRelationship!,
+                        style: textTheme.bodySmall),
                 ],
               ),
             ),
-            if (profile?.reference1Name != null || profile?.reference2Name != null)
+            if (profile?.reference1Name != null ||
+                profile?.reference2Name != null)
               AppCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const LabeledSection(icon: Icons.contacts_outlined, label: 'References'),
+                    const LabeledSection(
+                        icon: Icons.contacts_outlined, label: 'References'),
                     const SizedBox(height: 10),
                     if (profile?.reference1Name != null)
                       _FieldRow(
-                          label: profile?.reference1Relationship ?? 'Reference 1',
+                          label:
+                              profile?.reference1Relationship ?? 'Reference 1',
                           value: profile!.reference1Name!),
                     if (profile?.reference2Name != null)
                       _FieldRow(
-                          label: profile?.reference2Relationship ?? 'Reference 2',
+                          label:
+                              profile?.reference2Relationship ?? 'Reference 2',
                           value: profile!.reference2Name!),
                   ],
                 ),
@@ -280,13 +305,23 @@ class ProfileViewScreen extends ConsumerWidget {
                 trailing: Icon(Icons.chevron_right),
               ),
             ),
+            AppCard(
+              onTap: () => context.push('/legal'),
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.gavel_outlined),
+                title: Text('Legal & Policies'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
             if (EnvConfig.firebaseEnabled)
               AppCard(
                 onTap: () => _confirmSignOut(context),
                 child: const ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.logout, color: AppColors.error),
-                  title: Text('Sign out', style: TextStyle(color: AppColors.error)),
+                  title: Text('Sign out',
+                      style: TextStyle(color: AppColors.error)),
                 ),
               ),
           ];
@@ -312,10 +347,13 @@ class ProfileViewScreen extends ConsumerWidget {
         title: const Text('Sign out?'),
         content: const Text("You'll need to sign in again to continue."),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text('Sign out', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+            child: Text('Sign out',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
