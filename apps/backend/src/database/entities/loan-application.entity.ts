@@ -47,6 +47,16 @@ export class LoanApplicationEntity extends AbstractEntity {
   @Column({ type: 'varchar', length: 64, nullable: true })
   categoryId?: string | null;
 
+  /**
+   * Request-type reservation — Fresh Loan / Top-Up / Balance Transfer /
+   * BT+Top-Up / BT+Fresh (see `LOAN_REQUEST_TYPES` in
+   * `loan-application.constants.ts`). Only `FRESH_LOAN` is exercised by
+   * any client today; the rest are reserved ahead of the Customer
+   * Benefits module.
+   */
+  @Column({ type: 'varchar', length: 20, default: 'FRESH_LOAN' })
+  requestType!: string;
+
   @Index('idx_loan_applications_status')
   @Column({ type: 'enum', enum: LoanApplicationStatus, default: LoanApplicationStatus.SUBMITTED })
   status!: LoanApplicationStatus;
@@ -102,6 +112,18 @@ export class LoanApplicationEntity extends AbstractEntity {
 
   @Column({ type: 'text', nullable: true })
   rejectionReason?: string | null;
+
+  /**
+   * Waiting-for-Customer visibility — a secondary flag, independent of
+   * `status`. Set/cleared by DocumentsService whenever any of this
+   * customer's documents are `reupload_requested`/resolved; never
+   * changes `status` itself. See LoanApplicationsService.setWaitingForCustomer.
+   */
+  @Column({ type: 'boolean', default: false })
+  waitingForCustomer!: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  waitingForCustomerSince?: Date | null;
 
   @OneToOne('LoanEntity', (loan: LoanEntity) => loan.application)
   loan?: LoanEntity;

@@ -1,4 +1,5 @@
 import {
+  IsIn,
   IsInt,
   IsNumber,
   IsOptional,
@@ -9,7 +10,11 @@ import {
   Min,
 } from 'class-validator';
 
-import { LOAN_APPLICATION_RULES } from '../loan-application.constants';
+import {
+  LOAN_APPLICATION_RULES,
+  LOAN_REQUEST_TYPES,
+  LoanRequestType,
+} from '../loan-application.constants';
 
 export class CreateLoanApplicationDto {
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -40,4 +45,14 @@ export class CreateLoanApplicationDto {
   @IsString()
   @MaxLength(64)
   categoryId?: string;
+
+  /**
+   * Request-type reservation — omit for the default (`FRESH_LOAN`).
+   * `TOP_UP`/`BALANCE_TRANSFER`/`BT_TOPUP`/`BT_FRESH` are accepted but
+   * not yet exercised by any client — reserved ahead of the Customer
+   * Benefits module.
+   */
+  @IsOptional()
+  @IsIn(LOAN_REQUEST_TYPES)
+  requestType?: LoanRequestType;
 }

@@ -83,9 +83,18 @@ export class DocumentEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', default: () => 'now()' })
   uploadedAt!: Date;
 
-  /** Document Management Center — staff verification, independent of the customer-level KYC status. */
-  @Column({ type: 'varchar', length: 16, default: 'pending' })
-  verificationStatus!: 'pending' | 'verified' | 'rejected';
+  /**
+   * Document Management Center — staff verification, independent of
+   * the customer-level KYC status. `reupload_requested` is a distinct
+   * state from `rejected`: it's the "Request Re-upload" action, always
+   * customer-notified, tracked separately so a plain internal `rejected`
+   * verdict doesn't silently page the customer too. Replacing a
+   * document in this slot resets it back to `pending` — a fresh
+   * verification cycle — with the prior verification preserved in
+   * audit history, never overwritten (see DocumentsService.upload).
+   */
+  @Column({ type: 'varchar', length: 32, default: 'pending' })
+  verificationStatus!: 'pending' | 'verified' | 'rejected' | 'reupload_requested';
 
   @Column({ type: 'text', nullable: true })
   verificationNote?: string | null;

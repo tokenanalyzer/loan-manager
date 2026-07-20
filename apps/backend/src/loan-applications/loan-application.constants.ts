@@ -33,6 +33,25 @@ export interface LoanCategoryBounds {
   processingFeePercent: number;
 }
 
+/**
+ * Request-type reservation (MPS §7/§8, Sprint 1) — only `FRESH_LOAN` is
+ * functional today; the other four are reserved ahead of the Customer
+ * Benefits module (Top-Up / Balance Transfer / BT+Top-Up / BT+Fresh) so
+ * the column/DTO shape never needs a breaking change once that module
+ * ships.
+ */
+export const LOAN_REQUEST_TYPES = [
+  'FRESH_LOAN',
+  'TOP_UP',
+  'BALANCE_TRANSFER',
+  'BT_TOPUP',
+  'BT_FRESH',
+] as const;
+
+export type LoanRequestType = (typeof LOAN_REQUEST_TYPES)[number];
+
+export const DEFAULT_LOAN_REQUEST_TYPE: LoanRequestType = 'FRESH_LOAN';
+
 export const LOAN_CATEGORY_BOUNDS: Record<string, LoanCategoryBounds> = {
   personal: {
     minAmount: 25_000,

@@ -2,11 +2,13 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { DataSource, EntityManager } from 'typeorm';
 
 import { formatInr } from '../common/utils/currency.util';
 import {
@@ -18,14 +20,28 @@ import {
   UserEntity,
   UserRole,
 } from '../database/entities';
+import { DocumentsService } from '../documents/documents.service';
 import { NotificationsService } from '../notifications/notifications.service';
 
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import { UpdateNotesDto } from './dto/update-notes.dto';
-import { LOAN_CATEGORY_BOUNDS } from './loan-application.constants';
+import { DEFAULT_LOAN_REQUEST_TYPE, LOAN_CATEGORY_BOUNDS } from './loan-application.constants';
 import { LoanApplicationRepository } from './loan-application.repository';
 import { LoanRepository } from './loan.repository';
+
+/**
+ * A decided application — approved, rejected, or withdrawn. Used only
+ * to gate the Waiting-for-Customer flag (see `setWaitingForCustomer`):
+ * distinct from `ACTIVE_LOAN_APPLICATION_STATUSES` in
+ * `loan-application.repository.ts`, which is about employee workload
+ * counting, not document state.
+ */
+const TERMINAL_LOAN_APPLICATION_STATUSES = [
+  LoanApplicationStatus.APPROVED,
+  LoanApplicationStatus.REJECTED,
+  LoanApplicationStatus.WITHDRAWN,
+];
 
 /**
  * LoanApplicationsService — the loan-form business logic: submission,
@@ -53,6 +69,10 @@ export class LoanApplicationsService {
     private readonly loanApplicationRepository: LoanApplicationRepository,
     private readonly loanRepository: LoanRepository,
     private readonly notificationsService: NotificationsService,
+    // Genuinely mutual with DocumentsService (approval validation gate
+    // needs getBlockingDocumentsForApproval) — see DocumentsModule's
+    // forwardRef(() => LoanApplicationsModule) comment.
+    @Inject(forwardRef(() => DocumentsService)) private readonly documentsService: DocumentsService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
@@ -86,6 +106,7 @@ export class LoanApplicationsService {
       requestedTermMonths: dto.requestedTermMonths,
       purpose: dto.purpose ?? null,
       categoryId: dto.categoryId ?? null,
+      requestType: dto.requestType ?? DEFAULT_LOAN_REQUEST_TYPE,
       status: LoanApplicationStatus.SUBMITTED,
       submittedAt: new Date(),
     });
@@ -185,6 +206,11 @@ export class LoanApplicationsService {
    * AuditLogEntity row, and `reviewedById`/`reviewedAt` (or
    * `queryRaisedById`/`queryRaisedAt`) are stamped from the reviewer's
    * own identity — never from client-supplied data.
+   *
+   * Approval is additionally gated on every required document (for
+   * this application's category) being `verified` — mandatory,
+   * backend-enforced (DocumentsService.getBlockingDocumentsForApproval),
+   * not a UI-only check a client could bypass.
    */
   async review(
     id: string,
@@ -212,6 +238,19 @@ export class LoanApplicationsService {
     }
     if (dto.decision === 'query' && !dto.queryMessage) {
       throw new ConflictException('queryMessage is required to raise a query.');
+    }
+
+    if (dto.decision === 'approve') {
+      const blockingDocuments = await this.documentsService.getBlockingDocumentsForApproval(
+        application.applicantId,
+        application.categoryId ?? undefined,
+      );
+      if (blockingDocuments.length > 0) {
+        throw new ConflictException({
+          message: 'Cannot approve — required documents are not fully verified.',
+          blockingDocuments,
+        });
+      }
     }
 
     // All decision-path writes run atomically. If any step throws, the
@@ -329,6 +368,51 @@ export class LoanApplicationsService {
       throw new NotFoundException('Loan application not found after update.');
     }
     return updated;
+  }
+
+  /**
+   * Waiting-for-Customer visibility — a secondary flag representing
+   * document verification status ONLY, fully independent of `status`
+   * (which represents application/business review status — e.g.
+   * QUERY_RAISED for an income/employment/banking clarification that
+   * has nothing to do with documents). The two can be true/set at the
+   * same time without contradiction: a QUERY_RAISED application can
+   * also have a `reupload_requested` document, and this flag must
+   * still reflect that accurately. Excluded only for applications that
+   * are already *decided* (`TERMINAL_LOAN_APPLICATION_STATUSES`) — a
+   * closed application never needs this, no matter what state its
+   * documents are in. `status` itself is never touched here. Documents
+   * aren't scoped to a specific application (same as
+   * `resolveQueriesForCustomer` below), so this applies across every
+   * one of the customer's non-terminal applications. Accepts an
+   * optional transactional `EntityManager` so it can participate in
+   * the caller's transaction (e.g. DocumentsService.updateVerification).
+   */
+  async setWaitingForCustomer(
+    applicantId: string,
+    waiting: boolean,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const em = manager ?? this.dataSource.manager;
+    const qb = em.createQueryBuilder().update(LoanApplicationEntity).where('applicant_id = :applicantId', {
+      applicantId,
+    });
+
+    if (waiting) {
+      await qb
+        .set({
+          waitingForCustomer: true,
+          // Only stamp the timestamp the first time it flips true — a
+          // second document going to reupload_requested while one is
+          // already outstanding shouldn't reset "how long has this
+          // been waiting" for staff.
+          waitingForCustomerSince: () => 'COALESCE(waiting_for_customer_since, now())',
+        })
+        .andWhere('status NOT IN (:...statuses)', { statuses: TERMINAL_LOAN_APPLICATION_STATUSES })
+        .execute();
+    } else {
+      await qb.set({ waitingForCustomer: false, waitingForCustomerSince: null }).execute();
+    }
   }
 
   /**

@@ -6,7 +6,13 @@
  * Admin). Dates are ISO strings (JSON over the wire), not `Date`.
  */
 
-export type DocumentVerificationStatus = 'pending' | 'verified' | 'rejected';
+/**
+ * `reupload_requested` is a distinct state from `rejected` — the
+ * "Request Re-upload" action, always customer-notified. Replacing a
+ * document resets it to `pending` (a fresh verification cycle); the
+ * prior verification is preserved in audit history, never overwritten.
+ */
+export type DocumentVerificationStatus = 'pending' | 'verified' | 'rejected' | 'reupload_requested';
 
 /** Full metadata for one uploaded document, including its verification state. */
 export interface DocumentMetadata {
@@ -50,4 +56,21 @@ export interface DocumentAuditEntry {
   actorId: string | null;
   actorName: string | null;
   createdAt: string;
+}
+
+/** Why a required document type is blocking loan approval — mirrors the backend's `BlockingDocumentReason`. */
+export type BlockingDocumentReason = 'missing' | 'pending' | 'rejected' | 'reupload_requested';
+
+/**
+ * One required document type standing in the way of approval — the
+ * backend's `PATCH /loan-applications/:id/review` returns a list of
+ * these on a failed 'approve' decision (`LoanApplicationsService.
+ * review`'s approval validation gate). Pure wire-shape mirror, no
+ * validation logic — the backend remains the single source of truth
+ * for which documents actually block approval.
+ */
+export interface BlockingRequiredDocument {
+  code: string;
+  label: string;
+  reason: BlockingDocumentReason;
 }

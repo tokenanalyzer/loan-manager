@@ -2,18 +2,32 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
+  forwardRef,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
-import { AuditLogEntity, DocumentEntity, DocumentType, UserEntity, UserRole } from '../database/entities';
+import {
+  AuditLogEntity,
+  DocumentEntity,
+  DocumentType,
+  DocumentTypeEntity,
+  UserEntity,
+  UserRole,
+} from '../database/entities';
 import { LoanApplicationsService } from '../loan-applications/loan-applications.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 
 import { DocumentTypeRepository } from './document-type.repository';
 import { DocumentRepository } from './document.repository';
+import {
+  BlockingDocumentReason,
+  BlockingRequiredDocumentDto,
+} from './dto/blocking-required-document.dto';
 import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
 import {
@@ -24,13 +38,14 @@ import {
 import { UpdateDocumentVerificationDto } from './dto/update-document-verification.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 
-/** Fixed display order for the 6 categories — the one place this app agrees "identity comes first." */
+/** Fixed display order for the categories — the one place this app agrees "identity comes first." */
 const CATEGORY_ORDER = [
   'identity',
   'income',
   'employment',
   'balance_transfer',
   'loan_specific',
+  'photo',
   'other',
 ] as const;
 
@@ -66,8 +81,14 @@ export class DocumentsService {
     private readonly documentRepository: DocumentRepository,
     private readonly documentTypeRepository: DocumentTypeRepository,
     private readonly storageService: StorageService,
+    // Genuinely mutual: LoanApplicationsService now also depends on
+    // DocumentsService (the approval validation gate) — see this
+    // module's forwardRef(() => LoanApplicationsModule) comment.
+    @Inject(forwardRef(() => LoanApplicationsService))
     private readonly loanApplicationsService: LoanApplicationsService,
+    private readonly notificationsService: NotificationsService,
     @InjectRepository(AuditLogEntity) private readonly auditLogRepository: Repository<AuditLogEntity>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -98,6 +119,21 @@ export class DocumentsService {
     return this.buildOverview(customerId, categoryId);
   }
 
+  /**
+   * Which catalog types apply to a given loan category — shared by
+   * `buildOverview` and `getBlockingDocumentsForApproval` so "what's
+   * required for this category" is defined exactly once and the two
+   * can never drift apart.
+   */
+  private getRelevantTypes(types: DocumentTypeEntity[], categoryId?: string): DocumentTypeEntity[] {
+    return types.filter((type) => {
+      if (!type.applicableLoanCategoryIds || type.applicableLoanCategoryIds.length === 0) {
+        return true;
+      }
+      return categoryId != null && type.applicableLoanCategoryIds.includes(categoryId);
+    });
+  }
+
   private async buildOverview(
     ownerId: string,
     categoryId?: string,
@@ -107,12 +143,7 @@ export class DocumentsService {
       this.documentRepository.findAllByOwner(ownerId),
     ]);
 
-    const relevantTypes = types.filter((type) => {
-      if (!type.applicableLoanCategoryIds || type.applicableLoanCategoryIds.length === 0) {
-        return true;
-      }
-      return categoryId != null && type.applicableLoanCategoryIds.includes(categoryId);
-    });
+    const relevantTypes = this.getRelevantTypes(types, categoryId);
 
     const documentsByTypeCode = new Map<string, DocumentEntity[]>();
     for (const document of documents) {
@@ -157,6 +188,52 @@ export class DocumentsService {
     const overview = new DocumentsOverviewResponseDto();
     overview.categories = categories;
     return overview;
+  }
+
+  /**
+   * Approval gate — mandatory backend rule: an application cannot be
+   * approved unless every required document (for its category) is
+   * `verified`. Reuses `getRelevantTypes`, the exact same "which types
+   * are required for this category" filter `buildOverview` uses, so
+   * this can never drift from what the customer/staff actually see.
+   * Called by LoanApplicationsService.review() before any approval
+   * write happens — enforced server-side, not just in the UI.
+   */
+  async getBlockingDocumentsForApproval(
+    ownerId: string,
+    categoryId?: string,
+  ): Promise<BlockingRequiredDocumentDto[]> {
+    const [types, documents] = await Promise.all([
+      this.documentTypeRepository.findAllActive(),
+      this.documentRepository.findAllByOwner(ownerId),
+    ]);
+
+    const requiredTypes = this.getRelevantTypes(types, categoryId).filter((type) => type.isRequired);
+
+    const documentsByTypeCode = new Map<string, DocumentEntity[]>();
+    for (const document of documents) {
+      const list = documentsByTypeCode.get(document.documentTypeCode) ?? [];
+      list.push(document);
+      documentsByTypeCode.set(document.documentTypeCode, list);
+    }
+
+    const blocking: BlockingRequiredDocumentDto[] = [];
+    for (const type of requiredTypes) {
+      const uploaded = documentsByTypeCode.get(type.code) ?? [];
+      if (uploaded.length === 0) {
+        blocking.push({ code: type.code, label: type.label, reason: 'missing' });
+        continue;
+      }
+      const notVerified = uploaded.find((doc) => doc.verificationStatus !== 'verified');
+      if (notVerified) {
+        blocking.push({
+          code: type.code,
+          label: type.label,
+          reason: notVerified.verificationStatus as BlockingDocumentReason,
+        });
+      }
+    }
+    return blocking;
   }
 
   /**
@@ -224,13 +301,60 @@ export class DocumentsService {
 
     if (existingAtSlot) {
       await this.storageService.delete(existingAtSlot.storagePath);
-      const updated = await this.documentRepository.update(existingAtSlot.id, {
-        storagePath: stored.storagePath,
-        originalFileName: file.originalname,
-        mimeType: file.mimetype,
-        fileSizeBytes: String(file.size),
-        uploadedAt: new Date(),
-      });
+
+      // Standard verification lifecycle: a replaced document is a fresh
+      // submission and re-enters verification from `pending` — the
+      // prior verification (status/note/reviewer/timestamp) is
+      // preserved in audit history, never silently overwritten. Applies
+      // uniformly to every document type (including the future Passport
+      // Photo/Selfie catalog rows — same upload path, same lifecycle).
+      const needsVerificationReset = existingAtSlot.verificationStatus !== 'pending';
+
+      let updated: DocumentEntity | null;
+      if (needsVerificationReset) {
+        updated = await this.dataSource.transaction(async (manager) => {
+          await manager.update(DocumentEntity, existingAtSlot.id, {
+            storagePath: stored.storagePath,
+            originalFileName: file.originalname,
+            mimeType: file.mimetype,
+            fileSizeBytes: String(file.size),
+            uploadedAt: new Date(),
+            verificationStatus: 'pending',
+            verificationNote: null,
+            verifiedById: null,
+            verifiedAt: null,
+          });
+
+          await manager.save(
+            manager.create(AuditLogEntity, {
+              actorId: user.id,
+              action: 'document_verification_cycle_reset',
+              entityName: 'documents',
+              entityId: existingAtSlot.id,
+              metadata: {
+                previousStatus: existingAtSlot.verificationStatus,
+                previousNote: existingAtSlot.verificationNote,
+                previousVerifiedById: existingAtSlot.verifiedById,
+                previousVerifiedAt: existingAtSlot.verifiedAt,
+                reason: 'document_replaced',
+              },
+            }),
+          );
+
+          await this.refreshWaitingForCustomerFlag(user.id, manager);
+
+          return manager.findOne(DocumentEntity, { where: { id: existingAtSlot.id } });
+        });
+      } else {
+        updated = await this.documentRepository.update(existingAtSlot.id, {
+          storagePath: stored.storagePath,
+          originalFileName: file.originalname,
+          mimeType: file.mimetype,
+          fileSizeBytes: String(file.size),
+          uploadedAt: new Date(),
+        });
+      }
+
       if (!updated) {
         throw new NotFoundException('Document not found after update.');
       }
@@ -309,7 +433,14 @@ export class DocumentsService {
     );
   }
 
-  /** Verification Status — staff-only, ownership-scoped the same way as `getDocumentForStaffOrThrow`. */
+  /**
+   * Verification Status — staff-only, ownership-scoped the same way as
+   * `getDocumentForStaffOrThrow`. `reupload_requested` always notifies
+   * the customer (Request Re-upload); `verified`/`rejected`/`pending`
+   * do not — an internal QA verdict shouldn't silently page the
+   * customer. Every transition also recomputes the owning customer's
+   * Waiting-for-Customer flag (see `refreshWaitingForCustomerFlag`).
+   */
   async updateVerification(
     documentId: string,
     staff: UserEntity,
@@ -317,28 +448,46 @@ export class DocumentsService {
   ): Promise<DocumentResponseDto> {
     const document = await this.getDocumentForStaffOrThrow(documentId, staff);
 
-    const updated = await this.documentRepository.update(documentId, {
-      verificationStatus: dto.status,
-      verificationNote: dto.note ?? null,
-      verifiedById: staff.id,
-      verifiedAt: new Date(),
-    });
-    if (!updated) {
-      throw new NotFoundException('Document not found after update.');
-    }
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(DocumentEntity, documentId, {
+        verificationStatus: dto.status,
+        verificationNote: dto.note ?? null,
+        verifiedById: staff.id,
+        verifiedAt: new Date(),
+      });
 
-    await this.auditLogRepository.save(
-      this.auditLogRepository.create({
-        actorId: staff.id,
-        action: 'document_verification_updated',
-        entityName: 'documents',
-        entityId: documentId,
-        metadata: { status: dto.status, note: dto.note ?? null, ownerId: document.ownerId },
-      }),
-    );
+      await manager.save(
+        manager.create(AuditLogEntity, {
+          actorId: staff.id,
+          action: 'document_verification_updated',
+          entityName: 'documents',
+          entityId: documentId,
+          metadata: { status: dto.status, note: dto.note ?? null, ownerId: document.ownerId },
+        }),
+      );
+
+      if (dto.status === 'reupload_requested') {
+        const documentLabel = document.label ?? document.documentTypeCode;
+        await this.notificationsService.createForUser(
+          {
+            userId: document.ownerId,
+            title: 'Document re-upload requested',
+            body: `Please re-upload your ${documentLabel}${dto.note ? `: ${dto.note}` : ''}.`,
+            relatedEntityType: 'document',
+            relatedEntityId: documentId,
+          },
+          manager,
+        );
+      }
+
+      await this.refreshWaitingForCustomerFlag(document.ownerId, manager);
+    });
 
     const withVerifier = await this.documentRepository.findOneWithVerifier(documentId);
-    return DocumentResponseDto.fromEntity(withVerifier ?? updated);
+    if (!withVerifier) {
+      throw new NotFoundException('Document not found after update.');
+    }
+    return DocumentResponseDto.fromEntity(withVerifier);
   }
 
   /** Download Audit, surfaced — every download/verification event recorded for this document. */
@@ -354,5 +503,19 @@ export class DocumentsService {
       relations: ['actor'],
     });
     return entries.map((entry) => DocumentAuditEntryDto.fromEntity(entry));
+  }
+
+  /**
+   * Waiting-for-Customer visibility — recomputed (not toggled) so it's
+   * always a true reflection of current state: does this owner have
+   * *any* document still `reupload_requested`? Runs on the same
+   * transactional `manager` as the write that triggered it, so the read
+   * sees that write (a separate, non-transactional repository query
+   * would not, since it runs on a different pooled connection).
+   */
+  private async refreshWaitingForCustomerFlag(ownerId: string, manager: EntityManager): Promise<void> {
+    const documents = await manager.find(DocumentEntity, { where: { ownerId } });
+    const stillWaiting = documents.some((doc) => doc.verificationStatus === 'reupload_requested');
+    await this.loanApplicationsService.setWaitingForCustomer(ownerId, stillWaiting, manager);
   }
 }

@@ -74,13 +74,15 @@ export enum DocumentType {
  * free-form `code`, not this enum.
  */
 
-/** The 6 fixed top-level groupings a `DocumentTypeEntity` belongs to. */
+/** The top-level groupings a `DocumentTypeEntity` belongs to. */
 export enum DocumentCategory {
   IDENTITY = 'identity',
   INCOME = 'income',
   EMPLOYMENT = 'employment',
   BALANCE_TRANSFER = 'balance_transfer',
   LOAN_SPECIFIC = 'loan_specific',
+  /** Passport photo / live selfie — DB prep for the Photo Verification feature (Sprint 2). */
+  PHOTO = 'photo',
   OTHER = 'other',
 }
 

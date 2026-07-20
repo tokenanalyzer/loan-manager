@@ -7,7 +7,7 @@ export class DocumentResponseDto {
   mimeType!: string | null;
   fileSizeBytes!: string | null;
   uploadedAt!: Date;
-  verificationStatus!: 'pending' | 'verified' | 'rejected';
+  verificationStatus!: 'pending' | 'verified' | 'rejected' | 'reupload_requested';
   verificationNote!: string | null;
   verifiedById!: string | null;
   verifiedByName!: string | null;
@@ -22,7 +22,7 @@ export class DocumentResponseDto {
     mimeType?: string | null;
     fileSizeBytes?: string | null;
     uploadedAt: Date;
-    verificationStatus?: 'pending' | 'verified' | 'rejected';
+    verificationStatus?: 'pending' | 'verified' | 'rejected' | 'reupload_requested';
     verificationNote?: string | null;
     verifiedById?: string | null;
     verifiedBy?: { fullName?: string | null } | null;

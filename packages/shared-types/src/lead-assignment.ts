@@ -13,6 +13,14 @@ export type LoanApplicationStatus =
   | 'rejected'
   | 'withdrawn';
 
+/**
+ * Request-type reservation — only `FRESH_LOAN` is exercised by any
+ * client today; the rest are reserved ahead of the Customer Benefits
+ * module (mirrors `LOAN_REQUEST_TYPES` in the backend's
+ * `loan-application.constants.ts`).
+ */
+export type LoanRequestType = 'FRESH_LOAN' | 'TOP_UP' | 'BALANCE_TRANSFER' | 'BT_TOPUP' | 'BT_FRESH';
+
 /** A loan application as shown in the Unassigned/Assigned Leads screens. `assignedToId` is null = Unassigned. */
 export interface LeadSummary {
   id: string;
@@ -22,6 +30,7 @@ export interface LeadSummary {
   requestedTermMonths: number;
   purpose: string | null;
   categoryId: string | null;
+  requestType: LoanRequestType;
   status: LoanApplicationStatus;
   submittedAt: string;
   reviewedAt: string | null;
@@ -40,6 +49,9 @@ export interface LeadSummary {
   queryRaisedByName: string | null;
   queryRaisedAt: string | null;
   queryRespondedAt: string | null;
+  /** Waiting-for-Customer visibility — independent of `status`; set when any of this customer's documents are `reupload_requested`. */
+  waitingForCustomer: boolean;
+  waitingForCustomerSince: string | null;
 }
 
 /** What the admin sees before assigning a lead: identity, live presence, and current workload. */

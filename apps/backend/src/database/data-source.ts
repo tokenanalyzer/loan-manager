@@ -25,4 +25,11 @@ export const AppDataSource = new DataSource({
   namingStrategy: new SnakeNamingStrategy(),
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,
+  // Default ('all') wraps every pending migration in a single transaction
+  // per `migration:run` invocation, which breaks the documented
+  // ALTER-TYPE-ADD-VALUE-then-use-it-later pattern already established by
+  // AddCustomerEmployeeQueryWorkflow/AddPhotoDocumentCategory: Postgres
+  // refuses to use a newly added enum value until it's actually committed.
+  // 'each' commits every migration in its own transaction instead.
+  migrationsTransactionMode: 'each',
 });

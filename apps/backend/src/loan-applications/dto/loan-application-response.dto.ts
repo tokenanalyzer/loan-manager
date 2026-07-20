@@ -25,6 +25,8 @@ export class LoanApplicationResponseDto {
   requestedTermMonths!: number;
   purpose!: string | null;
   categoryId!: string | null;
+  /** Reserved — see `LOAN_REQUEST_TYPES` in `loan-application.constants.ts`. Only `FRESH_LOAN` is functional today. */
+  requestType!: string;
   status!: LoanApplicationStatus;
   submittedAt!: Date;
   reviewedAt!: Date | null;
@@ -42,6 +44,9 @@ export class LoanApplicationResponseDto {
   queryRaisedByName!: string | null;
   queryRaisedAt!: Date | null;
   queryRespondedAt!: Date | null;
+  /** Waiting-for-Customer visibility — independent of `status`; see LoanApplicationsService.setWaitingForCustomer. */
+  waitingForCustomer!: boolean;
+  waitingForCustomerSince!: Date | null;
   loanId?: string;
   loan?: LoanResponseDto;
 
@@ -55,6 +60,7 @@ export class LoanApplicationResponseDto {
     requestedTermMonths: number;
     purpose?: string | null;
     categoryId?: string | null;
+    requestType: string;
     status: LoanApplicationStatus;
     submittedAt: Date;
     reviewedAt?: Date | null;
@@ -69,6 +75,8 @@ export class LoanApplicationResponseDto {
     queryRaisedBy?: { fullName?: string | null } | null;
     queryRaisedAt?: Date | null;
     queryRespondedAt?: Date | null;
+    waitingForCustomer: boolean;
+    waitingForCustomerSince?: Date | null;
     loan?: {
       id: string;
       loanNumber: string;
@@ -90,6 +98,7 @@ export class LoanApplicationResponseDto {
     dto.requestedTermMonths = entity.requestedTermMonths;
     dto.purpose = entity.purpose ?? null;
     dto.categoryId = entity.categoryId ?? null;
+    dto.requestType = entity.requestType;
     dto.status = entity.status;
     dto.submittedAt = entity.submittedAt;
     dto.reviewedAt = entity.reviewedAt ?? null;
@@ -104,6 +113,8 @@ export class LoanApplicationResponseDto {
     dto.queryRaisedByName = entity.queryRaisedBy?.fullName ?? null;
     dto.queryRaisedAt = entity.queryRaisedAt ?? null;
     dto.queryRespondedAt = entity.queryRespondedAt ?? null;
+    dto.waitingForCustomer = entity.waitingForCustomer;
+    dto.waitingForCustomerSince = entity.waitingForCustomerSince ?? null;
     dto.loanId = entity.loan?.id;
 
     if (entity.loan) {

@@ -9,6 +9,8 @@ interface ErrorResponseBody {
   message: string | string[];
   error: string;
   requestId?: string;
+  /** Extra structured fields a specific exception wants to carry (e.g. `blockingDocuments` on the approval-gate ConflictException) — see `extractExtraFields`. */
+  [key: string]: unknown;
 }
 
 /**
@@ -44,6 +46,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       error: isHttpException ? exception.name : 'InternalServerError',
       requestId: (request.headers['x-request-id'] as string) ?? undefined,
+      ...this.extractExtraFields(exceptionResponse),
     };
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
@@ -76,5 +79,23 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     return 'Internal server error';
+  }
+
+  /**
+   * Passes through any additional structured fields a caught exception's
+   * response object carries beyond `message` (e.g. the approval
+   * validation gate's `blockingDocuments` — see
+   * LoanApplicationsService.review). Excludes `statusCode`/`message`/
+   * `error` so a caller-supplied object can never override this filter's
+   * own authoritative values for those.
+   */
+  private extractExtraFields(exceptionResponse: string | object | null): Record<string, unknown> {
+    if (!exceptionResponse || typeof exceptionResponse !== 'object') {
+      return {};
+    }
+    const reservedKeys = new Set(['statusCode', 'message', 'error']);
+    return Object.fromEntries(
+      Object.entries(exceptionResponse as Record<string, unknown>).filter(([key]) => !reservedKeys.has(key)),
+    );
   }
 }
