@@ -35,7 +35,7 @@ class LoanCategorySelectionScreen extends StatelessWidget {
           return FadeSlideIn(
             delay: Duration(milliseconds: 40 * index),
             child: AppCard(
-              onTap: () => context.push('/loans/categories/${category.id}'),
+              onTap: () => context.push('/loans/apply?categoryId=${category.id}'),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

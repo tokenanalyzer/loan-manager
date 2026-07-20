@@ -9,11 +9,17 @@ import '../../features/auth/splash_screen.dart';
 import '../../features/documents/document_preview_screen.dart';
 import '../../features/documents/documents_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/legal/about_company_screen.dart';
+import '../../features/legal/customer_consent_screen.dart';
+import '../../features/legal/data_deletion_policy_screen.dart';
+import '../../features/legal/legal_hub_screen.dart';
+import '../../features/legal/loan_facilitation_disclaimer_screen.dart';
+import '../../features/legal/privacy_policy_screen.dart';
+import '../../features/legal/terms_conditions_screen.dart';
 import '../../features/loans/application_detail_screen.dart';
 import '../../features/loans/loan_application_flow_screen.dart';
 import '../../features/loans/loan_application_success_screen.dart';
 import '../../features/loans/loan_category_selection_screen.dart';
-import '../../features/loans/loan_details_screen.dart';
 import '../../features/loans/my_applications_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/profile/account_deletion_screen.dart';
@@ -148,14 +154,6 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/loans/categories/:categoryId',
-      name: 'loan-category-details',
-      pageBuilder: (context, state) => fadeThroughPage(
-        key: state.pageKey,
-        child: LoanDetailsScreen(categoryId: state.pathParameters['categoryId']!),
-      ),
-    ),
-    GoRoute(
       path: '/loans/apply',
       name: 'loan-application-flow',
       pageBuilder: (context, state) => fadeThroughPage(
@@ -169,7 +167,8 @@ final GoRouter appRouter = GoRouter(
       name: 'loan-application-success',
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
-        child: LoanApplicationSuccessScreen(applicationId: state.extra as String),
+        child:
+            LoanApplicationSuccessScreen(applicationId: state.extra as String),
       ),
     ),
     GoRoute(
@@ -177,7 +176,8 @@ final GoRouter appRouter = GoRouter(
       name: 'loan-application-detail',
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
-        child: ApplicationDetailScreen(applicationId: state.pathParameters['id']!),
+        child:
+            ApplicationDetailScreen(applicationId: state.pathParameters['id']!),
       ),
     ),
 
@@ -215,6 +215,52 @@ final GoRouter appRouter = GoRouter(
         key: state.pageKey,
         child: const AccountDeletionScreen(),
       ),
+    ),
+
+    // Legal & Policies (secondary).
+    GoRoute(
+      path: '/legal',
+      name: 'legal-hub',
+      pageBuilder: (context, state) =>
+          fadeThroughPage(key: state.pageKey, child: const LegalHubScreen()),
+    ),
+    GoRoute(
+      path: '/legal/privacy-policy',
+      name: 'legal-privacy-policy',
+      pageBuilder: (context, state) => fadeThroughPage(
+          key: state.pageKey, child: const PrivacyPolicyScreen()),
+    ),
+    GoRoute(
+      path: '/legal/terms',
+      name: 'legal-terms',
+      pageBuilder: (context, state) => fadeThroughPage(
+          key: state.pageKey, child: const TermsConditionsScreen()),
+    ),
+    GoRoute(
+      path: '/legal/disclaimer',
+      name: 'legal-disclaimer',
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const LoanFacilitationDisclaimerScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/legal/consent',
+      name: 'legal-consent',
+      pageBuilder: (context, state) => fadeThroughPage(
+          key: state.pageKey, child: const CustomerConsentScreen()),
+    ),
+    GoRoute(
+      path: '/legal/data-deletion',
+      name: 'legal-data-deletion',
+      pageBuilder: (context, state) => fadeThroughPage(
+          key: state.pageKey, child: const DataDeletionPolicyScreen()),
+    ),
+    GoRoute(
+      path: '/legal/about',
+      name: 'legal-about',
+      pageBuilder: (context, state) => fadeThroughPage(
+          key: state.pageKey, child: const AboutCompanyScreen()),
     ),
 
     // Support (secondary).

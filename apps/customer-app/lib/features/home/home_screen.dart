@@ -551,7 +551,7 @@ class _QuickApplyRow extends StatelessWidget {
                 width: 76,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(16),
-                  onTap: () => context.push('/loans/categories/${category.id}'),
+                  onTap: () => context.push('/loans/apply?categoryId=${category.id}'),
                   child: Column(
                     children: [
                       Container(

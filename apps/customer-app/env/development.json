@@ -2,5 +2,5 @@
   "API_BASE_URL": "http://192.168.1.9:3000/api",
   "APP_ENV": "development",
   "FIREBASE_ENABLED": true,
-  "FIREBASE_PROJECT_ID": ""
+  "FIREBASE_PROJECT_ID": "loan-manager-india"
 }

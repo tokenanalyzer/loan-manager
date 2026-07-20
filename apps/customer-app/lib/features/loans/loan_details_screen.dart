@@ -14,6 +14,11 @@ import '../../core/widgets/primary_button.dart';
 /// decision — there's no backend eligibility engine to call. Framing
 /// it this way (rather than faking a "You're eligible!" check) is a
 /// deliberate honesty choice.
+///
+/// Unused as of the pre-application-calculator removal — no route or
+/// navigation currently reaches this screen. Kept in the codebase
+/// pending a future cleanup sprint; do not wire new navigation to it
+/// without re-confirming the product decision that removed it.
 class LoanDetailsScreen extends StatelessWidget {
   const LoanDetailsScreen({required this.categoryId, super.key});
 

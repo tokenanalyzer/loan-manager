@@ -84,6 +84,7 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          if (state.isFirstStep) _ApplicationHeader(category: category),
           _StepProgress(steps: state.steps, stepIndex: state.stepIndex),
           Expanded(
             child: switch (state.currentStep) {
@@ -102,6 +103,50 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
               WizardStep.review =>
                 _ReviewStep(category: category, controller: controller, state: state),
             },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact header shown only on the wizard's first step — the product
+/// name/description now that `LoanDetailsScreen` no longer sits in
+/// front of this form, plus the low-emphasis lender disclaimer. Kept
+/// off subsequent steps so the progress bar and first field of each
+/// step stay right under the app bar, unpadded by repeated content.
+class _ApplicationHeader extends StatelessWidget {
+  const _ApplicationHeader({required this.category});
+
+  final LoanCategory? category;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final mutedStyle = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (category != null) ...[
+            Text(category!.title, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 2),
+            Text(
+              category!.description,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: mutedStyle,
+            ),
+            const SizedBox(height: 6),
+          ],
+          Text(
+            'Final loan terms, eligibility and charges are determined by the '
+            'partner lender after application review.',
+            style: mutedStyle?.copyWith(fontStyle: FontStyle.italic),
           ),
         ],
       ),
