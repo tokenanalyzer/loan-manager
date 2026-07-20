@@ -1,3 +1,83 @@
+# Work Summary — 2026-07-20
+
+Session scope: closed out **Sprint 1** (planned and implemented earlier this
+session — request-type reservation, admin-reachable document/loan routes,
+Work Status UI wiring, standardized document actions + verification
+lifecycle + approval gate, Legal module, Photo Verification DB prep),
+carried out manual on-device recovery/testing of it, then did a **Customer
+App UI simplification** pass removing the pre-application loan-calculation
+screen. Everything below was uncommitted going into today; all of it is now
+committed to `main` (not pushed).
+
+**Committed** — 5 commits on `main`, not yet pushed (`origin/main` has 3
+commits this branch doesn't, from before this session; no conflict expected,
+just needs a pull/push reconciliation before publishing):
+- `8119d80` feat(backend): Sprint 1 — request-type reservation, photo
+  verification DB prep, document lifecycle & approval gate
+- `8d06b4e` feat(admin-panel): Sprint 1 — admin lead routes, work status UI
+  wiring, standardized document actions
+- `bc71698` feat(customer-app): add Legal module (7 pages), fix Firebase
+  project id, standardize support email
+- `fdae60c` feat(customer-app): remove pre-application calculation screen,
+  go straight to application form
+- `00c0f46` docs: add Master Product Spec v1.0 and ADR for multi-slot
+  document blocking
+
+## 1. Sprint 1 (backend + admin-panel + customer-app Legal module)
+Full detail is in `docs/MASTER_PRODUCT_SPEC.md` and
+`docs/adr/0001-multi-slot-document-blocking.md`. Headline pieces: a
+mandatory backend-enforced approval gate (an application can't be approved
+while any required document is unverified — structured `blockingDocuments`
+on the 409), a standard document verification lifecycle (replacing a
+document resets it to a fresh `pending` cycle, prior verification preserved
+in audit history), a `waitingForCustomer` flag fully decoupled from the
+application's `status` (works even under `QUERY_RAISED`), admin-reachable
+`/leads/:id` routing, the previously-built-but-never-mounted Work Status UI
+(break overlay/force-resume banner) wired into `AppLayout`, and a 7-page
+static Legal module in the Customer App. Root-caused and fixed three
+non-obvious infra bugs along the way: a Postgres migration-transaction
+enum-value conflict, a silent CJS/ESM interop bug in `shared-types`'
+production bundle, and `AllExceptionsFilter` dropping custom exception
+fields like `blockingDocuments`.
+
+## 2. Customer App UI simplification (today's explicit scope)
+Removed the entire pre-application calculator screen (`LoanDetailsScreen`:
+amount range, estimated EMI, interest/fee/GST breakdown, net disbursed,
+total payable, eligibility guidance) from the user journey — this is a loan
+facilitation platform, not an EMI calculator, and showing computed figures
+before an application exists was misleading. New flow: Loan Card → tap →
+application form directly (no intermediate screen, no "Start Application"
+button — there wasn't one left in the reachable flow once the calculator
+screen was bypassed). Added a small, compact header on the form's first
+step only (product name, one-line description, italic disclaimer: "Final
+loan terms, eligibility and charges are determined by the partner lender
+after application review."), so the first input field still opens without
+extra scrolling. `LoanDetailsScreen` itself was **kept** in the codebase
+(unreachable, marked with a doc comment) rather than deleted, at the user's
+explicit request, pending a future cleanup sprint. The in-wizard live cost
+estimate, the review step's cost summary, and the post-approval
+`ApplicationDetailScreen` all reuse the same `LoanCostBreakdownCard` and
+were intentionally left untouched.
+
+Checks run: `flutter analyze` (clean), `flutter test` (1/1 passing), fresh
+debug APK built and installed on-device. Manually verified on-device: Home
+→ Quick Apply → Personal Loan opens the application form directly with the
+new header, Step 1 pre-filled from the existing profile, no scrolling
+needed to reach the first field.
+
+## 3. Known issue found during on-device testing — NOT fixed today
+While verifying the new flow on-device, an unexpected **"Personal Loan
+submitted, ₹10,00,000.00"** entry appeared on Home after a single Android
+system-back-button press (no form was filled or submitted by the
+automation). Active applications count and credit-profile completion also
+changed at the same time. A different app (unrelated to this codebase) was
+also observed briefly in the foreground during an earlier tap in the same
+session — the phone may have been in concurrent use elsewhere while it was
+being driven over `adb`, which is the leading hypothesis, but this is
+**unconfirmed**. Root cause not investigated. See `TODO_NEXT_SESSION.md`.
+
+---
+
 # Work Summary — 2026-07-16/17
 
 Session scope: Customer App **production freeze** sprint — finished the
