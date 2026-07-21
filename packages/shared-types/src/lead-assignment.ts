@@ -6,12 +6,7 @@
  */
 
 export type LoanApplicationStatus =
-  | 'submitted'
-  | 'under_review'
-  | 'query_raised'
-  | 'approved'
-  | 'rejected'
-  | 'withdrawn';
+  'submitted' | 'under_review' | 'query_raised' | 'approved' | 'rejected' | 'withdrawn';
 
 /**
  * Request-type reservation — only `FRESH_LOAN` is exercised by any

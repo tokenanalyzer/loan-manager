@@ -70,7 +70,9 @@ export function LeadsPage(): JSX.Element {
       setSelectedIds(new Set());
     } catch {
       setLeadsError(
-        nextTab === 'unassigned' ? 'Could not load unassigned leads.' : 'Could not load assigned leads.',
+        nextTab === 'unassigned'
+          ? 'Could not load unassigned leads.'
+          : 'Could not load assigned leads.',
       );
     }
   }, []);
@@ -282,7 +284,11 @@ export function LeadsPage(): JSX.Element {
                         >
                           {tab === 'unassigned' ? 'Assign' : 'Reassign'}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setHistoryForLeadId(lead.id)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setHistoryForLeadId(lead.id)}
+                        >
                           History
                         </Button>
                       </div>
@@ -304,7 +310,8 @@ export function LeadsPage(): JSX.Element {
             employees={employees}
             action={{
               mode: 'transferAll',
-              onTransferAll: (fromEmployeeId) => setAction({ kind: 'transfer-all', fromEmployeeId }),
+              onTransferAll: (fromEmployeeId) =>
+                setAction({ kind: 'transfer-all', fromEmployeeId }),
             }}
           />
         )}

@@ -1,4 +1,12 @@
-import { IsIn, IsNumber, IsOptional, IsPositive, IsString, MaxLength, ValidateIf } from 'class-validator';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 
 export type LoanApplicationDecision = 'approve' | 'reject' | 'query';
 

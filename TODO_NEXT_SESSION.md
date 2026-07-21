@@ -1,90 +1,109 @@
 # TODO — Next Session
 
-Next session's stated focus, in order: **investigate the unexpected loan
-submission found during today's (2026-07-20) testing, finish Customer App
-manual testing, then move on to Admin Panel / Employee CRM testing.**
+State as of 2026-07-21. This file replaces both prior versions (2026-07-16/17
+and 2026-07-20 snapshots, reconciled during today's merge) — see git history
+if you need either one verbatim.
 
-## 0. Commit/push status
-Everything through 2026-07-20 is committed to `main` (5 commits, see
-`WORK_SUMMARY.md`) but **not pushed** — `origin/main` has 3 commits this
-branch doesn't have yet, so a pull/merge (or rebase) is needed before
-pushing. No known conflict expected, but verify before pushing.
+## 0. Commit/push status — resolved
 
-## 1. Investigate the unexpected loan submission bug (top priority — deferred from today)
-During on-device verification of the new direct-to-form flow, a **"Personal
-Loan submitted, ₹10,00,000.00"** entry appeared on the customer's Home
-screen immediately after a single Android system-back-button press — no
-form fields were filled or submitted by the automation driving the phone.
-`Active applications` and the credit-profile completion percentage changed
-at the same moment.
-- Leading hypothesis (unconfirmed): the phone was in concurrent use by
-  someone/something else at the time (a different, unrelated app was also
-  observed briefly in the foreground during an earlier tap in the same
-  session) — i.e. this may not be an app bug at all, but a real submission
-  made by a person physically using the device mid-test.
-- Rule this in or out first via the backend/database (see item 3) before
-  assuming it's a code defect.
-- If it turns out to be real: check whether `LoanApplicationFlowController`
-  state can retain stale/partial data across navigation in a way that a
-  back-press could trigger an unintended `submit()` call — start at
-  `loan_application_flow_screen.dart`'s `_ReviewStep._submit` and the
-  controller's provider lifecycle (is it `autoDispose`? does the app
-  process actually restart between `adb install -r` and `adb shell am
-  start`, or can an old process/task be resumed with stale in-memory
-  state — `am start` reported "Activity not started, its current task has
-  been brought to the front" during today's session, meaning the existing
-  task was resumed rather than cold-started).
+Today's full session (document OR-groups, LAP groundwork, a platform-wide
+production-readiness audit and fixes across Customer App/Backend/Admin
+Panel/Employee CRM, and reconciling with the separately-merged
+`worktree-expressive-wibbling-torvalds` PR) is committed and pushed to
+`origin/main`. `flutter analyze` (both Flutter apps), the backend Jest suite,
+`tsc --noEmit` (backend/shared-types/admin-panel), and a real admin-panel
+production build all pass cleanly as of this checkpoint.
 
-## 2. Audit navigation / back-button behavior
-Related to item 1: confirm exactly what Android's system back button does
-at each step of the loan application wizard (`loan_application_flow_screen.dart`),
-particularly on step 1 where the in-app back arrow is intentionally `null`
-(`state.isFirstStep`). Confirm it only pops the route to Home and can never
-advance/submit the wizard.
+## 1. The "unexpected loan submission" mystery (2026-07-20) — likely resolved, not yet confirmed
 
-## 3. Verify backend/database state
-Query the dev database directly (`apps/backend` has the `pg` package
-already set up for this — see today's session for the working connection
-pattern) for customer "Zainul" (`id 6badf8fe-1813-447e-8a32-b5b29c08b216`):
-confirm whether a real `loan_applications` row for ₹10,00,000 (Personal
-Loan) now exists, its `created_at` timestamp, and cross-check against
-`audit_log` for who/what created it. This determines whether item 1 is a
-real code bug or an actual user action.
+A "Personal Loan submitted, ₹10,00,000.00" entry appeared on a customer's
+Home screen after a single Android back-button press, with no form
+submitted. Today's audit found and fixed the actual, reproducible cause of
+this class of bug: `LoanApplicationFlowScreen` had no `PopScope`, so
+Android's hardware back button popped the *entire wizard route* from any
+step instead of stepping back one page (now fixed — mirrors `AppShell`'s
+existing `PopScope` pattern). This doesn't prove that specific incident was
+this bug (rule out via `audit_log`/`loan_applications.created_at` for that
+customer if it recurs), but it's the most likely explanation and is now
+fixed regardless.
 
-## 4. Complete remaining Customer App manual testing
-Continuing today's on-device verification (which only reached the Personal
-Loan quick-apply card):
-- Confirm the direct-to-form flow for the other 5 loan categories (Home,
-  Business, Education, Vehicle, Gold), from both entry points (Loans tab
-  grid and Home's Quick Apply row).
-- Confirm the document-upload step works end-to-end (this was the original,
-  still-unresolved verification goal from earlier in the week — an
-  ambiguous "documents needed" count change and a black screenshot were
-  seen then, unrelated to today's UI change).
-- Walk a full application through to submission at least once and confirm
-  it appears correctly in the Admin Panel / Employee Portal.
-- Re-verify the Legal module's 7 pages on-device (code-reviewed only so
-  far, per Sprint 1).
+## 2. Phone Authentication — **frozen, do not touch**
 
-## 5. After Customer App testing is complete: Admin Panel + Employee CRM
-Move on to manually testing the Sprint 1 admin-panel/employee-portal
-changes: admin-reachable `/leads/:id` routing, Work Status UI (break
-overlay/force-resume banner) for employees, the standardized document
-actions (Full Screen View, Request Re-upload, "Waiting for Customer"
-banner), and the approval validation gate (attempt to approve an
-application with an unverified required document and confirm it's
-blocked with the correct `blockingDocuments` message).
+Approved and frozen 2026-07-21 after a full audit (see project memory
+`project_phone_auth_frozen.md`). The `https://loan-manager-india.firebaseapp.com/...`
+browser/Custom-Tabs step during OTP is Firebase's own documented security
+fallback (confirmed via Firebase's own docs + our resolved Gradle dependency
+tree — `androidx.browser` is a direct dependency of `firebase-auth` itself,
+not our code), triggered because the app is currently sideloaded rather than
+Play-Store-distributed. SHA-1 and SHA-256 are both correctly registered.
+**Do not re-investigate or modify** this module unless a reproducible issue
+appears after installing via a real Google Play Internal Testing build.
 
-## 6. Known limitations (carried over, still true)
-- `apps/customer-app/env/production.json` has `FIREBASE_ENABLED: false`
-  with no real project ID — must be a real, configured Firebase project
-  before actual production release.
-- No automated test coverage beyond a handful of unit/smoke tests.
-- **CIBIL/credit bureau integration** — Home's "Credit Profile" card uses
-  an honest "Profile Strength" meter, not a real score. Separate vendor/
+## 3. Manual/external tasks still needed before a real production launch
+
+- **Google Play Internal Testing build** — needed to confirm Phone Auth's
+  browser fallback disappears as expected (see item 2).
+- **Release signing** — the current APK is debug-signed; a real release
+  keystore + its SHA registered in Firebase Console is still needed.
+- **Real production environment values** — `env/staging.json`/
+  `env/production.json` (both Flutter apps) still have placeholder API
+  domains; backend `CORS_ORIGIN` needs a real production origin once those
+  domains exist.
+- **Employee App's own Firebase registration** — it has no `google-services.json`/
+  `GoogleService-Info.plist` of its own yet (separate Android package/iOS
+  bundle id from the Customer App); Email/Password sign-in needs confirming
+  as enabled for it.
+- **Full manual click-through** with a real phone number for OTP — everything
+  short of that has been verified (static analysis, live logcat on a real
+  device, one real-device install/launch session), but a true end-to-end
+  human pass is still worth doing.
+
+## 4. Known, deliberately-deferred architectural items
+
+- Admin-facing "list everything" endpoints (all loan applications, all
+  customers, all unassigned leads) have no pagination yet — fine at current
+  data volume, a real concern at production scale. Fixing this properly is
+  an API contract change needing coordinated backend + admin-panel work, not
+  a quick patch — noted, not fabricated as a quick fix.
+- The Documents-step required-document gate is enforced server-side at
+  **approval** time (`LoanApplicationsService.review`'s blocking-documents
+  check) but not at **submission** time — a customer can still submit an
+  application with zero documents uploaded; the requirement only blocks the
+  employee/admin from approving it later. Low urgency with one client today,
+  worth closing before a second submit-endpoint consumer appears.
+- Firebase Storage is not integrated — documents are stored on local disk
+  (`LocalDiskStorageService`); a real Storage bucket already exists on the
+  Firebase project but nothing uses it yet. Deliberately deferred, not an
+  oversight.
+- Loan Against Property (LAP) as a full new loan category (its own
+  `LOAN_CATEGORY_BOUNDS` entry, `kLoanCategories` entry, UI/routing) was
+  explicitly deferred — see the local Rewards/LAP planning notes from
+  2026-07-21 for the already-designed shape; the OR-group document-catalog
+  work landed today is what makes adding it later a config-only change.
+- **Rewards System** — fully designed (backend module, admin management UI,
+  customer app feature) but explicitly not implemented; the plan exists only
+  as a local Claude Code plan file from today's session, not committed
+  anywhere in-repo. Revisit when the user says so.
+
+## 5. Roadmap (per user's stated direction, still not started)
+
+Beyond the items above, the stated next phases are: **DSA App** (loan
+officer/agent-facing app), **Bank Portal** (real partner bank onboarding),
+**Super Admin Panel** (builds on `apps/admin-panel`). See
+`docs/MASTER_PRODUCT_SPEC.md` — the frozen single source of truth for
+anything beyond this file's immediate scope.
+
+## 6. Known limitations (updated — some of these were stale)
+
+- Firebase **is** a real, configured project (`loan-manager-india`) for the
+  backend and Customer App dev tier — this line was stale in prior versions
+  of this file. What's still genuinely missing is covered in §3 above.
+- No automated test coverage beyond a handful of unit/widget smoke tests.
+- **CIBIL/credit bureau integration** — Home's "Credit Profile" card uses an
+  honest "Profile Strength" meter, not a real score. Separate vendor/
   compliance workstream.
-- **Payments/repayment tracking** — loans model disbursement but not
+- **Payments/repayment tracking** — loans model disbursement but not a
   repayment schedule/collections.
-- Full target-state roadmap (DSA App, Bank Portal, Super Admin Panel) is in
-  `docs/MASTER_PRODUCT_SPEC.md`, now the frozen single source of truth —
-  prefer it over this file for anything beyond the immediate next session.
+- Dev-DB has a handful of duplicate test loan applications from earlier
+  sessions — harmless, worth clearing before demoing so "Recent activity"
+  doesn't look cluttered. Still untouched intentionally.

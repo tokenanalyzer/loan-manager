@@ -38,7 +38,7 @@ export class EmployeeStatusSummaryResponseDto {
 
     const isPresent = Boolean(
       entity.lastActiveAt &&
-        Date.now() - entity.lastActiveAt.getTime() <= PRESENCE_ONLINE_THRESHOLD_MINUTES * 60_000,
+      Date.now() - entity.lastActiveAt.getTime() <= PRESENCE_ONLINE_THRESHOLD_MINUTES * 60_000,
     );
     const rawStatus = entity.employeeProfile?.currentStatus ?? WorkStatus.OFFLINE;
     dto.status = isPresent ? rawStatus : WorkStatus.OFFLINE;

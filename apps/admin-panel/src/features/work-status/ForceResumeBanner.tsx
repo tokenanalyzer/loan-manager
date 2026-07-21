@@ -13,12 +13,7 @@ export function ForceResumeBanner({
   return (
     <div className={styles.banner} role="status">
       <span>{message}</span>
-      <button
-        type="button"
-        className={styles.closeButton}
-        onClick={onDismiss}
-        aria-label="Dismiss"
-      >
+      <button type="button" className={styles.closeButton} onClick={onDismiss} aria-label="Dismiss">
         <Icon name="close" size={16} />
       </button>
     </div>

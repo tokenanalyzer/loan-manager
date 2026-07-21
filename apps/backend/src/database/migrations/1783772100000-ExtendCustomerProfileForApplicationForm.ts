@@ -14,9 +14,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * applications, same as the existing address/employment/income/bank/
  * nominee fields) rather than a new per-application table.
  */
-export class ExtendCustomerProfileForApplicationForm1783772100000
-  implements MigrationInterface
-{
+export class ExtendCustomerProfileForApplicationForm1783772100000 implements MigrationInterface {
   name = 'ExtendCustomerProfileForApplicationForm1783772100000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -14,7 +14,8 @@ import { DocumentTypeEntity } from '../database/entities';
 @Injectable()
 export class DocumentTypeRepository extends BaseRepository<DocumentTypeEntity> {
   constructor(
-    @InjectRepository(DocumentTypeEntity) private readonly typeRepository: Repository<DocumentTypeEntity>,
+    @InjectRepository(DocumentTypeEntity)
+    private readonly typeRepository: Repository<DocumentTypeEntity>,
   ) {
     super(typeRepository);
   }

@@ -120,9 +120,7 @@ export class CustomerProfileResponseDto {
     dto.monthlyIncome = entity.monthlyIncome ?? null;
     dto.marketingConsent = entity.marketingConsent ?? false;
     dto.dataConsentAcceptedAt = entity.dataConsentAcceptedAt ?? null;
-    dto.bankAccountLast4 = entity.bankAccountNumber
-      ? entity.bankAccountNumber.slice(-4)
-      : null;
+    dto.bankAccountLast4 = entity.bankAccountNumber ? entity.bankAccountNumber.slice(-4) : null;
     dto.bankIfscCode = entity.bankIfscCode ?? null;
     dto.bankAccountHolderName = entity.bankAccountHolderName ?? null;
     dto.nomineeName = entity.nomineeName ?? null;

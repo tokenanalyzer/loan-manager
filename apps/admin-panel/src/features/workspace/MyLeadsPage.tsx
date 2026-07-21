@@ -145,7 +145,9 @@ export function MyLeadsPage(): JSX.Element {
                         </span>
                       </td>
                       <td>{new Date(lead.submittedAt).toLocaleDateString()}</td>
-                      <td>{lead.assignedAt ? new Date(lead.assignedAt).toLocaleDateString() : '—'}</td>
+                      <td>
+                        {lead.assignedAt ? new Date(lead.assignedAt).toLocaleDateString() : '—'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

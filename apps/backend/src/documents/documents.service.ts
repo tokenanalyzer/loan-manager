@@ -87,7 +87,8 @@ export class DocumentsService {
     @Inject(forwardRef(() => LoanApplicationsService))
     private readonly loanApplicationsService: LoanApplicationsService,
     private readonly notificationsService: NotificationsService,
-    @InjectRepository(AuditLogEntity) private readonly auditLogRepository: Repository<AuditLogEntity>,
+    @InjectRepository(AuditLogEntity)
+    private readonly auditLogRepository: Repository<AuditLogEntity>,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
@@ -98,10 +99,7 @@ export class DocumentsService {
    * types tagged for that category; omit it for the general
    * (non-application-scoped) Documents tab view.
    */
-  async getOverview(
-    user: UserEntity,
-    categoryId?: string,
-  ): Promise<DocumentsOverviewResponseDto> {
+  async getOverview(user: UserEntity, categoryId?: string): Promise<DocumentsOverviewResponseDto> {
     return this.buildOverview(user.id, categoryId);
   }
 
@@ -272,7 +270,9 @@ export class DocumentsService {
       const requiredMembers = members.filter((t) => t.isRequired);
       if (requiredMembers.length === 0) continue;
 
-      const uploadsAcrossGroup = requiredMembers.flatMap((t) => documentsByTypeCode.get(t.code) ?? []);
+      const uploadsAcrossGroup = requiredMembers.flatMap(
+        (t) => documentsByTypeCode.get(t.code) ?? [],
+      );
       const anyVerified = uploadsAcrossGroup.some((doc) => doc.verificationStatus === 'verified');
       if (anyVerified) continue;
 
@@ -568,7 +568,10 @@ export class DocumentsService {
    * sees that write (a separate, non-transactional repository query
    * would not, since it runs on a different pooled connection).
    */
-  private async refreshWaitingForCustomerFlag(ownerId: string, manager: EntityManager): Promise<void> {
+  private async refreshWaitingForCustomerFlag(
+    ownerId: string,
+    manager: EntityManager,
+  ): Promise<void> {
     const documents = await manager.find(DocumentEntity, { where: { ownerId } });
     const stillWaiting = documents.some((doc) => doc.verificationStatus === 'reupload_requested');
     await this.loanApplicationsService.setWaitingForCustomer(ownerId, stillWaiting, manager);

@@ -131,9 +131,7 @@ export function NotificationsPage(): JSX.Element {
                     .join(' ')}
                   onClick={() => void handleRowClick(notification)}
                   disabled={busyId === notification.id}
-                  aria-label={
-                    navigable ? `${notification.title} — open lead` : notification.title
-                  }
+                  aria-label={navigable ? `${notification.title} — open lead` : notification.title}
                 >
                   <span
                     className={notification.isRead ? styles.readDot : styles.unreadDot}

@@ -48,9 +48,7 @@ export class LeadAssignmentService {
   }
 
   async getEmployeesWithWorkload(): Promise<EmployeeWorkloadResponseDto[]> {
-    const employees = await this.userRepository.findAllByRoleWithEmployeeProfile(
-      UserRole.EMPLOYEE,
-    );
+    const employees = await this.userRepository.findAllByRoleWithEmployeeProfile(UserRole.EMPLOYEE);
 
     const dayStart = new Date();
     dayStart.setUTCHours(0, 0, 0, 0);
@@ -104,9 +102,7 @@ export class LeadAssignmentService {
           previousAssigneeId,
           newAssigneeId: employeeId,
           assignedById: admin.id,
-          action: previousAssigneeId
-            ? LeadAssignmentAction.REASSIGN
-            : LeadAssignmentAction.ASSIGN,
+          action: previousAssigneeId ? LeadAssignmentAction.REASSIGN : LeadAssignmentAction.ASSIGN,
         }),
       );
 

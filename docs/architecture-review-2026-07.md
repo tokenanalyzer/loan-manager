@@ -2,7 +2,7 @@
 
 Written during the India-localization + production-readiness pass (currency, EMI,
 KYC/PAN/Aadhaar, India-specific validation, bug fixes). This is a set of
-recommendations for *future* work, not a description of what this pass built —
+recommendations for _future_ work, not a description of what this pass built —
 see the git history around this date for that. Organized by priority.
 
 ## 1. Replace the loan-category "product catalog" with a real table
@@ -35,7 +35,7 @@ existed since the initial schema migration and has **zero code anywhere**
 touching it — no repayment-schedule generation on loan approval, no payment
 recording endpoint, no service, no UI in either app. "Loan Tracking" in this
 pass means showing the EMI/principal/rate/maturity-date the loan was
-*approved* with (see `LoanApplicationResponseDto.loan`) — it does not mean
+_approved_ with (see `LoanApplicationResponseDto.loan`) — it does not mean
 tracking actual repayments against that schedule.
 
 **Recommendation:** a `PaymentsModule` (schedule generation on loan approval,

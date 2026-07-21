@@ -1,4 +1,8 @@
-import { BREAK_WORK_STATUSES, type MyWorkStatus, type WorkStatus } from '@loan-manager/shared-types';
+import {
+  BREAK_WORK_STATUSES,
+  type MyWorkStatus,
+  type WorkStatus,
+} from '@loan-manager/shared-types';
 import { useEffect, useRef, useState } from 'react';
 
 import { Icon } from '../../components/ui/Icon';

@@ -63,9 +63,7 @@ export function AdminDashboardPage(): JSX.Element {
       total: leads.length,
       unassigned: leads.filter((lead) => lead.assignedToId === null).length,
       assigned: leads.filter((lead) => lead.assignedToId !== null).length,
-      pendingReview: leads.filter((lead) =>
-        REVIEWABLE_STATUSES.includes(lead.status),
-      ).length,
+      pendingReview: leads.filter((lead) => REVIEWABLE_STATUSES.includes(lead.status)).length,
       queryRaised: leads.filter((lead) => lead.status === 'query_raised').length,
       approvedToday: leads.filter(
         (lead) => lead.status === 'approved' && lead.reviewedAt && isToday(lead.reviewedAt),

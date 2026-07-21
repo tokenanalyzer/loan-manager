@@ -10,9 +10,7 @@ export function NotFoundPage(): JSX.Element {
       icon="inbox"
       title="Page not found"
       message="The page you're looking for doesn't exist or may have been moved."
-      action={
-        <Button onClick={() => navigate('/', { replace: true })}>Back to dashboard</Button>
-      }
+      action={<Button onClick={() => navigate('/', { replace: true })}>Back to dashboard</Button>}
     />
   );
 }
