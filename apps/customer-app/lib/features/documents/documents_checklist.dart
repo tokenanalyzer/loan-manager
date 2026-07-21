@@ -165,6 +165,10 @@ class DocumentsChecklist extends ConsumerWidget {
                     type: group.types[i],
                     style: DocumentCategoryStyle.forCategory(group.category),
                     uploadState: uploadState,
+                    isSatisfiedByAlternative: group.types[i].requirementGroupCode != null &&
+                        !group.types[i].isComplete &&
+                        overview.isTypeSatisfied(group.types[i]),
+                    alternativeLabels: overview.alternativeLabelsFor(group.types[i]),
                     onUpload: (slotIndex) =>
                         _pickAndUpload(context, ref, group.types[i].code, slotIndex),
                     onDelete: (documentId) => _confirmDelete(context, ref, documentId),
@@ -189,6 +193,8 @@ class _DocumentTypeCard extends StatelessWidget {
     required this.onUpload,
     required this.onDelete,
     required this.onPreview,
+    this.isSatisfiedByAlternative = false,
+    this.alternativeLabels = const [],
   });
 
   final DocumentTypeOverview type;
@@ -197,6 +203,15 @@ class _DocumentTypeCard extends StatelessWidget {
   final void Function(int slotIndex) onUpload;
   final void Function(String documentId) onDelete;
   final void Function(AppDocument document) onPreview;
+
+  /// True when this type belongs to an OR-group and a *different*
+  /// member already satisfies it — the customer doesn't need to upload
+  /// this one too, so the badge should say so rather than "Required".
+  final bool isSatisfiedByAlternative;
+
+  /// Labels of this type's OR-group alternatives (e.g. "ITR" for
+  /// Salary Slip in the `income_proof` group) — empty when ungrouped.
+  final List<String> alternativeLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -218,9 +233,25 @@ class _DocumentTypeCard extends StatelessWidget {
                 child: Text(type.label, style: textTheme.titleSmall, maxLines: 2, overflow: TextOverflow.ellipsis),
               ),
               const SizedBox(width: 8),
-              _RequirementBadge(isRequired: type.isRequired),
+              _RequirementBadge(
+                isRequired: type.isRequired,
+                isSatisfiedByAlternative: isSatisfiedByAlternative,
+              ),
             ],
           ),
+          if (alternativeLabels.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 46),
+              child: Text(
+                'or upload: ${alternativeLabels.join(', ')}',
+                style: textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
           if (type.isMultiSlot) ...[
             const SizedBox(height: 4),
             Padding(
@@ -253,13 +284,21 @@ class _DocumentTypeCard extends StatelessWidget {
 }
 
 class _RequirementBadge extends StatelessWidget {
-  const _RequirementBadge({required this.isRequired});
+  const _RequirementBadge({required this.isRequired, this.isSatisfiedByAlternative = false});
 
   final bool isRequired;
 
+  /// True when an OR-group sibling already satisfies this requirement —
+  /// shown as "Satisfied" (success tint) instead of "Required" (warning
+  /// tint), since the customer doesn't need to also upload this one.
+  final bool isSatisfiedByAlternative;
+
   @override
   Widget build(BuildContext context) {
-    final color = isRequired ? AppColors.warning : Theme.of(context).colorScheme.onSurfaceVariant;
+    final label = isSatisfiedByAlternative ? 'Satisfied' : (isRequired ? 'Required' : 'Optional');
+    final color = isSatisfiedByAlternative
+        ? AppColors.success
+        : (isRequired ? AppColors.warning : Theme.of(context).colorScheme.onSurfaceVariant);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
@@ -267,7 +306,7 @@ class _RequirementBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
-        isRequired ? 'Required' : 'Optional',
+        label,
         style: Theme.of(context)
             .textTheme
             .labelSmall

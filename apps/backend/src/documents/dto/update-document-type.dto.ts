@@ -7,6 +7,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -54,4 +55,13 @@ export class UpdateDocumentTypeDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  /** See `CreateDocumentTypeDto.requirementGroupCode`. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  @Matches(/^[a-z][a-z0-9_]*$/, {
+    message: 'requirementGroupCode must be lowercase snake_case (e.g. income_proof).',
+  })
+  requirementGroupCode?: string;
 }

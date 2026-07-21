@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -88,7 +90,7 @@ class _DashboardContent extends ConsumerWidget {
         _Header(data: data),
         const SizedBox(height: 16),
         FadeSlideIn(
-          child: _CreditAndEligibilityHero(data: data, offers: offers),
+          child: _LoanCategoryHero(data: data),
         ),
         const SizedBox(height: 14),
         FadeSlideIn(
@@ -209,142 +211,173 @@ class _Header extends StatelessWidget {
   }
 }
 
-/// Combines Credit Profile and Loan Eligibility — the two facts a
-/// returning customer most wants at a glance — into one premium
-/// [HeroCard] instead of two competing full-width cards.
-class _CreditAndEligibilityHero extends StatelessWidget {
-  const _CreditAndEligibilityHero({required this.data, required this.offers});
+/// Rotating carousel through every enabled loan category
+/// (`kLoanCategories` — the catalog itself is what's "enabled"), each
+/// page showing that category's own eligible amount — informative,
+/// not a generic promo banner. Auto-advances every 4 seconds; manual
+/// swipes reset the timer's starting point rather than fighting it.
+/// Credit Profile (shown here previously) moved into the stat row
+/// below (`_OverviewStatRow`) so no information was lost.
+class _LoanCategoryHero extends StatefulWidget {
+  const _LoanCategoryHero({required this.data});
 
   final HomeDashboardData data;
-  final List<EligibilityOffer> offers;
+
+  @override
+  State<_LoanCategoryHero> createState() => _LoanCategoryHeroState();
+}
+
+class _LoanCategoryHeroState extends State<_LoanCategoryHero> {
+  final _pageController = PageController();
+  Timer? _timer;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!_pageController.hasClients) return;
+      final next = (_currentPage + 1) % kLoanCategories.length;
+      _pageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final eligibility = widget.data.eligibilityByCategory;
+
+    return HeroCard(
+      onTap: () {
+        final category = kLoanCategories[_currentPage];
+        context.push('/loans/apply?categoryId=${category.id}');
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            // Confirmed via a real-device run: 112 overflowed by 17px
+            // once real content (icon row + eligible-amount block +
+            // 2-line description) rendered at that device's actual font
+            // scale — 136 clears it with a safety margin for other
+            // devices/accessibility text-scale settings.
+            height: 136,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: kLoanCategories.length,
+              onPageChanged: (index) => setState(() => _currentPage = index),
+              itemBuilder: (context, index) {
+                final category = kLoanCategories[index];
+                return _HeroCategoryPage(
+                  category: category,
+                  eligibleAmount: eligibility[category.id],
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              for (var i = 0; i < kLoanCategories.length; i++)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: i == _currentPage ? 16 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: i == _currentPage ? 0.9 : 0.4),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeroCategoryPage extends StatelessWidget {
+  const _HeroCategoryPage({required this.category, required this.eligibleAmount});
+
+  final LoanCategory category;
+  final double? eligibleAmount;
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    final strength = data.profileStrength;
-    final nudge = data.profileStrengthNudge;
-    final topOffer = offers.isNotEmpty ? offers.first : null;
+    final style = CategoryStyle.forId(category.id);
 
-    return HeroCard(
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => context.go('/profile'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Credit profile',
-                        style: textTheme.labelMedium?.copyWith(color: Colors.white70)),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              TweenAnimationBuilder<double>(
-                                tween: Tween(begin: 0, end: strength),
-                                duration: const Duration(milliseconds: 900),
-                                curve: Curves.easeOutCubic,
-                                builder: (context, animated, _) => CircularProgressIndicator(
-                                  value: animated,
-                                  strokeWidth: 4,
-                                  backgroundColor: Colors.white.withValues(alpha: 0.25),
-                                  valueColor: const AlwaysStoppedAnimation(Colors.white),
-                                ),
-                              ),
-                              Text('${(strength * 100).round()}%',
-                                  style: textTheme.labelSmall
-                                      ?.copyWith(fontWeight: FontWeight.w700)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            nudge ?? 'Complete',
-                            style: textTheme.bodySmall?.copyWith(color: Colors.white70),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (nudge != null) ...[
-                      const SizedBox(height: 6),
-                      GestureDetector(
-                        onTap: () => _showCreditTips(context),
-                        child: Text(
-                          'View tips',
-                          style: textTheme.labelSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
             Container(
-              width: 1,
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              color: Colors.white.withValues(alpha: 0.20),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.16),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(style.icon, size: 20, color: Colors.white),
             ),
+            const SizedBox(width: 10),
             Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => topOffer != null
-                    ? context.push('/loans/apply?categoryId=${topOffer.category.id}')
-                    : context.push('/profile/edit'),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('Eligible up to',
-                            style: textTheme.labelMedium?.copyWith(color: Colors.white70)),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: () => _showEligibilityExplanation(context),
-                          child: const Icon(Icons.info_outline, size: 14, color: Colors.white70),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    topOffer != null
-                        ? FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: AnimatedCurrency(
-                              value: topOffer.eligibleAmount,
-                              style: textTheme.titleLarge?.copyWith(color: Colors.white),
-                            ),
-                          )
-                        : Text('Add income',
-                            style: textTheme.titleMedium?.copyWith(color: Colors.white)),
-                    const SizedBox(height: 2),
-                    Text(
-                      topOffer != null ? topOffer.category.title : 'to see your eligibility',
-                      style: textTheme.bodySmall?.copyWith(color: Colors.white70),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+              child: Text(
+                category.title,
+                style: textTheme.titleMedium?.copyWith(color: Colors.white),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 10),
+        if (eligibleAmount != null) ...[
+          Row(
+            children: [
+              Text('Eligible up to',
+                  style: textTheme.labelMedium?.copyWith(color: Colors.white70)),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: () => _showEligibilityExplanation(context),
+                child: const Icon(Icons.info_outline, size: 14, color: Colors.white70),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: AnimatedCurrency(
+              value: eligibleAmount!,
+              style: textTheme.titleLarge?.copyWith(color: Colors.white),
+            ),
+          ),
+        ] else
+          Text(
+            'Add your income to see your eligibility',
+            style: textTheme.bodyMedium?.copyWith(color: Colors.white),
+          ),
+        const SizedBox(height: 6),
+        Text(
+          category.description,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+        ),
+      ],
     );
   }
 }
@@ -436,11 +469,10 @@ class _OverviewStatRow extends StatelessWidget {
     final activeTotal =
         active.fold<double>(0, (sum, app) => sum + (double.tryParse(app.requestedAmount) ?? 0));
     final nextMaturity = data.nextMaturityDate;
-    final missingDocs = documentsAsync.valueOrNull?.categories
-            .expand((group) => group.types)
-            .where((type) => type.isRequired && !type.isComplete)
-            .length ??
-        0;
+    final overview = documentsAsync.valueOrNull;
+    final missingDocs = overview != null
+        ? overview.requiredSummary.total - overview.requiredSummary.satisfied
+        : 0;
     final activeCaption = active.isEmpty
         ? null
         : (missingDocs > 0
@@ -451,6 +483,16 @@ class _OverviewStatRow extends StatelessWidget {
       child: Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Expanded(
+          child: _StatChip(
+            icon: Icons.verified_user_outlined,
+            label: 'Credit profile',
+            value: '${(data.profileStrength * 100).round()}%',
+            caption: data.profileStrengthNudge,
+            onTap: () => _showCreditTips(context),
+          ),
+        ),
+        const SizedBox(width: 12),
         Expanded(
           child: _StatChip(
             icon: Icons.description_outlined,

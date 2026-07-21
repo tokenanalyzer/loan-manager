@@ -43,6 +43,8 @@ export interface DocumentTypeOverview {
   isRequired: boolean;
   maxUploads: number;
   slots: DocumentSlot[];
+  /** OR-group identifier — types sharing this code are alternatives of one requirement. */
+  requirementGroupCode?: string;
 }
 
 export interface DocumentsOverview {

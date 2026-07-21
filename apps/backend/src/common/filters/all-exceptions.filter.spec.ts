@@ -82,4 +82,19 @@ describe('AllExceptionsFilter', () => {
     expect(body.message).toBe('Simple message');
     expect(body.blockingDocuments).toBeUndefined();
   });
+
+  it('never leaks a raw unexpected error message to the client, only a generic 500 message', () => {
+    const filter = buildFilter();
+    const { host, json, status } = buildHost();
+
+    filter.catch(
+      new Error('duplicate key value violates unique constraint "uq_loans_loan_number"'),
+      host,
+    );
+
+    expect(status).toHaveBeenCalledWith(500);
+    const body = json.mock.calls[0][0];
+    expect(body.message).toBe('Internal server error');
+    expect(body.error).toBe('InternalServerError');
+  });
 });

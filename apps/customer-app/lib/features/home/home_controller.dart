@@ -136,6 +136,34 @@ class HomeDashboardData {
     return offers;
   }
 
+  /// Per-category eligible amount for *every* category in
+  /// `kLoanCategories` — unlike [eligibilityOffers], this doesn't
+  /// filter out already-applied-for categories or sort, since the Home
+  /// hero carousel rotates through every enabled category regardless
+  /// of application status. `null` means "not computable yet" (no
+  /// income declared, or the estimate falls below that category's own
+  /// minimum) — the hero shows a prompt to add income instead of a
+  /// number in that case.
+  Map<String, double?> get eligibilityByCategory {
+    final income = double.tryParse(customerProfile?.monthlyIncome ?? '');
+
+    return {
+      for (final category in kLoanCategories)
+        category.id: income == null || income <= 0
+            ? null
+            : (() {
+                final amount = estimateEligibleAmount(
+                  monthlyIncome: income,
+                  existingMonthlyEmiObligations: totalMonthlyEmi,
+                  tenureMonths: category.maxTermMonths,
+                  annualRatePercent: category.indicativeRateMidpoint,
+                  categoryMaxAmount: category.maxAmount,
+                );
+                return amount >= category.minAmount ? amount : null;
+              })(),
+    };
+  }
+
   /// Applications merged with notifications, newest first — a single
   /// real activity feed rather than repeating the same data in
   /// separate sections.
@@ -210,10 +238,7 @@ class HomeController extends AsyncNotifier<HomeDashboardData> {
     final customerProfile =
         profileResult.when(success: (data) => data, failure: (_) => null);
     final documentsComplete = documentsResult.when(
-      success: (overview) => overview.categories
-          .expand((group) => group.types)
-          .where((type) => type.isRequired)
-          .every((type) => type.isComplete),
+      success: (overview) => overview.allRequiredSatisfied,
       failure: (_) => false,
     );
 

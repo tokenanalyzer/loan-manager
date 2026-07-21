@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsNumber,
@@ -8,13 +9,18 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 import {
   LOAN_APPLICATION_RULES,
   LOAN_REQUEST_TYPES,
   LoanRequestType,
+  PROPERTY_OWNERSHIP_OPTIONS,
+  PROPERTY_TYPE_OPTIONS,
 } from '../loan-application.constants';
+
+const isLap = (dto: CreateLoanApplicationDto): boolean => dto.categoryId === 'lap';
 
 export class CreateLoanApplicationDto {
   @IsNumber({ maxDecimalPlaces: 2 })
@@ -35,7 +41,7 @@ export class CreateLoanApplicationDto {
 
   /**
    * Matches a `LoanCategory.id` from the Customer App's static catalog
-   * (e.g. `'personal'`, `'home'`, `'gold'`). Optional — when present, the
+   * (e.g. `'personal'`, `'home'`, `'lap'`). Optional — when present, the
    * service validates `requestedAmount`/`requestedTermMonths` against
    * that category's own (tighter) bounds in `LOAN_CATEGORY_BOUNDS`,
    * on top of the global bounds already enforced by the `@Min`/`@Max`
@@ -55,4 +61,36 @@ export class CreateLoanApplicationDto {
   @IsOptional()
   @IsIn(LOAN_REQUEST_TYPES)
   requestType?: LoanRequestType;
+
+  /**
+   * Loan Against Property (`categoryId: 'lap'`) collateral facts —
+   * only validated/required when `categoryId === 'lap'`; ignored
+   * (left undefined) for every other category.
+   */
+  @ValidateIf(isLap)
+  @IsIn(PROPERTY_TYPE_OPTIONS)
+  propertyType?: string;
+
+  @ValidateIf(isLap)
+  @IsIn(PROPERTY_OWNERSHIP_OPTIONS)
+  propertyOwnership?: string;
+
+  @ValidateIf(isLap)
+  @IsString()
+  @MaxLength(500)
+  propertyAddress?: string;
+
+  @ValidateIf(isLap)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @IsPositive()
+  propertyValue?: number;
+
+  @ValidateIf(isLap)
+  @IsBoolean()
+  hasExistingLoanOnProperty?: boolean;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  existingLoanOutstandingAmount?: number;
 }

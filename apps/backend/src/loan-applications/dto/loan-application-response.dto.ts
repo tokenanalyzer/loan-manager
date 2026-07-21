@@ -47,6 +47,13 @@ export class LoanApplicationResponseDto {
   /** Waiting-for-Customer visibility — independent of `status`; see LoanApplicationsService.setWaitingForCustomer. */
   waitingForCustomer!: boolean;
   waitingForCustomerSince!: Date | null;
+  /** Loan Against Property (`categoryId: 'lap'`) collateral facts — null for every other category. */
+  propertyType!: string | null;
+  propertyOwnership!: string | null;
+  propertyAddress!: string | null;
+  propertyValue!: string | null;
+  hasExistingLoanOnProperty!: boolean | null;
+  existingLoanOutstandingAmount!: string | null;
   loanId?: string;
   loan?: LoanResponseDto;
 
@@ -77,6 +84,12 @@ export class LoanApplicationResponseDto {
     queryRespondedAt?: Date | null;
     waitingForCustomer: boolean;
     waitingForCustomerSince?: Date | null;
+    propertyType?: string | null;
+    propertyOwnership?: string | null;
+    propertyAddress?: string | null;
+    propertyValue?: string | null;
+    hasExistingLoanOnProperty?: boolean | null;
+    existingLoanOutstandingAmount?: string | null;
     loan?: {
       id: string;
       loanNumber: string;
@@ -115,6 +128,12 @@ export class LoanApplicationResponseDto {
     dto.queryRespondedAt = entity.queryRespondedAt ?? null;
     dto.waitingForCustomer = entity.waitingForCustomer;
     dto.waitingForCustomerSince = entity.waitingForCustomerSince ?? null;
+    dto.propertyType = entity.propertyType ?? null;
+    dto.propertyOwnership = entity.propertyOwnership ?? null;
+    dto.propertyAddress = entity.propertyAddress ?? null;
+    dto.propertyValue = entity.propertyValue ?? null;
+    dto.hasExistingLoanOnProperty = entity.hasExistingLoanOnProperty ?? null;
+    dto.existingLoanOutstandingAmount = entity.existingLoanOutstandingAmount ?? null;
     dto.loanId = entity.loan?.id;
 
     if (entity.loan) {

@@ -8,7 +8,7 @@
 /// 2. That affordable EMI is reverse-computed into a principal amount
 ///    using the category's own tenure and indicative rate — the
 ///    inverse of `calculateEmi`. This is why a Home Loan (long tenure)
-///    shows a much higher eligible amount than a Gold Loan (short
+///    shows a much higher eligible amount than a Personal Loan (short
 ///    tenure) for the *same* income: the math is the same reducing-
 ///    balance formula, just run backwards.
 /// 3. Clamped to the category's own `maxAmount` — never advertise more

@@ -109,6 +109,13 @@ export class LoanApplicationsService {
       requestType: dto.requestType ?? DEFAULT_LOAN_REQUEST_TYPE,
       status: LoanApplicationStatus.SUBMITTED,
       submittedAt: new Date(),
+      propertyType: dto.propertyType ?? null,
+      propertyOwnership: dto.propertyOwnership ?? null,
+      propertyAddress: dto.propertyAddress ?? null,
+      propertyValue: dto.propertyValue != null ? dto.propertyValue.toFixed(2) : null,
+      hasExistingLoanOnProperty: dto.hasExistingLoanOnProperty ?? null,
+      existingLoanOutstandingAmount:
+        dto.existingLoanOutstandingAmount != null ? dto.existingLoanOutstandingAmount.toFixed(2) : null,
     });
   }
 

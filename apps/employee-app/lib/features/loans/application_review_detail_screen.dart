@@ -149,6 +149,33 @@ class _ApplicationReviewDetailScreenState
                 if (application.purpose != null)
                   Text('Purpose: ${application.purpose}',
                       style: textTheme.bodyMedium),
+                if (application.categoryId == 'lap') ...[
+                  const SizedBox(height: 16),
+                  Text('Property details', style: textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  if (application.propertyType != null)
+                    Text('Type: ${application.propertyType}',
+                        style: textTheme.bodyMedium),
+                  if (application.propertyOwnership != null)
+                    Text('Ownership: ${application.propertyOwnership}',
+                        style: textTheme.bodyMedium),
+                  if (application.propertyAddress != null)
+                    Text('Address: ${application.propertyAddress}',
+                        style: textTheme.bodyMedium),
+                  if (application.propertyValue != null)
+                    Text(
+                        'Value: ${Formatters.currency(application.propertyValue!)}',
+                        style: textTheme.bodyMedium),
+                  Text(
+                      'Existing loan on property: '
+                      '${application.hasExistingLoanOnProperty == true ? 'Yes' : 'No'}',
+                      style: textTheme.bodyMedium),
+                  if (application.hasExistingLoanOnProperty == true &&
+                      application.existingLoanOutstandingAmount != null)
+                    Text(
+                        'Outstanding amount: ${Formatters.currency(application.existingLoanOutstandingAmount!)}',
+                        style: textTheme.bodyMedium),
+                ],
                 const SizedBox(height: 24),
                 if (!isDecided) ...[
                   TextField(

@@ -66,6 +66,7 @@ class DocumentTypeOverview {
     required this.isRequired,
     required this.maxUploads,
     required this.slots,
+    this.requirementGroupCode,
   });
 
   final String code;
@@ -73,6 +74,13 @@ class DocumentTypeOverview {
   final bool isRequired;
   final int maxUploads;
   final List<DocumentSlot> slots;
+
+  /// OR-group identifier — types sharing this code (e.g. Salary Slip and
+  /// ITR, both `income_proof`) are alternatives of one requirement: any
+  /// one of them being complete satisfies it. `null` means this type's
+  /// [isRequired]/[isComplete] apply on their own, same as before groups
+  /// existed. See [DocumentsOverview.isTypeSatisfied].
+  final String? requirementGroupCode;
 
   bool get isMultiSlot => maxUploads > 1;
   bool get isComplete => slots.every((slot) => slot.isUploaded);
@@ -87,6 +95,7 @@ class DocumentTypeOverview {
       slots: (json['slots'] as List<dynamic>)
           .map((item) => DocumentSlot.fromJson(item as Map<String, dynamic>))
           .toList(),
+      requirementGroupCode: json['requirementGroupCode'] as String?,
     );
   }
 }
@@ -153,5 +162,63 @@ class DocumentsOverview {
           .map((item) => DocumentCategoryGroup.fromJson(item as Map<String, dynamic>))
           .toList(),
     );
+  }
+
+  List<DocumentTypeOverview> get _allTypes =>
+      categories.expand((group) => group.types).toList();
+
+  /// Whether [type]'s requirement is satisfied — for an ungrouped type
+  /// that's just [DocumentTypeOverview.isComplete]; for a grouped type
+  /// (e.g. Salary Slip / ITR sharing `income_proof`) it's satisfied as
+  /// soon as *any* member of the group is complete, not just this one.
+  bool isTypeSatisfied(DocumentTypeOverview type) {
+    final group = type.requirementGroupCode;
+    if (group == null) return type.isComplete;
+    return _allTypes.any((t) => t.requirementGroupCode == group && t.isComplete);
+  }
+
+  /// Labels of [type]'s OR-group alternatives, excluding itself — empty
+  /// for an ungrouped type. Lets the checklist tell the customer "or
+  /// upload: ITR" instead of showing every alternative as independently
+  /// required.
+  List<String> alternativeLabelsFor(DocumentTypeOverview type) {
+    final group = type.requirementGroupCode;
+    if (group == null) return const [];
+    return _allTypes
+        .where((t) => t.requirementGroupCode == group && t.code != type.code)
+        .map((t) => t.label)
+        .toList();
+  }
+
+  /// True once every distinct requirement is satisfied — a standalone
+  /// required type, or a required OR-group counted once regardless of
+  /// how many members it has. The single place this "is everything
+  /// required actually done" check lives, reused by the wizard's
+  /// Continue gate and the review-step summary.
+  bool get allRequiredSatisfied {
+    final seenGroups = <String>{};
+    for (final type in _allTypes.where((t) => t.isRequired)) {
+      final group = type.requirementGroupCode;
+      if (group != null) {
+        if (!seenGroups.add(group)) continue;
+      }
+      if (!isTypeSatisfied(type)) return false;
+    }
+    return true;
+  }
+
+  /// (satisfied, total) count of distinct requirements — an OR-group
+  /// counts as one requirement, satisfied if any member is complete.
+  ({int satisfied, int total}) get requiredSummary {
+    final seenGroups = <String>{};
+    var total = 0;
+    var satisfied = 0;
+    for (final type in _allTypes.where((t) => t.isRequired)) {
+      final group = type.requirementGroupCode;
+      if (group != null && !seenGroups.add(group)) continue;
+      total++;
+      if (isTypeSatisfied(type)) satisfied++;
+    }
+    return (satisfied: satisfied, total: total);
   }
 }

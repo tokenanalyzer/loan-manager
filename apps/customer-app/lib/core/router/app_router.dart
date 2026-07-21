@@ -104,8 +104,20 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/login/verify',
       name: 'login-verify',
-      builder: (context, state) =>
-          OtpVerificationScreen(verificationId: state.extra as String),
+      // `extra` is in-memory only — it doesn't survive an Android
+      // process restart (e.g. the OS reclaims memory while the user is
+      // on this screen, then restores the saved route later). Without
+      // this guard, restoring here with no `extra` would force-cast
+      // `null` and crash immediately on build; redirecting back to
+      // `/login` instead just asks the user to resend the code.
+      redirect: (context, state) => state.extra is (String, String) ? null : '/login',
+      builder: (context, state) {
+        final (phoneNumber, verificationId) = state.extra as (String, String);
+        return OtpVerificationScreen(
+          phoneNumber: phoneNumber,
+          verificationId: verificationId,
+        );
+      },
     ),
 
     // Persistent bottom-nav shell: Home / Loans / Documents / Profile.
@@ -165,6 +177,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/loans/apply/success',
       name: 'loan-application-success',
+      // See `/login/verify`'s comment — `extra` doesn't survive a
+      // process restart. Falling back to the applications list is safe
+      // here: the application was already submitted successfully by
+      // the time this route is reached.
+      redirect: (context, state) => state.extra is String ? null : '/loans',
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
         child:
@@ -185,6 +202,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/documents/:id',
       name: 'document-preview',
+      // See `/login/verify`'s comment — `extra` doesn't survive a
+      // process restart. Falling back to the documents list is safe;
+      // this route deliberately has no fetch-by-id path of its own.
+      redirect: (context, state) => state.extra is AppDocument ? null : '/documents',
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
         child: DocumentPreviewScreen(document: state.extra as AppDocument),

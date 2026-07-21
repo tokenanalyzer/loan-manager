@@ -16,6 +16,12 @@ class LoanApplicationRepository extends BaseRepository {
     required int requestedTermMonths,
     String? purpose,
     String? categoryId,
+    String? propertyType,
+    String? propertyOwnership,
+    String? propertyAddress,
+    double? propertyValue,
+    bool? hasExistingLoanOnProperty,
+    double? existingLoanOutstandingAmount,
   }) {
     return post<LoanApplication>(
       '/v1/loan-applications',
@@ -24,6 +30,14 @@ class LoanApplicationRepository extends BaseRepository {
         'requestedTermMonths': requestedTermMonths,
         if (purpose != null && purpose.isNotEmpty) 'purpose': purpose,
         if (categoryId != null) 'categoryId': categoryId,
+        if (propertyType != null) 'propertyType': propertyType,
+        if (propertyOwnership != null) 'propertyOwnership': propertyOwnership,
+        if (propertyAddress != null) 'propertyAddress': propertyAddress,
+        if (propertyValue != null) 'propertyValue': propertyValue,
+        if (hasExistingLoanOnProperty != null)
+          'hasExistingLoanOnProperty': hasExistingLoanOnProperty,
+        if (existingLoanOutstandingAmount != null)
+          'existingLoanOutstandingAmount': existingLoanOutstandingAmount,
       },
       mapper: (data) => LoanApplication.fromJson(data as Map<String, dynamic>),
     );

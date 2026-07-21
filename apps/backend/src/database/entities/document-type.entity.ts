@@ -43,6 +43,19 @@ export class DocumentTypeEntity {
   @Column({ type: 'text', array: true, nullable: true })
   applicableLoanCategoryIds?: string[] | null;
 
+  /**
+   * OR-group identifier. Types sharing the same code are alternatives of
+   * one logical requirement — e.g. `salary_slip`/`bank_statement`/`itr`
+   * all sharing `'income_proof'` means any *one* of the members relevant
+   * to a given loan category satisfies it, rather than every member
+   * being independently required. `null` means this type's `isRequired`
+   * applies on its own, unchanged from pre-grouping behavior. A group
+   * with only one relevant member for a category is indistinguishable
+   * from — and behaves exactly as — a plain hard requirement.
+   */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  requirementGroupCode?: string | null;
+
   /** Display ordering within its category. */
   @Column({ type: 'int', default: 0 })
   sortOrder!: number;

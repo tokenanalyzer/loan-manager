@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_flutter/shared_flutter.dart';
@@ -20,30 +21,102 @@ import 'features/auth/onboarding_repository.dart';
 /// `AppBootstrapState` before `runApp()`, so the router's `redirect`
 /// can read it synchronously on every navigation without re-hitting
 /// SharedPreferences each time.
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+///
+/// Stability hardening: everything runs inside `runZonedGuarded` so an
+/// otherwise-uncaught async error can never silently kill the isolate
+/// with no trace; `FlutterError.onError`/`ErrorWidget.builder` log
+/// framework/build errors instead of only printing to the console; and
+/// each bootstrap step that can fail (Firebase init, reading the
+/// onboarding flag from `SharedPreferences`) is individually
+/// try/caught with a safe fallback so one flaky step never prevents
+/// `runApp` from ever being called.
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  configureDependencies();
-  final logger = getIt<AppLogger>();
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      _logUncaughtError('Flutter framework error', details.exception, details.stack);
+    };
 
-  await initializeFirebase(logger);
+    final previousErrorBuilder = ErrorWidget.builder;
+    ErrorWidget.builder = (details) {
+      _logUncaughtError('Widget build error', details.exception, details.stack);
+      if (kDebugMode) return previousErrorBuilder(details);
+      return const _FriendlyErrorFallback();
+    };
 
-  AppBootstrapState.hasSeenOnboarding =
-      await OnboardingRepository().hasSeenOnboarding();
+    configureDependencies();
+    final logger = getIt<AppLogger>();
 
-  logger.info('Loan Manager — Customer App starting.');
+    try {
+      await initializeFirebase(logger);
+    } catch (error, stackTrace) {
+      logger.error('Firebase initialization threw unexpectedly.', error, stackTrace);
+    }
 
-  // The branding splash animation (`SplashScreen`) always plays for
-  // its full duration, however fast Firebase auth resolves — see
-  // `AppBootstrapState.splashMinimumElapsed` and the router's
-  // redirect gate. `appRouter.refresh()` forces the redirect to
-  // re-evaluate at exactly this moment, since nothing else notifies
-  // the router when a plain timer (as opposed to an auth-state change)
-  // completes.
-  Timer(kSplashAnimationDuration, () {
-    AppBootstrapState.splashMinimumElapsed = true;
-    appRouter.refresh();
+    try {
+      AppBootstrapState.hasSeenOnboarding =
+          await OnboardingRepository().hasSeenOnboarding();
+    } catch (error, stackTrace) {
+      logger.error(
+          'Failed to read the onboarding flag — defaulting to not-seen.', error, stackTrace);
+      AppBootstrapState.hasSeenOnboarding = false;
+    }
+
+    logger.info('Loan Manager — Customer App starting.');
+
+    // The branding splash animation (`SplashScreen`) always plays for
+    // its full duration, however fast Firebase auth resolves — see
+    // `AppBootstrapState.splashMinimumElapsed` and the router's
+    // redirect gate. `appRouter.refresh()` forces the redirect to
+    // re-evaluate at exactly this moment, since nothing else notifies
+    // the router when a plain timer (as opposed to an auth-state change)
+    // completes.
+    Timer(kSplashAnimationDuration, () {
+      AppBootstrapState.splashMinimumElapsed = true;
+      appRouter.refresh();
+    });
+
+    runApp(const ProviderScope(child: CustomerApp()));
+  }, (error, stackTrace) {
+    _logUncaughtError('Uncaught zone error', error, stackTrace);
   });
+}
 
-  runApp(const ProviderScope(child: CustomerApp()));
+/// Logs via [AppLogger] when DI has succeeded; falls back to
+/// `debugPrint` if the error happened before/during
+/// `configureDependencies()` itself, so logging an error can never
+/// throw a second error.
+void _logUncaughtError(String message, Object error, StackTrace? stackTrace) {
+  try {
+    getIt<AppLogger>().error(message, error, stackTrace);
+  } catch (_) {
+    debugPrint('$message: $error\n$stackTrace');
+  }
+}
+
+/// Shown in place of a crashed widget in release/profile builds only
+/// (debug keeps Flutter's normal red error screen, since that's more
+/// useful mid-development) — small and self-contained so it can never
+/// itself throw while rendering.
+class _FriendlyErrorFallback extends StatelessWidget {
+  const _FriendlyErrorFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.white,
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text(
+            'Something went wrong displaying this.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.black54),
+          ),
+        ),
+      ),
+    );
+  }
 }

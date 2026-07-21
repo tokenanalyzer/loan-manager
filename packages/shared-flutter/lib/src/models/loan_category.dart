@@ -16,12 +16,12 @@ import 'package:flutter/material.dart';
 /// table.
 ///
 /// Six categories matching what a real Indian lending app offers:
-/// Personal, Home, Business, Education, Vehicle, Gold. Amounts,
-/// tenures, indicative rates, and processing fees reflect typical
-/// Indian bank/NBFC retail-lending economics (2025-26) — a secured,
-/// long-tenure product like Home Loan has a materially lower rate and
-/// higher ceiling than an unsecured short-tenure product like Gold
-/// Loan, which is deliberate, not arbitrary.
+/// Personal, Home, Business, Education, Vehicle, Loan Against Property
+/// (LAP). Amounts, tenures, indicative rates, and processing fees
+/// reflect typical Indian bank/NBFC retail-lending economics (2025-26)
+/// — a secured, long-tenure product like Home Loan has a materially
+/// lower rate and higher ceiling than an unsecured short-tenure
+/// product like Personal Loan, which is deliberate, not arbitrary.
 class LoanCategory {
   const LoanCategory({
     required this.id,
@@ -162,22 +162,22 @@ const List<LoanCategory> kLoanCategories = [
     ],
   ),
   LoanCategory(
-    id: 'gold',
-    title: 'Gold Loan',
-    icon: Icons.workspace_premium_outlined,
+    id: 'lap',
+    title: 'Loan Against Property',
+    icon: Icons.apartment_outlined,
     description:
-        'Quick funds against your gold jewellery, with a short repayment term.',
-    minAmount: 10000,
-    maxAmount: 2500000,
-    minTermMonths: 3,
-    maxTermMonths: 36,
-    indicativeRateMin: 9,
-    indicativeRateMax: 15,
+        'Unlock funds against your residential or commercial property, without selling it.',
+    minAmount: 500000,
+    maxAmount: 20000000,
+    minTermMonths: 24,
+    maxTermMonths: 180,
+    indicativeRateMin: 9.5,
+    indicativeRateMax: 13.5,
     processingFeePercent: 0.01,
     eligibilityNotes: [
-      'Secured against gold jewellery — fast approval and disbursal',
-      'Loan amount depends on the appraised value and purity of the gold',
-      'Ornaments are held safely and returned on full repayment',
+      'Secured against a residential or commercial property you own',
+      'Higher loan amounts and longer tenures than an unsecured loan',
+      'Property papers, valuation, and income proof (ITR or salary slip) required during review',
     ],
   ),
 ];

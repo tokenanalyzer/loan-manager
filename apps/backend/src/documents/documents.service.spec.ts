@@ -9,7 +9,10 @@ import type { DocumentTypeRepository } from './document-type.repository';
 import type { DocumentRepository } from './document.repository';
 import { DocumentsService } from './documents.service';
 
-type MockType = Pick<DocumentTypeEntity, 'code' | 'label' | 'isRequired' | 'applicableLoanCategoryIds'>;
+type MockType = Pick<
+  DocumentTypeEntity,
+  'code' | 'label' | 'isRequired' | 'applicableLoanCategoryIds' | 'requirementGroupCode'
+>;
 type MockDocument = Pick<DocumentEntity, 'documentTypeCode' | 'verificationStatus'>;
 
 /**
@@ -90,11 +93,11 @@ describe('DocumentsService.getBlockingDocumentsForApproval', () => {
 
   it('only considers a category-specific required type when the matching categoryId is passed', async () => {
     const types: MockType[] = [
-      { code: 'gold_valuation', label: 'Gold Valuation Certificate', isRequired: true, applicableLoanCategoryIds: ['gold'] },
+      { code: 'property_documents', label: 'Property Documents', isRequired: true, applicableLoanCategoryIds: ['lap'] },
     ];
 
-    const forGold = await buildService(types, []).getBlockingDocumentsForApproval('owner-1', 'gold');
-    expect(forGold).toEqual([{ code: 'gold_valuation', label: 'Gold Valuation Certificate', reason: 'missing' }]);
+    const forLap = await buildService(types, []).getBlockingDocumentsForApproval('owner-1', 'lap');
+    expect(forLap).toEqual([{ code: 'property_documents', label: 'Property Documents', reason: 'missing' }]);
 
     const forPersonal = await buildService(types, []).getBlockingDocumentsForApproval('owner-1', 'personal');
     expect(forPersonal).toEqual([]);
@@ -117,5 +120,111 @@ describe('DocumentsService.getBlockingDocumentsForApproval', () => {
       { code: 'aadhaar_card', label: 'Aadhaar Card', reason: 'pending' },
       { code: 'passport_photo', label: 'Passport Photo', reason: 'missing' },
     ]);
+  });
+
+  describe('OR-group requirements (requirementGroupCode)', () => {
+    it('does not block a group once any one member has a verified upload', async () => {
+      const types: MockType[] = [
+        {
+          code: 'salary_slip',
+          label: 'Salary Slip',
+          isRequired: true,
+          applicableLoanCategoryIds: ['home'],
+          requirementGroupCode: 'income_proof',
+        },
+        {
+          code: 'itr',
+          label: 'ITR (Income Tax Return)',
+          isRequired: true,
+          applicableLoanCategoryIds: ['home'],
+          requirementGroupCode: 'income_proof',
+        },
+      ];
+      const documents: MockDocument[] = [{ documentTypeCode: 'itr', verificationStatus: 'verified' }];
+
+      const blocking = await buildService(types, documents).getBlockingDocumentsForApproval(
+        'owner-1',
+        'home',
+      );
+
+      expect(blocking).toEqual([]);
+    });
+
+    it('reports one blocking entry for a group with nothing uploaded, joining member labels', async () => {
+      const types: MockType[] = [
+        {
+          code: 'salary_slip',
+          label: 'Salary Slip',
+          isRequired: true,
+          applicableLoanCategoryIds: ['home'],
+          requirementGroupCode: 'income_proof',
+        },
+        {
+          code: 'itr',
+          label: 'ITR (Income Tax Return)',
+          isRequired: true,
+          applicableLoanCategoryIds: ['home'],
+          requirementGroupCode: 'income_proof',
+        },
+      ];
+
+      const blocking = await buildService(types, []).getBlockingDocumentsForApproval('owner-1', 'home');
+
+      expect(blocking).toEqual([
+        { code: 'income_proof', label: 'Salary Slip or ITR (Income Tax Return)', reason: 'missing' },
+      ]);
+    });
+
+    it('reports the non-verified status when a group member is uploaded but not yet verified', async () => {
+      const types: MockType[] = [
+        {
+          code: 'salary_slip',
+          label: 'Salary Slip',
+          isRequired: true,
+          applicableLoanCategoryIds: ['home'],
+          requirementGroupCode: 'income_proof',
+        },
+        {
+          code: 'itr',
+          label: 'ITR (Income Tax Return)',
+          isRequired: true,
+          applicableLoanCategoryIds: ['home'],
+          requirementGroupCode: 'income_proof',
+        },
+      ];
+      const documents: MockDocument[] = [{ documentTypeCode: 'salary_slip', verificationStatus: 'rejected' }];
+
+      const blocking = await buildService(types, documents).getBlockingDocumentsForApproval(
+        'owner-1',
+        'home',
+      );
+
+      expect(blocking).toEqual([
+        { code: 'income_proof', label: 'Salary Slip or ITR (Income Tax Return)', reason: 'rejected' },
+      ]);
+    });
+
+    it('treats a group with only one relevant member as a plain hard requirement', async () => {
+      const types: MockType[] = [
+        {
+          code: 'itr',
+          label: 'ITR (Income Tax Return)',
+          isRequired: true,
+          applicableLoanCategoryIds: ['business'],
+          requirementGroupCode: 'income_proof',
+        },
+      ];
+
+      const blockingMissing = await buildService(types, []).getBlockingDocumentsForApproval(
+        'owner-1',
+        'business',
+      );
+      expect(blockingMissing).toEqual([{ code: 'income_proof', label: 'ITR (Income Tax Return)', reason: 'missing' }]);
+
+      const blockingVerified = await buildService(types, [
+        { documentTypeCode: 'itr', verificationStatus: 'verified' },
+      ]).getBlockingDocumentsForApproval('owner-1', 'business');
+      expect(blockingVerified).toEqual([]);
+    });
   });
 });

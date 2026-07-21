@@ -37,6 +37,7 @@ export class DocumentTypesService {
       isRequired: dto.isRequired ?? false,
       maxUploads: dto.maxUploads ?? 1,
       applicableLoanCategoryIds: dto.applicableLoanCategoryIds ?? null,
+      requirementGroupCode: dto.requirementGroupCode ?? null,
       sortOrder: dto.sortOrder ?? 0,
     });
   }
@@ -53,6 +54,7 @@ export class DocumentTypesService {
       isRequired: dto.isRequired,
       maxUploads: dto.maxUploads,
       applicableLoanCategoryIds: dto.applicableLoanCategoryIds,
+      requirementGroupCode: dto.requirementGroupCode,
       sortOrder: dto.sortOrder,
       isActive: dto.isActive,
     });

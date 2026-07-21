@@ -2,14 +2,15 @@
 /// every step already has a real, persisted home — either
 /// `CustomerProfile` (personal/address/employment/income/existing
 /// loans/nominee/references — see `customer_profile.dart`) or the
-/// loan application itself (`loanRequirement`) — nothing here is UI
-/// without a backend to save it to.
+/// loan application itself (`loanRequirement`, `propertyDetails`) —
+/// nothing here is UI without a backend to save it to.
 enum WizardStep {
   personal,
   address,
   employment,
   income,
   existingLoans,
+  propertyDetails,
   loanRequirement,
   nominee,
   references,
@@ -24,6 +25,7 @@ extension WizardStepLabel on WizardStep {
         WizardStep.employment => 'Employment',
         WizardStep.income => 'Income',
         WizardStep.existingLoans => 'Existing loans',
+        WizardStep.propertyDetails => 'Property',
         WizardStep.loanRequirement => 'Loan',
         WizardStep.nominee => 'Nominee',
         WizardStep.references => 'References',
@@ -36,14 +38,15 @@ extension WizardStepLabel on WizardStep {
 /// Indian lenders actually ask for that product, not a one-size-fits
 /// every-loan questionnaire:
 ///
-/// - Gold/Vehicle are asset-backed, fast-turnaround products — minimal
-///   underwriting, no reference/existing-EMI checks. Gold also skips
-///   Employment/Income entirely (a gold loan is secured against the
-///   collateral itself, not the applicant's income).
+/// - Vehicle is an asset-backed, fast-turnaround product — minimal
+///   underwriting, no reference/existing-EMI checks.
 /// - Education applicants typically have no prior credit history, so
 ///   the Existing Loans step is skipped.
 /// - Personal/Home/Business are the fullest, most scrutinized
 ///   products — every step applies.
+/// - LAP (Loan Against Property) is a fully-underwritten secured
+///   product — every step applies, plus its own `propertyDetails`
+///   step for the collateral being mortgaged.
 ///
 /// `Documents` and `Review` always apply.
 List<WizardStep> stepsForCategory(String? categoryId) {
@@ -72,12 +75,17 @@ List<WizardStep> stepsForCategory(String? categoryId) {
         WizardStep.documents,
         WizardStep.review,
       ];
-    case 'gold':
+    case 'lap':
       return const [
         WizardStep.personal,
         WizardStep.address,
+        WizardStep.employment,
+        WizardStep.income,
+        WizardStep.existingLoans,
+        WizardStep.propertyDetails,
         WizardStep.loanRequirement,
         WizardStep.nominee,
+        WizardStep.references,
         WizardStep.documents,
         WizardStep.review,
       ];

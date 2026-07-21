@@ -72,7 +72,18 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
       );
     }
 
-    return Scaffold(
+    return PopScope(
+      // Mirrors AppShell's own PopScope: the hardware back button must
+      // behave exactly like the visible back arrow below (step back,
+      // not abandon the whole application) — without this, Android's
+      // back button popped the entire route from any step, discarding
+      // every field the customer had entered.
+      canPop: state.isFirstStep,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        controller.previousStep();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(category?.title ?? 'Loan application'),
         leading: state.isFirstStep
@@ -94,6 +105,8 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
               WizardStep.income => _IncomeStep(controller: controller, state: state),
               WizardStep.existingLoans =>
                 _ExistingLoansStep(controller: controller, state: state),
+              WizardStep.propertyDetails =>
+                _PropertyDetailsStep(controller: controller, state: state),
               WizardStep.loanRequirement => _LoanRequirementStep(
                   category: category, controller: controller, state: state),
               WizardStep.nominee => _NomineeStep(controller: controller, state: state),
@@ -105,6 +118,7 @@ class LoanApplicationFlowScreen extends ConsumerWidget {
             },
           ),
         ],
+      ),
       ),
     );
   }
@@ -819,6 +833,121 @@ class _ExistingLoansStepState extends State<_ExistingLoansStep> {
   }
 }
 
+// --- Step: Property details (LAP only) ---
+
+class _PropertyDetailsStep extends StatefulWidget {
+  const _PropertyDetailsStep({required this.controller, required this.state});
+
+  final LoanApplicationFlowController controller;
+  final LoanApplicationFormState state;
+
+  @override
+  State<_PropertyDetailsStep> createState() => _PropertyDetailsStepState();
+}
+
+class _PropertyDetailsStepState extends State<_PropertyDetailsStep> {
+  late String? _propertyType = widget.state.propertyType;
+  late String? _propertyOwnership = widget.state.propertyOwnership;
+  late final _addressController =
+      TextEditingController(text: widget.state.propertyAddress ?? '');
+  late final _valueController =
+      TextEditingController(text: widget.state.propertyValue?.toStringAsFixed(0) ?? '');
+  late bool _hasExistingLoan = widget.state.hasExistingLoanOnProperty ?? false;
+  late final _outstandingController = TextEditingController(
+      text: widget.state.existingLoanOutstandingAmount?.toStringAsFixed(0) ?? '');
+
+  @override
+  void dispose() {
+    _addressController.dispose();
+    _valueController.dispose();
+    _outstandingController.dispose();
+    super.dispose();
+  }
+
+  void _continue() {
+    if (_propertyType == null || _propertyOwnership == null ||
+        _addressController.text.trim().isEmpty ||
+        double.tryParse(_valueController.text) == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Please fill in the property type, ownership, address, and value.')),
+      );
+      return;
+    }
+    widget.controller.updatePropertyDetails(
+      propertyType: _propertyType,
+      propertyOwnership: _propertyOwnership,
+      propertyAddress: _addressController.text.trim(),
+      propertyValue: double.tryParse(_valueController.text),
+      hasExistingLoanOnProperty: _hasExistingLoan,
+      existingLoanOutstandingAmount:
+          _hasExistingLoan ? double.tryParse(_outstandingController.text) : null,
+    );
+    widget.controller.nextStep();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _StepBody(
+      formKey: GlobalKey<FormState>(),
+      children: [
+        const _StepHeading(
+          title: 'Property details',
+          subtitle: 'Tell us about the property you\'re borrowing against.',
+        ),
+        DropdownButtonFormField<String>(
+          initialValue: _propertyType,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Property type'),
+          items: [
+            for (final t in kPropertyTypeOptions) DropdownMenuItem(value: t, child: Text(t)),
+          ],
+          onChanged: (value) => setState(() => _propertyType = value),
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<String>(
+          initialValue: _propertyOwnership,
+          isExpanded: true,
+          decoration: const InputDecoration(labelText: 'Property ownership'),
+          items: [
+            for (final o in kPropertyOwnershipOptions) DropdownMenuItem(value: o, child: Text(o)),
+          ],
+          onChanged: (value) => setState(() => _propertyOwnership = value),
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _addressController,
+          decoration: const InputDecoration(labelText: 'Property address'),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 12),
+        TextFormField(
+          controller: _valueController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(labelText: 'Property value', prefixText: '₹ '),
+        ),
+        const SizedBox(height: 20),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          controlAffinity: ListTileControlAffinity.leading,
+          value: _hasExistingLoan,
+          title: const Text('There is an existing loan on this property'),
+          onChanged: (value) => setState(() => _hasExistingLoan = value ?? false),
+        ),
+        if (_hasExistingLoan)
+          TextFormField(
+            controller: _outstandingController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration:
+                const InputDecoration(labelText: 'Outstanding amount', prefixText: '₹ '),
+          ),
+        const SizedBox(height: 24),
+        PrimaryButton(label: 'Continue', onPressed: _continue),
+      ],
+    );
+  }
+}
+
 // --- Step 6: Loan requirement (amount/tenure/purpose) ---
 
 class _LoanRequirementStep extends StatefulWidget {
@@ -1169,12 +1298,9 @@ class _DocumentsStep extends ConsumerWidget {
     // A lender can't act on missing KYC/collateral proof — required
     // documents (the same ones the checklist above badges "Required")
     // must actually be uploaded before the applicant can proceed, not
-    // just displayed as a suggestion.
-    final allRequiredUploaded = overviewAsync.valueOrNull?.categories
-            .expand((group) => group.types)
-            .where((type) => type.isRequired)
-            .every((type) => type.isComplete) ??
-        false;
+    // just displayed as a suggestion. An OR-group requirement (e.g.
+    // Salary Slip or ITR) only needs one member complete, not all.
+    final allRequiredUploaded = overviewAsync.valueOrNull?.allRequiredSatisfied ?? false;
 
     return Column(
       children: [
@@ -1315,6 +1441,27 @@ class _ReviewStep extends ConsumerWidget {
                       ? Formatters.currency(state.creditCardOutstanding!.toStringAsFixed(2))
                       : null),
             ]),
+          if (steps.contains(WizardStep.propertyDetails))
+            _ReviewSection(title: 'Property details', rows: [
+              _ReviewRow(label: 'Property type', value: state.propertyType),
+              _ReviewRow(label: 'Ownership', value: state.propertyOwnership),
+              _ReviewRow(label: 'Address', value: state.propertyAddress),
+              _ReviewRow(
+                  label: 'Value',
+                  value: state.propertyValue != null
+                      ? Formatters.currency(state.propertyValue!.toStringAsFixed(2))
+                      : null),
+              _ReviewRow(
+                  label: 'Existing loan on property',
+                  value: state.hasExistingLoanOnProperty == true ? 'Yes' : 'No'),
+              if (state.hasExistingLoanOnProperty == true)
+                _ReviewRow(
+                    label: 'Outstanding amount',
+                    value: state.existingLoanOutstandingAmount != null
+                        ? Formatters.currency(
+                            state.existingLoanOutstandingAmount!.toStringAsFixed(2))
+                        : null),
+            ]),
           _ReviewSection(title: 'Loan requirement', rows: [
             _ReviewRow(label: 'Loan type', value: category?.title ?? 'General'),
             _ReviewRow(
@@ -1349,10 +1496,8 @@ class _ReviewStep extends ConsumerWidget {
               _ReviewRow(
                 label: 'Uploaded',
                 value: () {
-                  final types = documentsOverview.categories.expand((g) => g.types);
-                  final required = types.where((t) => t.isRequired);
-                  final uploaded = required.where((t) => t.isComplete).length;
-                  return '$uploaded of ${required.length} required documents';
+                  final summary = documentsOverview.requiredSummary;
+                  return '${summary.satisfied} of ${summary.total} required documents';
                 }(),
               ),
             ]),

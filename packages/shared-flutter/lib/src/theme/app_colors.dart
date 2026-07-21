@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 /// Shared color palette used by both the Customer App and Employee App.
 ///
 /// Deep indigo (trust, financial-services convention) + a warm gold
-/// accent (ties visually to "Gold Loan," reads premium/Indian rather
-/// than a generic Material-blue sample) — chosen to read as a
-/// deliberate brand, not a `ColorScheme.fromSeed` default.
+/// accent (reads premium/Indian rather than a generic Material-blue
+/// sample) — chosen to read as a deliberate brand, not a
+/// `ColorScheme.fromSeed` default. The gold accent is a cosmetic
+/// color token only — unrelated to any loan product/category.
 abstract final class AppColors {
   static const Color primary = Color(0xFF2B2E7A);
   static const Color primaryDark = Color(0xFF1C1E52);

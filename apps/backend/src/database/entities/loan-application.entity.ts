@@ -125,6 +125,30 @@ export class LoanApplicationEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', nullable: true })
   waitingForCustomerSince?: Date | null;
 
+  /**
+   * Loan Against Property (`categoryId: 'lap'`) collateral facts —
+   * application-specific, not a `CustomerProfile` field, since a
+   * customer could apply against a different property next time.
+   * Nullable for every non-LAP application.
+   */
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  propertyType?: string | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  propertyOwnership?: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  propertyAddress?: string | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  propertyValue?: string | null;
+
+  @Column({ type: 'boolean', nullable: true })
+  hasExistingLoanOnProperty?: boolean | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  existingLoanOutstandingAmount?: string | null;
+
   @OneToOne('LoanEntity', (loan: LoanEntity) => loan.application)
   loan?: LoanEntity;
 }

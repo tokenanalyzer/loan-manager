@@ -30,9 +30,20 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
  * When Firebase isn't configured (`env.firebase.enabled === false`,
  * the default), `firebaseAuth` is `null` and this provider stays in
  * `unauthenticated` forever without touching the Firebase SDK.
+ *
+ * Starts in `syncing`, not `unauthenticated`: `onAuthStateChanged`'s
+ * first callback (restoring a persisted session, if any) is
+ * asynchronous, and `ProtectedRoute` treats `unauthenticated` as "send
+ * to /login" — defaulting to it here would bounce every already
+ * signed-in user to the login page on every page refresh, with
+ * nothing to bring them back afterward. `syncing` correctly shows a
+ * loading state instead until Firebase actually determines there's no
+ * session (a real `unauthenticated`) or restores one.
  */
 export function AuthProvider({ children }: { children: React.ReactNode }): JSX.Element {
-  const [status, setStatus] = useState<AuthStatus>('unauthenticated');
+  const [status, setStatus] = useState<AuthStatus>(
+    firebaseAuth ? 'syncing' : 'unauthenticated',
+  );
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

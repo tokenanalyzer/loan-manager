@@ -57,4 +57,17 @@ export class CreateDocumentTypeDto {
   @IsOptional()
   @IsInt()
   sortOrder?: number;
+
+  /**
+   * OR-group identifier — types sharing this code become alternatives
+   * of one requirement (satisfied when any one is uploaded/verified).
+   * Omit for a plain independently-required/optional type.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  @Matches(/^[a-z][a-z0-9_]*$/, {
+    message: 'requirementGroupCode must be lowercase snake_case (e.g. income_proof).',
+  })
+  requirementGroupCode?: string;
 }

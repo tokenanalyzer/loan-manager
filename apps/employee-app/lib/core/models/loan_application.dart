@@ -16,6 +16,12 @@ class LoanApplication {
     this.categoryId,
     this.reviewedAt,
     this.loanId,
+    this.propertyType,
+    this.propertyOwnership,
+    this.propertyAddress,
+    this.propertyValue,
+    this.hasExistingLoanOnProperty,
+    this.existingLoanOutstandingAmount,
   });
 
   final String id;
@@ -29,6 +35,14 @@ class LoanApplication {
   final DateTime submittedAt;
   final DateTime? reviewedAt;
   final String? loanId;
+
+  /// Loan Against Property (`categoryId: 'lap'`) collateral facts — null for every other category.
+  final String? propertyType;
+  final String? propertyOwnership;
+  final String? propertyAddress;
+  final String? propertyValue;
+  final bool? hasExistingLoanOnProperty;
+  final String? existingLoanOutstandingAmount;
 
   factory LoanApplication.fromJson(Map<String, dynamic> json) {
     return LoanApplication(
@@ -45,6 +59,12 @@ class LoanApplication {
           ? DateTime.parse(json['reviewedAt'] as String)
           : null,
       loanId: json['loanId'] as String?,
+      propertyType: json['propertyType'] as String?,
+      propertyOwnership: json['propertyOwnership'] as String?,
+      propertyAddress: json['propertyAddress'] as String?,
+      propertyValue: json['propertyValue'] as String?,
+      hasExistingLoanOnProperty: json['hasExistingLoanOnProperty'] as bool?,
+      existingLoanOutstandingAmount: json['existingLoanOutstandingAmount'] as String?,
     );
   }
 }

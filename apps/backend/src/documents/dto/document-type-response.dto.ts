@@ -8,6 +8,7 @@ export class DocumentTypeResponseDto {
   isRequired!: boolean;
   maxUploads!: number;
   applicableLoanCategoryIds!: string[] | null;
+  requirementGroupCode!: string | null;
   sortOrder!: number;
   isActive!: boolean;
   createdAt!: Date;
@@ -20,6 +21,7 @@ export class DocumentTypeResponseDto {
     isRequired: boolean;
     maxUploads: number;
     applicableLoanCategoryIds?: string[] | null;
+    requirementGroupCode?: string | null;
     sortOrder: number;
     isActive: boolean;
     createdAt: Date;
@@ -32,6 +34,7 @@ export class DocumentTypeResponseDto {
     dto.isRequired = entity.isRequired;
     dto.maxUploads = entity.maxUploads;
     dto.applicableLoanCategoryIds = entity.applicableLoanCategoryIds ?? null;
+    dto.requirementGroupCode = entity.requirementGroupCode ?? null;
     dto.sortOrder = entity.sortOrder;
     dto.isActive = entity.isActive;
     dto.createdAt = entity.createdAt;

@@ -250,6 +250,26 @@ export function LeadDetailPage(): JSX.Element {
               <Field label="Submitted">{new Date(lead.submittedAt).toLocaleString()}</Field>
             </div>
 
+            {lead.categoryId === 'lap' && (
+              <>
+                <h2 className={styles.sectionTitle}>Property details</h2>
+                <div className={styles.fieldGrid}>
+                  <Field label="Property type">{lead.propertyType ?? '—'}</Field>
+                  <Field label="Ownership">{lead.propertyOwnership ?? '—'}</Field>
+                  <Field label="Address">{lead.propertyAddress ?? '—'}</Field>
+                  <Field label="Value">{lead.propertyValue ?? '—'}</Field>
+                  <Field label="Existing loan on property">
+                    {lead.hasExistingLoanOnProperty ? 'Yes' : 'No'}
+                  </Field>
+                  {lead.hasExistingLoanOnProperty && (
+                    <Field label="Outstanding amount">
+                      {lead.existingLoanOutstandingAmount ?? '—'}
+                    </Field>
+                  )}
+                </div>
+              </>
+            )}
+
             {lead.status === 'query_raised' && (
               <div className={styles.banner}>
                 <span className={styles.bannerTitle}>Waiting on the customer</span>

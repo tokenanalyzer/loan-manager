@@ -10,8 +10,9 @@
  * `categoryId` — this mirrors `kLoanCategories` in
  * `packages/shared-flutter/lib/src/models/loan_category.dart` (shared
  * by both Flutter apps). Six categories: personal, home, business,
- * education, vehicle, gold — Home Loan's long tenure/high ceiling is
- * why the global outer bounds are as wide as they are.
+ * education, vehicle, lap (Loan Against Property) — Home Loan's long
+ * tenure/high ceiling is why the global outer bounds are as wide as
+ * they are.
  *
  * This duplication (category data living in both the shared Flutter
  * package and here) is intentional-for-now, not an oversight: there is no real
@@ -88,11 +89,25 @@ export const LOAN_CATEGORY_BOUNDS: Record<string, LoanCategoryBounds> = {
     maxTermMonths: 84,
     processingFeePercent: 0.01,
   },
-  gold: {
-    minAmount: 10_000,
-    maxAmount: 25_00_000,
-    minTermMonths: 3,
-    maxTermMonths: 36,
+  lap: {
+    minAmount: 5_00_000,
+    maxAmount: 2_00_00_000,
+    minTermMonths: 24,
+    maxTermMonths: 180,
     processingFeePercent: 0.01,
   },
 };
+
+/**
+ * LAP (`categoryId: 'lap'`) property-collateral option lists — must
+ * match the Customer App's `kPropertyTypeOptions`/
+ * `kPropertyOwnershipOptions` (`core/constants/profile_options.dart`)
+ * exactly, since `CreateLoanApplicationDto` validates against these.
+ */
+export const PROPERTY_TYPE_OPTIONS = ['Residential', 'Commercial', 'Industrial', 'Land/Plot'] as const;
+export const PROPERTY_OWNERSHIP_OPTIONS = [
+  'Self-owned',
+  'Joint ownership',
+  'Family property',
+  'Other',
+] as const;

@@ -37,7 +37,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const status = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const exceptionResponse = isHttpException ? exception.getResponse() : null;
-    const message = this.extractMessage(exceptionResponse, exception);
+    const message = this.extractMessage(exceptionResponse, exception, isHttpException);
 
     const body: ErrorResponseBody = {
       statusCode: status,
@@ -58,9 +58,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
     response.status(status).json(body);
   }
 
+  /**
+   * `isHttpException` gates whether `exception.message` is ever
+   * client-visible. An `HttpException` was deliberately thrown by our
+   * own code with a message meant to be shown to the caller ("Enter a
+   * valid amount", etc.) — safe to forward as-is. Anything else is an
+   * *unexpected* error (a bug, a raw DB constraint violation, a null
+   * reference) whose real message can leak implementation details
+   * (schema/constraint names, internal paths, library internals) to
+   * any API caller — those must never reach the client, only the
+   * server-side log line just above, which already has full detail.
+   */
   private extractMessage(
     exceptionResponse: string | object | null,
     exception: unknown,
+    isHttpException: boolean,
   ): string | string[] {
     if (typeof exceptionResponse === 'string') {
       return exceptionResponse;
@@ -74,7 +86,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       return (exceptionResponse as { message: string | string[] }).message;
     }
 
-    if (exception instanceof Error) {
+    if (isHttpException && exception instanceof Error) {
       return exception.message;
     }
 

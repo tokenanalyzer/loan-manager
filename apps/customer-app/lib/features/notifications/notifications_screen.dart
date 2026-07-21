@@ -23,9 +23,19 @@ class NotificationsScreen extends ConsumerWidget {
     if (!notification.isRead) {
       ref.read(notificationsActionsProvider).markAsRead(notification.id);
     }
-    if (notification.relatedEntityType == 'loan_application' &&
-        notification.relatedEntityId != null) {
-      context.push('/loans/${notification.relatedEntityId}');
+    // The backend also creates 'document' (re-upload requested) and
+    // 'customer_profile' (KYC verified/rejected) notifications, not just
+    // 'loan_application' — each needs to land somewhere the customer can
+    // actually act on it, not just get marked read with no navigation.
+    switch (notification.relatedEntityType) {
+      case 'loan_application':
+        if (notification.relatedEntityId != null) {
+          context.push('/loans/${notification.relatedEntityId}');
+        }
+      case 'document':
+        context.push('/documents');
+      case 'customer_profile':
+        context.push('/profile');
     }
   }
 

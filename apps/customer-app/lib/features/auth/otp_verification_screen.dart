@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/auth/customer_auth_repository.dart';
 import '../../core/di/injection.dart';
+
+const _resendCooldown = Duration(seconds: 30);
 
 /// Second step of the Customer App's phone/OTP sign-in flow: collects
 /// the SMS code and completes Firebase sign-in.
@@ -11,8 +15,13 @@ import '../../core/di/injection.dart';
 /// router redirect to the authenticated home screen) — this screen
 /// doesn't navigate on success itself.
 class OtpVerificationScreen extends StatefulWidget {
-  const OtpVerificationScreen({required this.verificationId, super.key});
+  const OtpVerificationScreen({
+    required this.phoneNumber,
+    required this.verificationId,
+    super.key,
+  });
 
+  final String phoneNumber;
   final String verificationId;
 
   @override
@@ -23,12 +32,73 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _codeController = TextEditingController();
   bool _isVerifying = false;
+  bool _isResending = false;
   String? _errorMessage;
+
+  // Tracks the *current* verification id — a resend gets a new one from
+  // Firebase, and verifying must use whichever one is current.
+  late String _verificationId = widget.verificationId;
+
+  Timer? _cooldownTimer;
+  int _cooldownSecondsLeft = _resendCooldown.inSeconds;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCooldown();
+  }
 
   @override
   void dispose() {
     _codeController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldownSecondsLeft = _resendCooldown.inSeconds);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_cooldownSecondsLeft <= 1) {
+        timer.cancel();
+        setState(() => _cooldownSecondsLeft = 0);
+        return;
+      }
+      setState(() => _cooldownSecondsLeft -= 1);
+    });
+  }
+
+  Future<void> _resend() async {
+    setState(() {
+      _isResending = true;
+      _errorMessage = null;
+    });
+
+    await getIt<CustomerAuthRepository>().sendOtp(
+      phoneNumber: widget.phoneNumber,
+      onCodeSent: (verificationId) {
+        if (!mounted) return;
+        setState(() {
+          _verificationId = verificationId;
+          _isResending = false;
+        });
+        _startCooldown();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A new code has been sent.')),
+        );
+      },
+      onVerificationFailed: (message) {
+        if (!mounted) return;
+        setState(() {
+          _isResending = false;
+          _errorMessage = message;
+        });
+      },
+    );
   }
 
   Future<void> _submit() async {
@@ -43,7 +113,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     try {
       await getIt<CustomerAuthRepository>().verifyOtp(
-        verificationId: widget.verificationId,
+        verificationId: _verificationId,
         smsCode: _codeController.text.trim(),
       );
     } catch (_) {
@@ -122,6 +192,23 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Text('Verify'),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: _isResending
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : TextButton(
+                        onPressed: _cooldownSecondsLeft > 0 ? null : _resend,
+                        child: Text(
+                          _cooldownSecondsLeft > 0
+                              ? "Didn't get the code? Resend in ${_cooldownSecondsLeft}s"
+                              : "Didn't get the code? Resend",
+                        ),
+                      ),
               ),
             ],
           ),

@@ -16,6 +16,13 @@ export class DocumentTypeOverviewDto {
   isRequired!: boolean;
   maxUploads!: number;
   slots!: DocumentSlotDto[];
+
+  /**
+   * OR-group identifier — types sharing this code are alternatives of
+   * one requirement (e.g. Salary Slip or ITR). `undefined` means this
+   * type's `isRequired` applies on its own. See `DocumentTypeEntity`.
+   */
+  requirementGroupCode?: string;
 }
 
 export class DocumentCategoryGroupDto {

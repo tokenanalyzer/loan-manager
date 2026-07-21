@@ -24,7 +24,7 @@ class CategoryStyle {
     'business': CategoryStyle(color: Color(0xFF7C3AED), icon: Icons.storefront_rounded),
     'education': CategoryStyle(color: Color(0xFF0891B2), icon: Icons.school_rounded),
     'vehicle': CategoryStyle(color: Color(0xFFEA580C), icon: Icons.directions_car_rounded),
-    'gold': CategoryStyle(color: Color(0xFFC9971F), icon: Icons.workspace_premium_rounded),
+    'lap': CategoryStyle(color: Color(0xFF15803D), icon: Icons.apartment_rounded),
   };
 
   static const _fallback = CategoryStyle(color: Color(0xFF4A4EB0), icon: Icons.account_balance_rounded);

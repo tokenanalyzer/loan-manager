@@ -51,6 +51,13 @@ class LoanApplicationFormState {
     this.creditCardCount,
     this.creditCardOutstanding,
     this.existingLoansOutstanding,
+    // Property details (LAP only)
+    this.propertyType,
+    this.propertyOwnership,
+    this.propertyAddress,
+    this.propertyValue,
+    this.hasExistingLoanOnProperty,
+    this.existingLoanOutstandingAmount,
     // Loan requirement
     this.amount,
     this.termMonths,
@@ -106,6 +113,13 @@ class LoanApplicationFormState {
   final double? creditCardOutstanding;
   final double? existingLoansOutstanding;
 
+  final String? propertyType;
+  final String? propertyOwnership;
+  final String? propertyAddress;
+  final double? propertyValue;
+  final bool? hasExistingLoanOnProperty;
+  final double? existingLoanOutstandingAmount;
+
   final double? amount;
   final int? termMonths;
   final String? purpose;
@@ -159,6 +173,12 @@ class LoanApplicationFormState {
     int? creditCardCount,
     double? creditCardOutstanding,
     double? existingLoansOutstanding,
+    String? propertyType,
+    String? propertyOwnership,
+    String? propertyAddress,
+    double? propertyValue,
+    bool? hasExistingLoanOnProperty,
+    double? existingLoanOutstandingAmount,
     double? amount,
     int? termMonths,
     String? purpose,
@@ -206,6 +226,13 @@ class LoanApplicationFormState {
       creditCardCount: creditCardCount ?? this.creditCardCount,
       creditCardOutstanding: creditCardOutstanding ?? this.creditCardOutstanding,
       existingLoansOutstanding: existingLoansOutstanding ?? this.existingLoansOutstanding,
+      propertyType: propertyType ?? this.propertyType,
+      propertyOwnership: propertyOwnership ?? this.propertyOwnership,
+      propertyAddress: propertyAddress ?? this.propertyAddress,
+      propertyValue: propertyValue ?? this.propertyValue,
+      hasExistingLoanOnProperty: hasExistingLoanOnProperty ?? this.hasExistingLoanOnProperty,
+      existingLoanOutstandingAmount:
+          existingLoanOutstandingAmount ?? this.existingLoanOutstandingAmount,
       amount: amount ?? this.amount,
       termMonths: termMonths ?? this.termMonths,
       purpose: purpose ?? this.purpose,
@@ -363,6 +390,29 @@ class LoanApplicationFlowController extends StateNotifier<LoanApplicationFormSta
     );
   }
 
+  /// LAP-only — property collateral facts. Application-specific
+  /// (unlike every other `update*` method above, this is never sent
+  /// to `CustomerProfile`), since a customer could apply against a
+  /// different property next time.
+  void updatePropertyDetails({
+    String? propertyType,
+    String? propertyOwnership,
+    String? propertyAddress,
+    double? propertyValue,
+    bool? hasExistingLoanOnProperty,
+    double? existingLoanOutstandingAmount,
+  }) {
+    state = state.copyWith(
+      propertyType: propertyType,
+      propertyOwnership: propertyOwnership,
+      propertyAddress: propertyAddress,
+      propertyValue: propertyValue,
+      hasExistingLoanOnProperty: hasExistingLoanOnProperty,
+      existingLoanOutstandingAmount: existingLoanOutstandingAmount,
+      clearError: true,
+    );
+  }
+
   void setAmount(double amount) => state = state.copyWith(amount: amount, clearError: true);
   void setTerm(int termMonths) => state = state.copyWith(termMonths: termMonths, clearError: true);
   void setPurpose(String purpose) => state = state.copyWith(purpose: purpose);
@@ -465,6 +515,12 @@ class LoanApplicationFlowController extends StateNotifier<LoanApplicationFormSta
       requestedTermMonths: state.termMonths!,
       purpose: state.purpose,
       categoryId: state.categoryId,
+      propertyType: state.propertyType,
+      propertyOwnership: state.propertyOwnership,
+      propertyAddress: state.propertyAddress,
+      propertyValue: state.propertyValue,
+      hasExistingLoanOnProperty: state.hasExistingLoanOnProperty,
+      existingLoanOutstandingAmount: state.existingLoanOutstandingAmount,
     );
 
     return result.when(

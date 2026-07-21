@@ -52,6 +52,13 @@ export interface LeadSummary {
   /** Waiting-for-Customer visibility — independent of `status`; set when any of this customer's documents are `reupload_requested`. */
   waitingForCustomer: boolean;
   waitingForCustomerSince: string | null;
+  /** Loan Against Property (`categoryId: 'lap'`) collateral facts — null for every other category. */
+  propertyType: string | null;
+  propertyOwnership: string | null;
+  propertyAddress: string | null;
+  propertyValue: string | null;
+  hasExistingLoanOnProperty: boolean | null;
+  existingLoanOutstandingAmount: string | null;
 }
 
 /** What the admin sees before assigning a lead: identity, live presence, and current workload. */

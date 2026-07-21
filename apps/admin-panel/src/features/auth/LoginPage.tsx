@@ -1,9 +1,10 @@
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from '../../components/ui/Button';
 import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
+import { useAuth } from '../../core/auth-context';
 import { env } from '../../core/env';
 import { firebaseAuth } from '../../core/firebase';
 import { AuthLayout } from '../../layouts/AuthLayout';
@@ -17,10 +18,20 @@ import { AuthLayout } from '../../layouts/AuthLayout';
  */
 export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
+  const { status } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Landing here with an already-valid session (e.g. a stale bookmark,
+  // or manually typing /login while signed in) should bounce back to
+  // the app instead of showing the form again.
+  useEffect(() => {
+    if (status === 'authenticated') {
+      navigate('/', { replace: true });
+    }
+  }, [status, navigate]);
 
   if (!env.firebase.enabled || !firebaseAuth) {
     return (

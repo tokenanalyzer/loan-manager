@@ -39,12 +39,13 @@ class _PhoneEntryScreenState extends State<PhoneEntryScreen> {
       _errorMessage = null;
     });
 
+    final phoneNumber = '+91${_phoneController.text.trim()}';
     await getIt<CustomerAuthRepository>().sendOtp(
-      phoneNumber: '+91${_phoneController.text.trim()}',
+      phoneNumber: phoneNumber,
       onCodeSent: (verificationId) {
         if (!mounted) return;
         setState(() => _isSending = false);
-        context.push('/login/verify', extra: verificationId);
+        context.push('/login/verify', extra: (phoneNumber, verificationId));
       },
       onVerificationFailed: (message) {
         if (!mounted) return;

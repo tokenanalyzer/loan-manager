@@ -134,6 +134,31 @@ export class DocumentsService {
     });
   }
 
+  /**
+   * Splits a set of (already category-filtered) types into standalone
+   * types and OR-groups, bucketed by `requirementGroupCode`. Shared by
+   * `getBlockingDocumentsForApproval` so "which types form one OR
+   * requirement" is defined exactly once. See `DocumentTypeEntity.
+   * requirementGroupCode`.
+   */
+  private partitionByRequirementGroup(types: DocumentTypeEntity[]): {
+    standalone: DocumentTypeEntity[];
+    groups: Map<string, DocumentTypeEntity[]>;
+  } {
+    const standalone: DocumentTypeEntity[] = [];
+    const groups = new Map<string, DocumentTypeEntity[]>();
+    for (const type of types) {
+      if (type.requirementGroupCode) {
+        const members = groups.get(type.requirementGroupCode) ?? [];
+        members.push(type);
+        groups.set(type.requirementGroupCode, members);
+      } else {
+        standalone.push(type);
+      }
+    }
+    return { standalone, groups };
+  }
+
   private async buildOverview(
     ownerId: string,
     categoryId?: string,
@@ -161,6 +186,7 @@ export class DocumentsService {
       typeDto.label = type.label;
       typeDto.isRequired = type.isRequired;
       typeDto.maxUploads = type.maxUploads;
+      typeDto.requirementGroupCode = type.requirementGroupCode ?? undefined;
       typeDto.slots = Array.from({ length: type.maxUploads }, (_, index) => {
         const slotIndex = index + 1;
         const match = uploadedForType.find((doc) => doc.slotIndex === slotIndex);
@@ -198,6 +224,12 @@ export class DocumentsService {
    * this can never drift from what the customer/staff actually see.
    * Called by LoanApplicationsService.review() before any approval
    * write happens — enforced server-side, not just in the UI.
+   *
+   * OR-groups (`requirementGroupCode`) are evaluated as one requirement:
+   * non-blocking as soon as any member has a *verified* upload. A group
+   * with only one relevant member behaves exactly like a standalone
+   * required type, so Business's single-member `income_proof` group
+   * (just `itr`) is a plain hard requirement with no special-casing.
    */
   async getBlockingDocumentsForApproval(
     ownerId: string,
@@ -208,7 +240,8 @@ export class DocumentsService {
       this.documentRepository.findAllByOwner(ownerId),
     ]);
 
-    const requiredTypes = this.getRelevantTypes(types, categoryId).filter((type) => type.isRequired);
+    const relevantTypes = this.getRelevantTypes(types, categoryId);
+    const { standalone, groups } = this.partitionByRequirementGroup(relevantTypes);
 
     const documentsByTypeCode = new Map<string, DocumentEntity[]>();
     for (const document of documents) {
@@ -218,7 +251,8 @@ export class DocumentsService {
     }
 
     const blocking: BlockingRequiredDocumentDto[] = [];
-    for (const type of requiredTypes) {
+
+    for (const type of standalone.filter((t) => t.isRequired)) {
       const uploaded = documentsByTypeCode.get(type.code) ?? [];
       if (uploaded.length === 0) {
         blocking.push({ code: type.code, label: type.label, reason: 'missing' });
@@ -233,6 +267,27 @@ export class DocumentsService {
         });
       }
     }
+
+    for (const [groupCode, members] of groups) {
+      const requiredMembers = members.filter((t) => t.isRequired);
+      if (requiredMembers.length === 0) continue;
+
+      const uploadsAcrossGroup = requiredMembers.flatMap((t) => documentsByTypeCode.get(t.code) ?? []);
+      const anyVerified = uploadsAcrossGroup.some((doc) => doc.verificationStatus === 'verified');
+      if (anyVerified) continue;
+
+      const reason: BlockingDocumentReason =
+        uploadsAcrossGroup.length === 0
+          ? 'missing'
+          : (uploadsAcrossGroup.find((doc) => doc.verificationStatus !== 'verified')!
+              .verificationStatus as BlockingDocumentReason);
+      blocking.push({
+        code: groupCode,
+        label: requiredMembers.map((t) => t.label).join(' or '),
+        reason,
+      });
+    }
+
     return blocking;
   }
 
