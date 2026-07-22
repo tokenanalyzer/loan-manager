@@ -13,6 +13,7 @@ import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/state_views.dart';
 import '../documents/documents_checklist.dart';
 import '../documents/documents_controller.dart';
+import '../home/home_controller.dart';
 import '../profile/profile_providers.dart';
 import 'loan_application_flow_controller.dart';
 
@@ -1346,9 +1347,18 @@ class _ReviewStep extends ConsumerWidget {
   final LoanApplicationFlowController controller;
   final LoanApplicationFormState state;
 
-  Future<void> _submit(BuildContext context) async {
+  Future<void> _submit(BuildContext context, WidgetRef ref) async {
     final applicationId = await controller.submit();
     if (applicationId != null && context.mounted) {
+      // `submit()` also PATCHes the customer profile (see
+      // LoanApplicationFlowController.submit) and always adds a new
+      // application — neither the Home dashboard nor Profile ever
+      // re-fetch on their own otherwise (homeControllerProvider isn't
+      // `.autoDispose` and nothing else invalidated it), so without
+      // this, the just-submitted application/profile edits stayed
+      // invisible on Home/Profile until a manual pull-to-refresh.
+      ref.invalidate(homeControllerProvider);
+      ref.invalidate(profileOverviewProvider);
       context.go('/loans/apply/success', extra: applicationId);
     }
   }
@@ -1524,7 +1534,7 @@ class _ReviewStep extends ConsumerWidget {
           PrimaryButton(
             label: 'Submit application',
             isLoading: state.isSubmitting,
-            onPressed: () => _submit(context),
+            onPressed: () => _submit(context, ref),
           ),
         ],
       ),

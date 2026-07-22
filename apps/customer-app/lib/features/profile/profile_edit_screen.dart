@@ -10,6 +10,7 @@ import '../../core/widgets/labeled_section.dart';
 import '../../core/widgets/primary_button.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
+import '../home/home_controller.dart';
 import 'profile_providers.dart';
 
 /// Edit form over every self-reportable `CustomerProfile` field.
@@ -33,6 +34,7 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _fullNameController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
@@ -71,6 +73,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   @override
   void dispose() {
+    _fullNameController.dispose();
     _addressController.dispose();
     _cityController.dispose();
     _postalCodeController.dispose();
@@ -110,6 +113,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
     final result =
         await ref.read(customerProfileRepositoryProvider).updateMyProfile({
+      if (_fullNameController.text.trim().isNotEmpty)
+        'fullName': _fullNameController.text.trim(),
       if (_addressController.text.isNotEmpty)
         'addressLine1': _addressController.text,
       if (_cityController.text.isNotEmpty) 'city': _cityController.text,
@@ -174,6 +179,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     result.when(
       success: (_) {
         ref.invalidate(profileOverviewProvider);
+        // Home's Credit Profile %, eligibility offers, and EMI figures
+        // are all derived from this same profile data but never
+        // re-fetch on their own (see homeControllerProvider) — without
+        // this, a saved edit was invisible on Home until a manual
+        // pull-to-refresh.
+        ref.invalidate(homeControllerProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile saved.')),
         );
@@ -208,6 +219,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         data: (overview) {
           final profile = overview.customerProfile;
           if (!_initialized) {
+            _fullNameController.text = overview.user.fullName ?? '';
             _addressController.text = profile?.addressLine1 ?? '';
             _cityController.text = profile?.city ?? '';
             _postalCodeController.text = profile?.postalCode ?? '';
@@ -266,6 +278,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const LabeledSection(icon: Icons.person_outline, label: 'Personal'),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _fullNameController,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(labelText: 'Full name'),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Enter your full name.';
+                          }
+                          return null;
+                        },
+                      ),
                       const SizedBox(height: 12),
                       InkWell(
                         borderRadius: BorderRadius.circular(14),

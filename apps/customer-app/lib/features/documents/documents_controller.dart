@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/models/document.dart';
 import '../../core/riverpod/providers.dart';
 import '../../core/utils/friendly_error.dart';
+import '../home/home_controller.dart';
 
 /// Upload progress as a fraction (0.0-1.0), or null when nothing is
 /// currently uploading — kept separate from the overview `AsyncValue`
@@ -68,7 +69,7 @@ class DocumentsUploadController {
     result.when(
       success: (_) {
         _ref.read(documentsUploadStateProvider.notifier).state = const DocumentsUploadState();
-        _ref.invalidate(documentsOverviewProvider(_categoryId));
+        _invalidateAfterChange();
       },
       failure: (error) {
         _ref.read(documentsUploadStateProvider.notifier).state =
@@ -82,12 +83,26 @@ class DocumentsUploadController {
     final result = await repository.deleteDocument(documentId);
 
     result.when(
-      success: (_) => _ref.invalidate(documentsOverviewProvider(_categoryId)),
+      success: (_) => _invalidateAfterChange(),
       failure: (error) {
         _ref.read(documentsUploadStateProvider.notifier).state =
             DocumentsUploadState(errorMessage: friendlyMessage(error));
       },
     );
+  }
+
+  /// Home's "Recent documents" section watches the `null`-keyed
+  /// overview directly, and its "documents complete" stat comes from
+  /// `homeControllerProvider` (a separate, non-family fetch that never
+  /// re-runs on its own) — so a wizard-scoped upload/delete
+  /// (`_categoryId` non-null) needs both invalidated too, not just
+  /// this category's own overview, or Home silently stayed stale.
+  void _invalidateAfterChange() {
+    _ref.invalidate(documentsOverviewProvider(_categoryId));
+    if (_categoryId != null) {
+      _ref.invalidate(documentsOverviewProvider(null));
+    }
+    _ref.invalidate(homeControllerProvider);
   }
 }
 

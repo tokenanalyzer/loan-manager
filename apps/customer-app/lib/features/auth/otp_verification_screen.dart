@@ -136,81 +136,92 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Enter code')),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: const Icon(Icons.sms_outlined, size: 32, color: Colors.white),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text('Enter the 6-digit code', style: textTheme.headlineMedium),
-              const SizedBox(height: 8),
-              Text('We sent a verification code by text message.',
-                  style: textTheme.bodyMedium),
-              const SizedBox(height: 24),
-              TextFormField(
-                controller: _codeController,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Verification code',
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().length != 6) {
-                    return 'Enter the 6-digit code.';
-                  }
-                  return null;
-                },
-              ),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _isVerifying ? null : _submit,
-                child: _isVerifying
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Verify'),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: _isResending
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : TextButton(
-                        onPressed: _cooldownSecondsLeft > 0 ? null : _resend,
-                        child: Text(
-                          _cooldownSecondsLeft > 0
-                              ? "Didn't get the code? Resend in ${_cooldownSecondsLeft}s"
-                              : "Didn't get the code? Resend",
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(18),
                         ),
+                        child: const Icon(Icons.sms_outlined,
+                            size: 32, color: Colors.white),
                       ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text('Enter the 6-digit code',
+                        style: textTheme.headlineMedium),
+                    const SizedBox(height: 8),
+                    Text('We sent a verification code by text message.',
+                        style: textTheme.bodyMedium),
+                    const SizedBox(height: 24),
+                    TextFormField(
+                      controller: _codeController,
+                      keyboardType: TextInputType.number,
+                      maxLength: 6,
+                      decoration: const InputDecoration(
+                        labelText: 'Verification code',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().length != 6) {
+                          return 'Enter the 6-digit code.';
+                        }
+                        return null;
+                      },
+                    ),
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
+                      ),
+                    ],
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: _isVerifying ? null : _submit,
+                      child: _isVerifying
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text('Verify'),
+                    ),
+                    const SizedBox(height: 16),
+                    Center(
+                      child: _isResending
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : TextButton(
+                              onPressed:
+                                  _cooldownSecondsLeft > 0 ? null : _resend,
+                              child: Text(
+                                _cooldownSecondsLeft > 0
+                                    ? "Didn't get the code? Resend in ${_cooldownSecondsLeft}s"
+                                    : "Didn't get the code? Resend",
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
           ),
         ),
       ),

@@ -20,8 +20,8 @@ export * from './user.entity';
 
 import { AuditLogEntity } from './audit-log.entity';
 import { CustomerProfileEntity } from './customer-profile.entity';
-import { DocumentEntity } from './document.entity';
 import { DocumentTypeEntity } from './document-type.entity';
+import { DocumentEntity } from './document.entity';
 import { EmployeeBreakEntity } from './employee-break.entity';
 import { EmployeeProfileEntity } from './employee-profile.entity';
 import { LeadAssignmentEntity } from './lead-assignment.entity';

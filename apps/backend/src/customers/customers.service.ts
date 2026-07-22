@@ -45,6 +45,15 @@ export class CustomersService {
     user: UserEntity,
     dto: UpdateCustomerProfileDto,
   ): Promise<CustomerProfileEntity> {
+    // `fullName` lives on `UserEntity`, not the profile row being
+    // upserted below — this is the only self-service path that can
+    // ever set it, since Firebase phone-auth gives no name at all and
+    // AuthService never re-syncs an existing user's name from later
+    // tokens (see AuthService.syncFromFirebaseToken).
+    if (dto.fullName !== undefined) {
+      await this.userRepository.update(user.id, { fullName: dto.fullName });
+    }
+
     const existing = await this.customerProfileRepository.findByUserId(user.id);
 
     const payload: Record<string, unknown> = {

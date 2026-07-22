@@ -24,6 +24,20 @@ import {
  * `dataConsentAcceptedAt` through this DTO).
  */
 export class UpdateCustomerProfileDto {
+  /**
+   * Lives on `UserEntity`, not `CustomerProfileEntity` — see
+   * `CustomersService.upsertOwnProfile` for why this is the one field
+   * in this DTO that updates the `users` table directly. Phone-auth
+   * sign-in never populates a name (Firebase has none to give), and
+   * `AuthService.syncFromFirebaseToken` deliberately never re-syncs an
+   * existing user's name from later Firebase tokens — so without this,
+   * a phone-only customer had no way to ever set their name at all.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  fullName?: string;
+
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;

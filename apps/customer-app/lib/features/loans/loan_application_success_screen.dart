@@ -51,7 +51,7 @@ class LoanApplicationSuccessScreen extends StatelessWidget {
               const SizedBox(height: 32),
               PrimaryButton(
                 label: 'View application status',
-                onPressed: () => context.go('/loans/$applicationId'),
+                onPressed: () => context.push('/loans/$applicationId'),
               ),
               const SizedBox(height: 12),
               TextButton(

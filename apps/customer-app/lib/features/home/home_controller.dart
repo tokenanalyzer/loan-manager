@@ -210,7 +210,7 @@ class HomeDashboardData {
 
 /// Aggregates everything the Home dashboard shows in one place, so
 /// the screen itself stays presentation-only (no business logic).
-class HomeController extends AsyncNotifier<HomeDashboardData> {
+class HomeController extends AutoDisposeAsyncNotifier<HomeDashboardData> {
   @override
   Future<HomeDashboardData> build() async {
     final userRepository = ref.read(userRepositoryProvider);
@@ -257,7 +257,19 @@ class HomeController extends AsyncNotifier<HomeDashboardData> {
   }
 }
 
+/// `.autoDispose`: without it, this provider's fetched data outlives
+/// its own screen — since Home is a persistent tab inside
+/// `AppShell`'s `IndexedStack`, it's never rebuilt just from switching
+/// tabs, but *is* fully torn down on sign-out (the router replaces the
+/// whole shell with `/login`). A plain (non-autoDispose) provider
+/// would survive that teardown and keep serving the *previous*
+/// signed-in user's dashboard data to whoever signs in next — this
+/// was confirmed live: after signing out of one account and signing
+/// in as a different one, Home kept showing the old account's name
+/// and loan activity. `.autoDispose` makes it reset exactly when the
+/// shell (and therefore this provider's last listener) actually goes
+/// away.
 final homeControllerProvider =
-    AsyncNotifierProvider<HomeController, HomeDashboardData>(
+    AsyncNotifierProvider.autoDispose<HomeController, HomeDashboardData>(
   HomeController.new,
 );
