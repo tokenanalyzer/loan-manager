@@ -24,8 +24,16 @@ class AuthController extends ChangeNotifier {
   })  : _firebaseAuth = firebaseAuth,
         _apiClient = apiClient,
         _logger = logger {
-    _subscription =
-        _firebaseAuth.authStateChanges().listen(_onAuthStateChanged);
+    // `userChanges()` rather than `authStateChanges()`: the latter only
+    // fires on sign-in/sign-out, but linking a second provider to the
+    // *current* user (see `CustomerAuthRepository.linkGoogleAccount` /
+    // `linkPhoneNumber`) doesn't change the signed-in/out state or the
+    // uid — it's a user-profile change, which only `userChanges()`
+    // emits. `userChanges()` is a documented superset of
+    // `authStateChanges()` (sign-in, sign-out, token refresh, *and*
+    // profile/provider changes), so this is strictly more correct, not
+    // a behavior change for the existing sign-in/out paths.
+    _subscription = _firebaseAuth.userChanges().listen(_onAuthStateChanged);
   }
 
   final FirebaseAuth _firebaseAuth;
@@ -78,6 +86,15 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> signOut() => _firebaseAuth.signOut();
+
+  /// Deterministically re-runs the same sync [userChanges] would
+  /// eventually trigger on its own. Callers that just linked a second
+  /// sign-in provider (see `CustomerAuthRepository.linkGoogleAccount` /
+  /// `linkPhoneNumber`) await this immediately afterward instead of
+  /// racing the `userChanges` stream — the newly-linked email/phone
+  /// needs to reach the backend (and this controller's [state]) before
+  /// the caller refetches profile data, not "eventually."
+  Future<void> refreshSession() => _onAuthStateChanged(_firebaseAuth.currentUser);
 
   void _setState(AuthState newState) {
     _state = newState;

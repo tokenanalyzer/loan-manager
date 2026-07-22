@@ -306,6 +306,15 @@ class ProfileViewScreen extends ConsumerWidget {
               ),
             ),
             AppCard(
+              onTap: () => context.push('/profile/linked-accounts'),
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.link_outlined),
+                title: Text('Linked sign-in methods'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
+            AppCard(
               onTap: () => context.push('/legal'),
               child: const ListTile(
                 contentPadding: EdgeInsets.zero,

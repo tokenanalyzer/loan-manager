@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DecodedIdToken } from 'firebase-admin/auth';
+import { PinoLogger } from 'nestjs-pino';
+import { QueryFailedError } from 'typeorm';
 
 import { UserEntity, UserRole } from '../database/entities';
 import { UserRepository } from '../users/user.repository';
@@ -18,17 +20,17 @@ import { UserRepository } from '../users/user.repository';
  */
 @Injectable()
 export class AuthService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly logger: PinoLogger,
+  ) {
+    this.logger.setContext(AuthService.name);
+  }
 
   async syncFromFirebaseToken(decoded: DecodedIdToken): Promise<UserEntity> {
     const existing = await this.userRepository.findByFirebaseUid(decoded.uid);
     if (existing) {
-      // Stamped on every synced authenticated request — powers the Lead
-      // Assignment module's Online/Offline presence indicator.
-      const withPresence = await this.userRepository.update(existing.id, {
-        lastActiveAt: new Date(),
-      });
-      return withPresence ?? existing;
+      return this.syncExisting(existing, decoded);
     }
 
     return this.userRepository.create({
@@ -39,5 +41,66 @@ export class AuthService {
       role: UserRole.CUSTOMER,
       isActive: true,
     });
+  }
+
+  /**
+   * Backfills email/phone/fullName from the token when the existing
+   * user is still missing them — never overwrites a value the user
+   * (or an earlier sync) already set. This is what makes Firebase
+   * *account linking* actually useful: linking a second sign-in method
+   * (e.g. phone-first customer later linking Google) doesn't change
+   * their `firebaseUid`, but Firebase now includes the linked
+   * provider's email/phone in every subsequent ID token — without this
+   * backfill, that newly-available identity data would never reach our
+   * `users` row. See `customer_auth_repository.dart`'s `linkGoogleAccount`
+   * / `linkPhoneNumber` on the client side.
+   *
+   * `email` is unique per user, so a backfill can collide with an
+   * *unrelated* existing account that already claimed that email
+   * (leftover fragmentation from before linking was supported — see
+   * the phone-auth-frozen memory's 2026-07-23 addendum for the
+   * reconciliation runbook). That collision is a data-hygiene issue to
+   * flag, not a reason to fail the session sync that every authenticated
+   * request depends on — so it's caught and logged, not rethrown.
+   */
+  private async syncExisting(
+    existing: UserEntity,
+    decoded: DecodedIdToken,
+  ): Promise<UserEntity> {
+    const patch: Partial<UserEntity> = {
+      // Stamped on every synced authenticated request — powers the Lead
+      // Assignment module's Online/Offline presence indicator.
+      lastActiveAt: new Date(),
+    };
+    if (!existing.email && decoded.email) {
+      patch.email = decoded.email;
+    }
+    if (!existing.phone && decoded.phone_number) {
+      patch.phone = decoded.phone_number;
+    }
+    if (!existing.fullName && typeof decoded.name === 'string') {
+      patch.fullName = decoded.name;
+    }
+
+    try {
+      const updated = await this.userRepository.update(existing.id, patch);
+      return updated ?? existing;
+    } catch (error) {
+      const driverCode = error instanceof QueryFailedError
+        ? (error.driverError as { code?: string } | undefined)?.code
+        : undefined;
+      if (driverCode !== '23505') {
+        throw error;
+      }
+      this.logger.warn(
+        { err: error, userId: existing.id },
+        'Identity backfill skipped: email/phone already claimed by another user record. ' +
+          'Retrying with just the presence stamp — see phone-auth-frozen memory for the manual reconciliation runbook.',
+      );
+      const updated = await this.userRepository.update(existing.id, {
+        lastActiveAt: patch.lastActiveAt,
+      });
+      return updated ?? existing;
+    }
   }
 }

@@ -13,7 +13,7 @@ import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/animated_currency.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/fade_slide_in.dart';
-import '../../core/widgets/hero_card.dart';
+import '../../core/widgets/premium_loan_card.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
@@ -213,11 +213,18 @@ class _Header extends StatelessWidget {
 
 /// Rotating carousel through every enabled loan category
 /// (`kLoanCategories` — the catalog itself is what's "enabled"), each
-/// page showing that category's own eligible amount — informative,
-/// not a generic promo banner. Auto-advances every 4 seconds; manual
-/// swipes reset the timer's starting point rather than fighting it.
-/// Credit Profile (shown here previously) moved into the stat row
-/// below (`_OverviewStatRow`) so no information was lost.
+/// page its own premium [PremiumLoanCard] with per-category artwork
+/// and that category's own eligible amount — informative, not a
+/// generic promo banner. Auto-advances every 4 seconds; manual swipes
+/// reset the timer's starting point rather than fighting it. Credit
+/// Profile (shown here previously) moved into the stat row below
+/// (`_OverviewStatRow`) so no information was lost.
+///
+/// The focused page renders at full scale; neighbors shrink slightly
+/// as they scroll past (driven by [PageController.page] via
+/// `AnimatedBuilder`) for a subtle zoom/parallax depth effect —
+/// [PremiumLoanCard.depth] also nudges its background art the
+/// opposite way so the art appears to drift under the text.
 class _LoanCategoryHero extends StatefulWidget {
   const _LoanCategoryHero({required this.data});
 
@@ -253,63 +260,79 @@ class _LoanCategoryHeroState extends State<_LoanCategoryHero> {
     super.dispose();
   }
 
+  double _pageOf(int fallback) {
+    if (_pageController.hasClients && _pageController.position.haveDimensions) {
+      return _pageController.page ?? fallback.toDouble();
+    }
+    return fallback.toDouble();
+  }
+
   @override
   Widget build(BuildContext context) {
     final eligibility = widget.data.eligibilityByCategory;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return HeroCard(
-      onTap: () {
-        final category = kLoanCategories[_currentPage];
-        context.push('/loans/apply?categoryId=${category.id}');
-      },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            // Confirmed via a real-device run: 112 overflowed by 17px
-            // once real content (icon row + eligible-amount block +
-            // 2-line description) rendered at that device's actual font
-            // scale — 136 clears it with a safety margin for other
-            // devices/accessibility text-scale settings.
-            height: 136,
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: kLoanCategories.length,
-              onPageChanged: (index) => setState(() => _currentPage = index),
-              itemBuilder: (context, index) {
-                final category = kLoanCategories[index];
-                return _HeroCategoryPage(
+    return Column(
+      children: [
+        SizedBox(
+          // Confirmed via a real-device run: 112 overflowed by 17px
+          // once real content (icon row + eligible-amount block +
+          // 2-line description) rendered at that device's actual font
+          // scale — 192 clears it with a safety margin for other
+          // devices/accessibility text-scale settings, plus room for
+          // the taller full-bleed art card.
+          height: 192,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: kLoanCategories.length,
+            onPageChanged: (index) => setState(() => _currentPage = index),
+            itemBuilder: (context, index) {
+              final category = kLoanCategories[index];
+              return AnimatedBuilder(
+                animation: _pageController,
+                builder: (context, child) {
+                  final distance = (_pageOf(_currentPage) - index).clamp(-1.0, 1.0);
+                  return Transform.scale(
+                    scale: 1 - distance.abs() * 0.06,
+                    child: child,
+                  );
+                },
+                child: PremiumLoanCard(
                   category: category,
-                  eligibleAmount: eligibility[category.id],
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (var i = 0; i < kLoanCategories.length; i++)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  width: i == _currentPage ? 16 : 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: i == _currentPage ? 0.9 : 0.4),
-                    borderRadius: BorderRadius.circular(3),
+                  onTap: () => context.push('/loans/apply?categoryId=${category.id}'),
+                  child: _HeroCategoryContent(
+                    category: category,
+                    eligibleAmount: eligibility[category.id],
                   ),
                 ),
-            ],
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < kLoanCategories.length; i++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: i == _currentPage ? 16 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: i == _currentPage ? 0.9 : 0.25),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _HeroCategoryPage extends StatelessWidget {
-  const _HeroCategoryPage({required this.category, required this.eligibleAmount});
+class _HeroCategoryContent extends StatelessWidget {
+  const _HeroCategoryContent({required this.category, required this.eligibleAmount});
 
   final LoanCategory category;
   final double? eligibleAmount;
@@ -324,14 +347,7 @@ class _HeroCategoryPage extends StatelessWidget {
       children: [
         Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(style.icon, size: 20, color: Colors.white),
-            ),
+            GlassBadge(icon: style.icon),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -371,11 +387,21 @@ class _HeroCategoryPage extends StatelessWidget {
             style: textTheme.bodyMedium?.copyWith(color: Colors.white),
           ),
         const SizedBox(height: 6),
-        Text(
-          category.description,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+        // Constrained to roughly the left two-thirds of the card,
+        // rather than the full width Text would otherwise wrap to —
+        // the illustration lives in the right third (see
+        // PremiumLoanCard/_CardArtPainter), and a full-width 2-line
+        // description would run straight through it on longer
+        // category descriptions.
+        FractionallySizedBox(
+          widthFactor: 0.66,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            category.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: textTheme.bodySmall?.copyWith(color: Colors.white70),
+          ),
         ),
       ],
     );

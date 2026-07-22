@@ -23,6 +23,7 @@ import '../../features/loans/loan_category_selection_screen.dart';
 import '../../features/loans/my_applications_screen.dart';
 import '../../features/notifications/notifications_screen.dart';
 import '../../features/profile/account_deletion_screen.dart';
+import '../../features/profile/linked_accounts_screen.dart';
 import '../../features/profile/privacy_settings_screen.dart';
 import '../../features/profile/profile_edit_screen.dart';
 import '../../features/profile/profile_view_screen.dart';
@@ -49,6 +50,16 @@ import '../widgets/page_transitions.dart';
 /// `context.push(...)` call sites, same deep links (e.g. a
 /// notification linking to `/loans/:id`) — only how the four tab
 /// roots are declared changed, not the route table's shape.
+// Set once `AuthAuthenticated` has been observed at least once this app
+// run. `AuthController` now listens to Firebase's `userChanges()` (not
+// just `authStateChanges()`) so it can react to account-linking — see
+// `AuthController.refreshSession` — which means `AuthSyncing` can now
+// recur mid-session (a token refresh, or a just-linked provider), not
+// only at cold start. Without this flag, every one of those background
+// resyncs would force-navigate an already-authenticated user to
+// `/splash` and back, interrupting whatever screen they were on.
+bool _hasAuthenticatedOnce = false;
+
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
   refreshListenable: EnvConfig.firebaseEnabled ? getIt<AuthController>() : null,
@@ -64,6 +75,11 @@ final GoRouter appRouter = GoRouter(
     final isAuthRoute = location.startsWith('/login');
 
     if (authState is AuthInitial || authState is AuthSyncing) {
+      // See `_hasAuthenticatedOnce`'s doc comment: only the true
+      // cold-start sync forces the splash screen.
+      if (_hasAuthenticatedOnce) {
+        return null;
+      }
       return isSplash ? null : '/splash';
     }
 
@@ -75,6 +91,7 @@ final GoRouter appRouter = GoRouter(
     }
 
     if (authState is AuthAuthenticated) {
+      _hasAuthenticatedOnce = true;
       return (isSplash || isOnboarding || isAuthRoute) ? '/' : null;
     }
 
@@ -227,6 +244,14 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
         child: const PrivacySettingsScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/profile/linked-accounts',
+      name: 'linked-accounts',
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: const LinkedAccountsScreen(),
       ),
     ),
     GoRoute(

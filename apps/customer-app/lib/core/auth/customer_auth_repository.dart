@@ -81,5 +81,96 @@ class CustomerAuthRepository {
     return true;
   }
 
+  /// The sign-in providers already linked to the *currently signed-in*
+  /// user — `'phone'` and/or `'google.com'` (Firebase's own provider
+  /// IDs). Empty if nobody is signed in.
+  List<String> get linkedProviderIds =>
+      _firebaseAuth.currentUser?.providerData
+          .map((info) => info.providerId)
+          .toList() ??
+      const [];
+
+  /// Links a Google account to the *currently signed-in* user, instead
+  /// of starting a fresh sign-in — this is what keeps "signed in with
+  /// phone" and "signed in with Google" resolving to the same backend
+  /// account (see `AuthService.syncFromFirebaseToken`'s backfill logic)
+  /// rather than [signInWithGoogle]'s plain sign-in silently creating a
+  /// second, disconnected Firebase user for the same person.
+  ///
+  /// Returns `false` if the user cancels the Google account picker (not
+  /// an error). Throws the underlying [FirebaseAuthException] on
+  /// failure — in particular `credential-already-in-use` when that
+  /// Google account is already the *other* end of a different,
+  /// unrelated Firebase user; callers should surface that distinctly
+  /// rather than as a generic failure.
+  Future<bool> linkGoogleAccount() async {
+    final current = _firebaseAuth.currentUser;
+    if (current == null) {
+      throw StateError('linkGoogleAccount requires a signed-in user.');
+    }
+
+    final googleUser = await _googleSignIn.signIn();
+    if (googleUser == null) {
+      return false;
+    }
+
+    final googleAuth = await googleUser.authentication;
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    await current.linkWithCredential(credential);
+    return true;
+  }
+
+  /// Sends an OTP to link [phoneNumber] to the *currently signed-in*
+  /// user (see [linkGoogleAccount] for why this matters). Mirrors
+  /// [sendOtp]'s shape but is kept as a separate method rather than a
+  /// branch inside it, so the already-verified plain sign-in path is
+  /// never touched by this addition.
+  Future<void> sendOtpToLink({
+    required String phoneNumber,
+    required void Function(String verificationId) onCodeSent,
+    required void Function(String message) onVerificationFailed,
+  }) {
+    final current = _firebaseAuth.currentUser;
+    if (current == null) {
+      throw StateError('sendOtpToLink requires a signed-in user.');
+    }
+
+    return _firebaseAuth.verifyPhoneNumber(
+      phoneNumber: phoneNumber,
+      timeout: const Duration(seconds: 60),
+      verificationCompleted: (PhoneAuthCredential credential) async {
+        await current.linkWithCredential(credential);
+      },
+      verificationFailed: (FirebaseAuthException error) {
+        onVerificationFailed(error.message ?? 'Phone verification failed.');
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        onCodeSent(verificationId);
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {},
+    );
+  }
+
+  /// Completes [sendOtpToLink] with the entered OTP. Throws the
+  /// underlying [FirebaseAuthException] on failure — in particular
+  /// `credential-already-in-use` when that phone number already
+  /// belongs to a different Firebase user.
+  Future<void> linkPhoneNumber(
+      {required String verificationId, required String smsCode}) async {
+    final current = _firebaseAuth.currentUser;
+    if (current == null) {
+      throw StateError('linkPhoneNumber requires a signed-in user.');
+    }
+
+    final credential = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode,
+    );
+    await current.linkWithCredential(credential);
+  }
+
   Future<void> signOut() => _firebaseAuth.signOut();
 }
