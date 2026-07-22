@@ -9,6 +9,7 @@ import '../network/document_repository.dart';
 import '../network/lending_partner_repository.dart';
 import '../network/loan_application_repository.dart';
 import '../network/notification_repository.dart';
+import '../network/reward_repository.dart';
 import '../network/user_repository.dart';
 
 /// Dependency injection.
@@ -55,6 +56,10 @@ void configureDependencies() {
 
   getIt.registerLazySingleton<UserRepository>(
     () => UserRepository(getIt<ApiClient>()),
+  );
+
+  getIt.registerLazySingleton<RewardRepository>(
+    () => RewardRepository(getIt<ApiClient>()),
   );
 
   if (EnvConfig.firebaseEnabled) {

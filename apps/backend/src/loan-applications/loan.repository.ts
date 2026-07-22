@@ -3,12 +3,31 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { BaseRepository } from '../common/repository/base.repository';
-import { LoanEntity } from '../database/entities';
+import { LoanEntity, LoanStatus } from '../database/entities';
 
 @Injectable()
 export class LoanRepository extends BaseRepository<LoanEntity> {
   constructor(@InjectRepository(LoanEntity) repository: Repository<LoanEntity>) {
     super(repository);
+  }
+
+  /**
+   * `Top-Up`/`BT_TOPUP` journey detection's only signal — true once
+   * this customer has a *disbursed* (`ACTIVE`) personal loan with us.
+   * Deliberately `ACTIVE`, not merely "approved": an approved-but-not-
+   * yet-disbursed loan isn't something you'd "top up" yet. Will always
+   * return false today since nothing transitions a loan to `ACTIVE`
+   * yet — see `LoanJourneyDetectionService`.
+   */
+  async hasActivePersonalLoan(customerId: string): Promise<boolean> {
+    const count = await this.repository
+      .createQueryBuilder('loan')
+      .innerJoin('loan.application', 'application')
+      .where('loan.customer_id = :customerId', { customerId })
+      .andWhere('loan.status = :status', { status: LoanStatus.ACTIVE })
+      .andWhere('application.category_id = :categoryId', { categoryId: 'personal' })
+      .getCount();
+    return count > 0;
   }
 
   /**

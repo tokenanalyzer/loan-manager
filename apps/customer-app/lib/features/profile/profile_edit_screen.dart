@@ -54,6 +54,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _creditCardCountController = TextEditingController();
   final _creditCardOutstandingController = TextEditingController();
   final _existingLoansOutstandingController = TextEditingController();
+  final _externalLoanLenderController = TextEditingController();
+  final _externalLoanOutstandingController = TextEditingController();
+  final _externalLoanLast4Controller = TextEditingController();
   final _reference1NameController = TextEditingController();
   final _reference1PhoneController = TextEditingController();
   final _reference1RelationshipController = TextEditingController();
@@ -67,6 +70,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   String? _gender;
   String? _maritalStatus;
   String? _dateOfBirth;
+  bool _hasActiveExternalLoan = false;
 
   bool _isSaving = false;
   bool _initialized = false;
@@ -93,6 +97,9 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _creditCardCountController.dispose();
     _creditCardOutstandingController.dispose();
     _existingLoansOutstandingController.dispose();
+    _externalLoanLenderController.dispose();
+    _externalLoanOutstandingController.dispose();
+    _externalLoanLast4Controller.dispose();
     _reference1NameController.dispose();
     _reference1PhoneController.dispose();
     _reference1RelationshipController.dispose();
@@ -159,6 +166,16 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         'creditCardOutstanding': double.parse(_creditCardOutstandingController.text),
       if (double.tryParse(_existingLoansOutstandingController.text) != null)
         'existingLoansOutstanding': double.parse(_existingLoansOutstandingController.text),
+      'hasActiveExternalLoan': _hasActiveExternalLoan,
+      if (_hasActiveExternalLoan) ...{
+        if (_externalLoanLenderController.text.isNotEmpty)
+          'externalLoanLenderName': _externalLoanLenderController.text.trim(),
+        if (double.tryParse(_externalLoanOutstandingController.text) != null)
+          'externalLoanOutstandingAmount':
+              double.parse(_externalLoanOutstandingController.text),
+        if (_externalLoanLast4Controller.text.length == 4)
+          'externalLoanAccountLast4': _externalLoanLast4Controller.text,
+      },
       if (_reference1NameController.text.isNotEmpty)
         'reference1Name': _reference1NameController.text.trim(),
       if (_reference1PhoneController.text.isNotEmpty)
@@ -238,6 +255,11 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
             _creditCardCountController.text = profile?.creditCardCount?.toString() ?? '';
             _creditCardOutstandingController.text = profile?.creditCardOutstanding ?? '';
             _existingLoansOutstandingController.text = profile?.existingLoansOutstanding ?? '';
+            _hasActiveExternalLoan = profile?.hasActiveExternalLoan ?? false;
+            _externalLoanLenderController.text = profile?.externalLoanLenderName ?? '';
+            _externalLoanOutstandingController.text =
+                profile?.externalLoanOutstandingAmount ?? '';
+            _externalLoanLast4Controller.text = profile?.externalLoanAccountLast4 ?? '';
             _reference1NameController.text = profile?.reference1Name ?? '';
             _reference1PhoneController.text = profile?.reference1Phone ?? '';
             _reference1RelationshipController.text = profile?.reference1Relationship ?? '';
@@ -531,6 +553,46 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         decoration: const InputDecoration(
                             labelText: 'Other outstanding loans', prefixText: '₹ '),
                       ),
+                      const Divider(height: 28),
+                      // Balance Transfer signal — see CustomerProfile.
+                      // hasActiveExternalLoan's doc comment. Purely
+                      // informational to the customer; there is no
+                      // "choose your loan journey" step anywhere in the
+                      // app — the next Personal Loan application just
+                      // auto-detects as Balance Transfer once this is on.
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('I have an active personal loan with another lender'),
+                        subtitle: const Text(
+                          "We'll offer to transfer it when you apply for a Personal Loan.",
+                        ),
+                        value: _hasActiveExternalLoan,
+                        onChanged: (value) => setState(() => _hasActiveExternalLoan = value),
+                      ),
+                      if (_hasActiveExternalLoan) ...[
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _externalLoanLenderController,
+                          decoration: const InputDecoration(labelText: 'Lender name'),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _externalLoanOutstandingController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                              labelText: 'Outstanding amount', prefixText: '₹ '),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: _externalLoanLast4Controller,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'Loan account — last 4 digits',
+                            counterText: '',
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -17,6 +17,7 @@ import '../../core/widgets/premium_loan_card.dart';
 import '../../core/widgets/section_header.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/user_avatar.dart';
 import '../documents/documents_controller.dart';
 import 'home_controller.dart';
 import 'lending_partners_provider.dart';
@@ -156,19 +157,15 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
     final colorScheme = Theme.of(context).colorScheme;
-    final initials = _initialsFor(data.userProfile?.fullName);
 
     return Row(
       children: [
         GestureDetector(
           onTap: () => context.go('/profile'),
-          child: CircleAvatar(
+          child: UserAvatar(
+            fullName: data.userProfile?.fullName,
+            photoUrl: data.userProfile?.photoUrl,
             radius: 22,
-            backgroundColor: colorScheme.primary.withValues(alpha: 0.12),
-            child: Text(
-              initials,
-              style: textTheme.titleMedium?.copyWith(color: colorScheme.primary),
-            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -200,14 +197,6 @@ class _Header extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  static String _initialsFor(String? fullName) {
-    if (fullName == null || fullName.trim().isEmpty) return '?';
-    final parts = fullName.trim().split(RegExp(r'\s+'));
-    final first = parts.first.isNotEmpty ? parts.first[0] : '';
-    final last = parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
-    return (first + last).toUpperCase();
   }
 }
 

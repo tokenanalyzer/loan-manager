@@ -12,6 +12,7 @@ export class UserProfileResponseDto {
   email!: string | null;
   phone!: string | null;
   fullName!: string | null;
+  photoUrl!: string | null;
   role!: UserRole;
   isActive!: boolean;
 
@@ -21,6 +22,7 @@ export class UserProfileResponseDto {
     email?: string | null;
     phone?: string | null;
     fullName?: string | null;
+    photoUrl?: string | null;
     role: UserRole;
     isActive: boolean;
   }): UserProfileResponseDto {
@@ -30,6 +32,7 @@ export class UserProfileResponseDto {
     dto.email = entity.email ?? null;
     dto.phone = entity.phone ?? null;
     dto.fullName = entity.fullName ?? null;
+    dto.photoUrl = entity.photoUrl ?? null;
     dto.role = entity.role;
     dto.isActive = entity.isActive;
     return dto;

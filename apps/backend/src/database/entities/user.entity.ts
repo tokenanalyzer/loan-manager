@@ -37,6 +37,14 @@ export class UserEntity extends AbstractEntity {
   @Column({ type: 'varchar', length: 255, nullable: true })
   fullName?: string | null;
 
+  /**
+   * From Firebase's decoded `picture` claim — present for
+   * Google-authenticated users, absent for phone-authenticated ones.
+   * A remote URL (Google's own CDN), not a file we store ourselves.
+   */
+  @Column({ type: 'varchar', length: 1024, nullable: true })
+  photoUrl?: string | null;
+
   @Index('idx_users_role')
   @Column({ type: 'enum', enum: UserRole, default: UserRole.CUSTOMER })
   role!: UserRole;

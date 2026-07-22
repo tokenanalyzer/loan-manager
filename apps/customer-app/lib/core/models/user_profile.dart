@@ -8,6 +8,7 @@ class UserProfile {
     this.email,
     this.phone,
     this.fullName,
+    this.photoUrl,
   });
 
   final String id;
@@ -15,6 +16,7 @@ class UserProfile {
   final String? email;
   final String? phone;
   final String? fullName;
+  final String? photoUrl;
   final String role;
   final bool isActive;
 
@@ -25,6 +27,7 @@ class UserProfile {
       email: json['email'] as String?,
       phone: json['phone'] as String?,
       fullName: json['fullName'] as String?,
+      photoUrl: json['photoUrl'] as String?,
       role: json['role'] as String,
       isActive: json['isActive'] as bool,
     );

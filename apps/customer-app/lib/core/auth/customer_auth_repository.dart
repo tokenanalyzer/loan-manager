@@ -66,7 +66,16 @@ class CustomerAuthRepository {
   /// (not an error). On success, Firebase's own auth-state stream
   /// fires and the shared `AuthController` takes over, same as
   /// [verifyOtp].
+  ///
+  /// Signs out of the cached native Google session first — without
+  /// this, `GoogleSignIn.signIn()` silently re-authenticates whichever
+  /// account was used last (Android caches it), skipping the account
+  /// picker entirely even when the device has several Google accounts.
+  /// This forces the picker every time, matching Gmail/YouTube/Play's
+  /// "always let the user choose" behavior rather than silently
+  /// re-signing into a stale account.
   Future<bool> signInWithGoogle() async {
+    await _googleSignIn.signOut();
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) {
       return false;
@@ -109,6 +118,9 @@ class CustomerAuthRepository {
       throw StateError('linkGoogleAccount requires a signed-in user.');
     }
 
+    // See signInWithGoogle's doc comment — forces the account picker
+    // instead of silently reusing a cached session.
+    await _googleSignIn.signOut();
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) {
       return false;
@@ -172,5 +184,17 @@ class CustomerAuthRepository {
     await current.linkWithCredential(credential);
   }
 
-  Future<void> signOut() => _firebaseAuth.signOut();
+  /// Signs out of both Firebase *and* the native Google session. The
+  /// Google half matters even though Firebase sign-out alone ends the
+  /// app session: without it, `GoogleSignIn` keeps its cached account
+  /// silently selected, so the next "Continue with Google" tap would
+  /// skip the account picker and re-sign into the same account the
+  /// customer just signed out of — required behavior is that logout
+  /// always resets to a fresh account picker.
+  Future<void> signOut() async {
+    await Future.wait([
+      _firebaseAuth.signOut(),
+      _googleSignIn.signOut(),
+    ]);
+  }
 }

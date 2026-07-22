@@ -49,6 +49,13 @@ export class CustomerProfileResponseDto {
   creditCardCount!: number | null;
   creditCardOutstanding!: string | null;
   existingLoansOutstanding!: string | null;
+
+  /** Balance Transfer signal — see `LoanJourneyDetectionService`. */
+  hasActiveExternalLoan!: boolean | null;
+  externalLoanLenderName!: string | null;
+  externalLoanOutstandingAmount!: string | null;
+  externalLoanAccountLast4!: string | null;
+
   reference1Name!: string | null;
   reference1Phone!: string | null;
   reference1Relationship!: string | null;
@@ -96,6 +103,10 @@ export class CustomerProfileResponseDto {
     creditCardCount?: number | null;
     creditCardOutstanding?: string | null;
     existingLoansOutstanding?: string | null;
+    hasActiveExternalLoan?: boolean | null;
+    externalLoanLenderName?: string | null;
+    externalLoanOutstandingAmount?: string | null;
+    externalLoanAccountLast4?: string | null;
     reference1Name?: string | null;
     reference1Phone?: string | null;
     reference1Relationship?: string | null;
@@ -143,6 +154,10 @@ export class CustomerProfileResponseDto {
     dto.creditCardCount = entity.creditCardCount ?? null;
     dto.creditCardOutstanding = entity.creditCardOutstanding ?? null;
     dto.existingLoansOutstanding = entity.existingLoansOutstanding ?? null;
+    dto.hasActiveExternalLoan = entity.hasActiveExternalLoan ?? null;
+    dto.externalLoanLenderName = entity.externalLoanLenderName ?? null;
+    dto.externalLoanOutstandingAmount = entity.externalLoanOutstandingAmount ?? null;
+    dto.externalLoanAccountLast4 = entity.externalLoanAccountLast4 ?? null;
     dto.reference1Name = entity.reference1Name ?? null;
     dto.reference1Phone = entity.reference1Phone ?? null;
     dto.reference1Relationship = entity.reference1Relationship ?? null;

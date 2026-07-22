@@ -28,6 +28,7 @@ import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import { UpdateNotesDto } from './dto/update-notes.dto';
 import { DEFAULT_LOAN_REQUEST_TYPE, LOAN_CATEGORY_BOUNDS } from './loan-application.constants';
 import { LoanApplicationRepository } from './loan-application.repository';
+import { LoanJourneyDetectionService } from './loan-journey-detection.service';
 import { LoanRepository } from './loan.repository';
 
 /**
@@ -74,6 +75,7 @@ export class LoanApplicationsService {
     // forwardRef(() => LoanApplicationsModule) comment.
     @Inject(forwardRef(() => DocumentsService)) private readonly documentsService: DocumentsService,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly loanJourneyDetectionService: LoanJourneyDetectionService,
   ) {}
 
   async submit(
@@ -100,13 +102,25 @@ export class LoanApplicationsService {
       }
     }
 
+    // Personal Loan journey (Fresh/Top-Up/Balance Transfer/BT+Top-Up)
+    // is server-detected, not client-chosen — a client-sent
+    // `requestType` is ignored for `categoryId === 'personal'` so a
+    // stale/malicious client value can never override what the
+    // customer's actual data says. Every other category still falls
+    // back to the client value (or the default) exactly as before,
+    // since detection only applies to Personal Loans.
+    const requestType =
+      dto.categoryId === 'personal'
+        ? await this.loanJourneyDetectionService.detect(applicant.id, dto.categoryId)
+        : dto.requestType ?? DEFAULT_LOAN_REQUEST_TYPE;
+
     return this.loanApplicationRepository.create({
       applicantId: applicant.id,
       requestedAmount: dto.requestedAmount.toFixed(2),
       requestedTermMonths: dto.requestedTermMonths,
       purpose: dto.purpose ?? null,
       categoryId: dto.categoryId ?? null,
-      requestType: dto.requestType ?? DEFAULT_LOAN_REQUEST_TYPE,
+      requestType,
       status: LoanApplicationStatus.SUBMITTED,
       submittedAt: new Date(),
       propertyType: dto.propertyType ?? null,

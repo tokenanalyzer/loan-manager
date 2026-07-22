@@ -40,6 +40,10 @@ class CustomerProfile {
     this.creditCardCount,
     this.creditCardOutstanding,
     this.existingLoansOutstanding,
+    this.hasActiveExternalLoan,
+    this.externalLoanLenderName,
+    this.externalLoanOutstandingAmount,
+    this.externalLoanAccountLast4,
     this.reference1Name,
     this.reference1Phone,
     this.reference1Relationship,
@@ -91,6 +95,18 @@ class CustomerProfile {
   final int? creditCardCount;
   final String? creditCardOutstanding;
   final String? existingLoansOutstanding;
+
+  /// Balance Transfer signal — see the backend's
+  /// `LoanJourneyDetectionService`. When true (and lender/amount are
+  /// filled in), a Personal Loan application auto-detects as
+  /// `BALANCE_TRANSFER` (or `BT_TOPUP` if the customer also has an
+  /// active loan with us) instead of `FRESH_LOAN` — no manual journey
+  /// picker anywhere in the app.
+  final bool? hasActiveExternalLoan;
+  final String? externalLoanLenderName;
+  final String? externalLoanOutstandingAmount;
+  final String? externalLoanAccountLast4;
+
   final String? reference1Name;
   final String? reference1Phone;
   final String? reference1Relationship;
@@ -149,6 +165,10 @@ class CustomerProfile {
       creditCardCount: json['creditCardCount'] as int?,
       creditCardOutstanding: json['creditCardOutstanding'] as String?,
       existingLoansOutstanding: json['existingLoansOutstanding'] as String?,
+      hasActiveExternalLoan: json['hasActiveExternalLoan'] as bool?,
+      externalLoanLenderName: json['externalLoanLenderName'] as String?,
+      externalLoanOutstandingAmount: json['externalLoanOutstandingAmount'] as String?,
+      externalLoanAccountLast4: json['externalLoanAccountLast4'] as String?,
       reference1Name: json['reference1Name'] as String?,
       reference1Phone: json['reference1Phone'] as String?,
       reference1Relationship: json['reference1Relationship'] as String?,

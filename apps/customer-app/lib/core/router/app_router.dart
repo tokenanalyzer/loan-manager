@@ -27,6 +27,7 @@ import '../../features/profile/linked_accounts_screen.dart';
 import '../../features/profile/privacy_settings_screen.dart';
 import '../../features/profile/profile_edit_screen.dart';
 import '../../features/profile/profile_view_screen.dart';
+import '../../features/rewards/rewards_screen.dart';
 import '../../features/support/contact_support_screen.dart';
 import '../../features/support/faq_screen.dart';
 import '../../features/support/help_center_screen.dart';
@@ -353,6 +354,14 @@ final GoRouter appRouter = GoRouter(
         key: state.pageKey,
         child: const EmiCalculatorScreen(),
       ),
+    ),
+
+    // Rewards (secondary).
+    GoRoute(
+      path: '/rewards',
+      name: 'rewards',
+      pageBuilder: (context, state) =>
+          fadeThroughPage(key: state.pageKey, child: const RewardsScreen()),
     ),
   ],
   errorBuilder: (context, state) => Scaffold(

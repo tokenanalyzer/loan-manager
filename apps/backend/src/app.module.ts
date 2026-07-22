@@ -14,6 +14,7 @@ import { LeadAssignmentModule } from './lead-assignment/lead-assignment.module';
 import { LoanApplicationsModule } from './loan-applications/loan-applications.module';
 import { LoggerModule } from './logger/logger.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { RewardsModule } from './rewards/rewards.module';
 import { StorageModule } from './storage/storage.module';
 import { WorkStatusModule } from './work-status/work-status.module';
 
@@ -58,6 +59,7 @@ import { WorkStatusModule } from './work-status/work-status.module';
     DocumentsModule,
     LeadAssignmentModule,
     WorkStatusModule,
+    RewardsModule,
   ],
   providers: [
     {

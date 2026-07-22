@@ -16,6 +16,8 @@ export * from './loan-application.entity';
 export * from './loan.entity';
 export * from './notification.entity';
 export * from './payment.entity';
+export * from './reward-config.entity';
+export * from './reward.entity';
 export * from './user.entity';
 
 import { AuditLogEntity } from './audit-log.entity';
@@ -29,6 +31,8 @@ import { LoanApplicationEntity } from './loan-application.entity';
 import { LoanEntity } from './loan.entity';
 import { NotificationEntity } from './notification.entity';
 import { PaymentEntity } from './payment.entity';
+import { RewardConfigEntity } from './reward-config.entity';
+import { RewardEntity } from './reward.entity';
 import { UserEntity } from './user.entity';
 
 export const ALL_ENTITIES = [
@@ -44,4 +48,6 @@ export const ALL_ENTITIES = [
   NotificationEntity,
   LeadAssignmentEntity,
   EmployeeBreakEntity,
+  RewardConfigEntity,
+  RewardEntity,
 ];

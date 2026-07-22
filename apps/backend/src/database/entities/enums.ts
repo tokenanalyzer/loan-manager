@@ -56,6 +56,21 @@ export enum PaymentStatus {
   MISSED = 'missed',
 }
 
+/**
+ * Personal Loan reward lifecycle. A `RewardEntity` only ever starts
+ * life as `ACCRUED` — see `RewardsService.generateForDisbursedLoan`,
+ * which is the *only* code path that creates one, and only runs once a
+ * loan is genuinely disbursed. `PAID` is a future manual/admin action
+ * (no payout integration exists yet); `CANCELLED` covers a disbursed
+ * loan later reversed/defaulted — a data-integrity case worth having a
+ * state for even before anything triggers it.
+ */
+export enum RewardStatus {
+  ACCRUED = 'accrued',
+  PAID = 'paid',
+  CANCELLED = 'cancelled',
+}
+
 export enum DocumentType {
   ID_PROOF = 'id_proof',
   INCOME_PROOF = 'income_proof',

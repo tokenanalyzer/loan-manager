@@ -243,6 +243,32 @@ export class UpdateCustomerProfileDto {
   @Min(0)
   existingLoansOutstanding?: number;
 
+  /**
+   * Balance Transfer signal — see `LoanJourneyDetectionService`. Only
+   * `hasActiveExternalLoan: true` actually affects journey detection;
+   * the lender/amount/last-4 fields are informational context shown to
+   * the reviewing employee, not read by the detector itself.
+   */
+  @IsOptional()
+  @IsBoolean()
+  hasActiveExternalLoan?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(128)
+  externalLoanLenderName?: string;
+
+  @IsOptional()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  externalLoanOutstandingAmount?: number;
+
+  /** Last 4 digits only — see the AddBalanceTransferFields migration for why the full number is never collected. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[0-9]{4}$/, { message: 'externalLoanAccountLast4 must be exactly 4 digits.' })
+  externalLoanAccountLast4?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(128)

@@ -183,6 +183,28 @@ export class CustomerProfileEntity extends AbstractEntity {
   @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
   existingLoansOutstanding?: string | null;
 
+  /**
+   * Balance Transfer signal — the customer self-declares an active
+   * personal loan with a *different* lender they'd consider
+   * transferring. This is the only data `LoanJourneyDetectionService`
+   * has to work with for `BALANCE_TRANSFER`/`BT_TOPUP` detection;
+   * without it, those two request types could never be reached. Kept
+   * on the profile (not the application) since it's a fact about the
+   * customer, not any one application.
+   */
+  @Column({ type: 'boolean', nullable: true })
+  hasActiveExternalLoan?: boolean | null;
+
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  externalLoanLenderName?: string | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, nullable: true })
+  externalLoanOutstandingAmount?: string | null;
+
+  /** Masked identifier only — see the AddBalanceTransferFields migration for why. */
+  @Column({ type: 'varchar', length: 4, nullable: true })
+  externalLoanAccountLast4?: string | null;
+
   @Column({ type: 'varchar', length: 128, nullable: true })
   reference1Name?: string | null;
 

@@ -8,6 +8,7 @@ import '../network/document_repository.dart';
 import '../network/lending_partner_repository.dart';
 import '../network/loan_application_repository.dart';
 import '../network/notification_repository.dart';
+import '../network/reward_repository.dart';
 import '../network/user_repository.dart';
 
 /// Bridge between GetIt (the service locator established in Phase 2)
@@ -46,6 +47,9 @@ final notificationRepositoryProvider = Provider<NotificationRepository>(
 
 final userRepositoryProvider =
     Provider<UserRepository>((ref) => getIt<UserRepository>());
+
+final rewardRepositoryProvider =
+    Provider<RewardRepository>((ref) => getIt<RewardRepository>());
 
 /// `AuthController` is only registered in GetIt when
 /// `EnvConfig.firebaseEnabled` is true (see `core/di/injection.dart`).

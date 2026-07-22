@@ -38,22 +38,29 @@ export class AuthService {
       email: decoded.email ?? null,
       phone: decoded.phone_number ?? null,
       fullName: typeof decoded.name === 'string' ? decoded.name : null,
+      photoUrl: typeof decoded.picture === 'string' ? decoded.picture : null,
       role: UserRole.CUSTOMER,
       isActive: true,
     });
   }
 
   /**
-   * Backfills email/phone/fullName from the token when the existing
-   * user is still missing them — never overwrites a value the user
-   * (or an earlier sync) already set. This is what makes Firebase
+   * Backfills email/phone/fullName/photoUrl from the token when the
+   * existing user is still missing them — never overwrites a value the
+   * user (or an earlier sync) already set. This is what makes Firebase
    * *account linking* actually useful: linking a second sign-in method
    * (e.g. phone-first customer later linking Google) doesn't change
    * their `firebaseUid`, but Firebase now includes the linked
-   * provider's email/phone in every subsequent ID token — without this
-   * backfill, that newly-available identity data would never reach our
-   * `users` row. See `customer_auth_repository.dart`'s `linkGoogleAccount`
-   * / `linkPhoneNumber` on the client side.
+   * provider's email/phone/picture in every subsequent ID token —
+   * without this backfill, that newly-available identity data would
+   * never reach our `users` row. See `customer_auth_repository.dart`'s
+   * `linkGoogleAccount`/`linkPhoneNumber` on the client side.
+   *
+   * `photoUrl` is deliberately backfill-only too, not "always sync to
+   * the token's latest value": a phone-only sign-in's token has no
+   * `picture` claim at all, so always overwriting would wipe out a
+   * photo captured earlier via a linked Google account the moment the
+   * customer signs in with phone again.
    *
    * `email` is unique per user, so a backfill can collide with an
    * *unrelated* existing account that already claimed that email
@@ -80,6 +87,9 @@ export class AuthService {
     }
     if (!existing.fullName && typeof decoded.name === 'string') {
       patch.fullName = decoded.name;
+    }
+    if (!existing.photoUrl && typeof decoded.picture === 'string') {
+      patch.photoUrl = decoded.picture;
     }
 
     try {

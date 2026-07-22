@@ -7,6 +7,7 @@ import type { NotificationsService } from '../notifications/notifications.servic
 import type { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import type { LoanApplicationRepository } from './loan-application.repository';
 import { LoanApplicationsService } from './loan-applications.service';
+import type { LoanJourneyDetectionService } from './loan-journey-detection.service';
 import type { LoanRepository } from './loan.repository';
 
 /**
@@ -39,6 +40,7 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
     const dataSource = {
       transaction: jest.fn().mockResolvedValue(undefined),
     } as unknown as DataSource;
+    const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -46,6 +48,7 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
       notificationsService,
       documentsService,
       dataSource,
+      loanJourneyDetectionService,
     );
 
     return { service, dataSource, documentsService, loanApplicationRepository };

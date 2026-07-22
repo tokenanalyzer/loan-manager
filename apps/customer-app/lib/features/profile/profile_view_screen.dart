@@ -12,6 +12,7 @@ import '../../core/widgets/fade_slide_in.dart';
 import '../../core/widgets/labeled_section.dart';
 import '../../core/widgets/skeleton_loader.dart';
 import '../../core/widgets/state_views.dart';
+import '../../core/widgets/user_avatar.dart';
 import 'profile_providers.dart';
 
 /// Read-only profile summary + navigation to Edit/Privacy Settings.
@@ -27,7 +28,6 @@ class ProfileViewScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overviewAsync = ref.watch(profileOverviewProvider);
     final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -59,21 +59,13 @@ class ProfileViewScreen extends ConsumerWidget {
           final user = overview.user;
           final profile = overview.customerProfile;
           final sections = <Widget>[
-            // Identity — avatar (initials, not a fake stock photo) +
-            // name + contact details.
+            // Identity — avatar (Google photo when linked, otherwise
+            // initials — never a fake stock photo) + name + contact
+            // details.
             AppCard(
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor:
-                        colorScheme.primary.withValues(alpha: 0.12),
-                    child: Text(
-                      _initialsFor(user.fullName),
-                      style: textTheme.titleLarge
-                          ?.copyWith(color: colorScheme.primary),
-                    ),
-                  ),
+                  UserAvatar(fullName: user.fullName, photoUrl: user.photoUrl, radius: 28),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
@@ -297,6 +289,15 @@ class ProfileViewScreen extends ConsumerWidget {
                 ),
               ),
             AppCard(
+              onTap: () => context.push('/rewards'),
+              child: const ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.emoji_events_outlined),
+                title: Text('Rewards'),
+                trailing: Icon(Icons.chevron_right),
+              ),
+            ),
+            AppCard(
               onTap: () => context.push('/profile/privacy'),
               child: const ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -370,14 +371,6 @@ class ProfileViewScreen extends ConsumerWidget {
     if (confirmed == true) {
       await getIt<CustomerAuthRepository>().signOut();
     }
-  }
-
-  static String _initialsFor(String? fullName) {
-    if (fullName == null || fullName.trim().isEmpty) return '?';
-    final parts = fullName.trim().split(RegExp(r'\s+'));
-    final first = parts.first.isNotEmpty ? parts.first[0] : '';
-    final last = parts.length > 1 && parts.last.isNotEmpty ? parts.last[0] : '';
-    return (first + last).toUpperCase();
   }
 }
 
