@@ -292,6 +292,65 @@ export class DocumentsService {
   }
 
   /**
+   * Submission-time gate — used by `LoanApplicationsService.submit`.
+   * Deliberately lighter than `getBlockingDocumentsForApproval`: at
+   * submission nothing has been staff-reviewed yet, so gating on
+   * `verified` (like approval does) would block every application
+   * unconditionally. This only checks *presence* — has the customer
+   * uploaded something for every required type/OR-group at all — so a
+   * freshly-uploaded `pending` document is fine to submit with; only a
+   * type with zero uploads is blocking. Reuses the exact same
+   * `getRelevantTypes`/`partitionByRequirementGroup` "what's required
+   * for this category" logic as the approval gate, so the two can
+   * never disagree about which types apply.
+   */
+  async getMissingRequiredDocumentsForSubmission(
+    ownerId: string,
+    categoryId?: string,
+  ): Promise<BlockingRequiredDocumentDto[]> {
+    const [types, documents] = await Promise.all([
+      this.documentTypeRepository.findAllActive(),
+      this.documentRepository.findAllByOwner(ownerId),
+    ]);
+
+    const relevantTypes = this.getRelevantTypes(types, categoryId);
+    const { standalone, groups } = this.partitionByRequirementGroup(relevantTypes);
+
+    const documentsByTypeCode = new Map<string, DocumentEntity[]>();
+    for (const document of documents) {
+      const list = documentsByTypeCode.get(document.documentTypeCode) ?? [];
+      list.push(document);
+      documentsByTypeCode.set(document.documentTypeCode, list);
+    }
+
+    const missing: BlockingRequiredDocumentDto[] = [];
+
+    for (const type of standalone.filter((t) => t.isRequired)) {
+      if ((documentsByTypeCode.get(type.code) ?? []).length === 0) {
+        missing.push({ code: type.code, label: type.label, reason: 'missing' });
+      }
+    }
+
+    for (const [groupCode, members] of groups) {
+      const requiredMembers = members.filter((t) => t.isRequired);
+      if (requiredMembers.length === 0) continue;
+
+      const uploadsAcrossGroup = requiredMembers.flatMap(
+        (t) => documentsByTypeCode.get(t.code) ?? [],
+      );
+      if (uploadsAcrossGroup.length === 0) {
+        missing.push({
+          code: groupCode,
+          label: requiredMembers.map((t) => t.label).join(' or '),
+          reason: 'missing',
+        });
+      }
+    }
+
+    return missing;
+  }
+
+  /**
    * Uploads a document into a specific (or auto-assigned) slot.
    * Uploading into an already-occupied slot replaces it — this is
    * what makes "replace document" work, same as the original

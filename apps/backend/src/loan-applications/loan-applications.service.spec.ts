@@ -5,11 +5,90 @@ import type { DocumentsService } from '../documents/documents.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { RewardsService } from '../rewards/rewards.service';
 
+import type { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import type { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import type { LoanApplicationRepository } from './loan-application.repository';
 import { LoanApplicationsService } from './loan-applications.service';
 import type { LoanJourneyDetectionService } from './loan-journey-detection.service';
 import type { LoanRepository } from './loan.repository';
+
+/**
+ * Submission validation gate — release-blocker fix: `submit()` must
+ * consult DocumentsService.getMissingRequiredDocumentsForSubmission
+ * before a loan application row is ever created, and must reject with
+ * the full missing-document list when it isn't empty. This is
+ * deliberately a *presence* check (mirrors the method's own doc
+ * comment) — distinct from, and does not replace, the stricter
+ * *verified* check `review()` still runs at approval time (tested
+ * below) as the existing second safety layer.
+ */
+describe('LoanApplicationsService.submit — required document validation gate', () => {
+  function buildService(missingDocuments: unknown[]) {
+    const loanApplicationRepository = {
+      create: jest.fn().mockResolvedValue({ id: 'app-1' }),
+    } as unknown as LoanApplicationRepository;
+    const loanRepository = {} as LoanRepository;
+    const notificationsService = {} as NotificationsService;
+    const documentsService = {
+      getMissingRequiredDocumentsForSubmission: jest.fn().mockResolvedValue(missingDocuments),
+    } as unknown as DocumentsService;
+    const dataSource = {} as DataSource;
+    const loanJourneyDetectionService = {
+      detect: jest.fn().mockResolvedValue('fresh_loan'),
+    } as unknown as LoanJourneyDetectionService;
+    const rewardsService = {} as RewardsService;
+
+    const service = new LoanApplicationsService(
+      loanApplicationRepository,
+      loanRepository,
+      notificationsService,
+      documentsService,
+      dataSource,
+      loanJourneyDetectionService,
+      rewardsService,
+    );
+
+    return { service, documentsService, loanApplicationRepository };
+  }
+
+  const applicant = { id: 'owner-1' } as UserEntity;
+  const dto = {
+    requestedAmount: 200000,
+    requestedTermMonths: 24,
+    categoryId: 'business',
+  } as CreateLoanApplicationDto;
+
+  it('rejects submission with the full missing-document list when required documents are not uploaded', async () => {
+    const missing = [{ code: 'gst', label: 'GST Certificate', reason: 'missing' }];
+    const { service, documentsService, loanApplicationRepository } = buildService(missing);
+
+    await expect(service.submit(applicant, dto)).rejects.toMatchObject({
+      response: {
+        message: 'Please upload all required documents before submitting your application.',
+        missingDocuments: missing,
+      },
+    });
+
+    expect(documentsService.getMissingRequiredDocumentsForSubmission).toHaveBeenCalledWith(
+      'owner-1',
+      'business',
+    );
+    // The gate must run BEFORE any write — no application row for a submission that fails it.
+    expect(loanApplicationRepository.create).not.toHaveBeenCalled();
+  });
+
+  it('proceeds to create the application once every required document is present', async () => {
+    const { service, documentsService, loanApplicationRepository } = buildService([]);
+
+    await service.submit(applicant, dto);
+
+    expect(documentsService.getMissingRequiredDocumentsForSubmission).toHaveBeenCalledWith(
+      'owner-1',
+      'business',
+    );
+    expect(loanApplicationRepository.create).toHaveBeenCalledTimes(1);
+  });
+});
 
 /**
  * Approval validation gate — mandatory backend rule (Sprint 1, Item 4):

@@ -107,6 +107,28 @@ export class LoanApplicationsService {
       }
     }
 
+    // Backend-enforced submission gate — mirrors the approval gate
+    // below in spirit (`getBlockingDocumentsForApproval`) but checks
+    // presence only, not verification status (see
+    // `getMissingRequiredDocumentsForSubmission`'s doc comment for
+    // why). The Customer App's wizard already blocks "Next" past the
+    // Documents step client-side for every category (`Documents`
+    // always appears in `stepsForCategory`), so a customer using the
+    // app can't hit this in practice — this is the same
+    // backend-is-the-real-gate discipline the approval check already
+    // follows, closing the gap for any caller that isn't the wizard
+    // (a direct API call, a future client).
+    const missingDocuments = await this.documentsService.getMissingRequiredDocumentsForSubmission(
+      applicant.id,
+      dto.categoryId ?? undefined,
+    );
+    if (missingDocuments.length > 0) {
+      throw new ConflictException({
+        message: 'Please upload all required documents before submitting your application.',
+        missingDocuments,
+      });
+    }
+
     // Personal Loan journey (Fresh/Top-Up/Balance Transfer/BT+Top-Up)
     // is server-detected, not client-chosen — a client-sent
     // `requestType` is ignored for `categoryId === 'personal'` so a
