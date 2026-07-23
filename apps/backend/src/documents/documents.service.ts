@@ -364,6 +364,13 @@ export class DocumentsService {
       // uniformly to every document type (including the future Passport
       // Photo/Selfie catalog rows — same upload path, same lifecycle).
       const needsVerificationReset = existingAtSlot.verificationStatus !== 'pending';
+      const wasReuploadRequested = existingAtSlot.verificationStatus === 'reupload_requested';
+      // Whoever actually set `reupload_requested` — the reviewer
+      // genuinely waiting on this specific document, and (unlike the
+      // assigned employee) always present regardless of whether this
+      // lead was ever formally assigned via the Lead Assignment
+      // module. Must be read before the reset below clears it.
+      const reviewerToNotifyId = existingAtSlot.verifiedById ?? null;
 
       let updated: DocumentEntity | null;
       if (needsVerificationReset) {
@@ -414,6 +421,34 @@ export class DocumentsService {
         throw new NotFoundException('Document not found after update.');
       }
       await this.loanApplicationsService.resolveQueriesForCustomer(user.id);
+      // Document Verification's own "request re-upload" workflow is
+      // independent of the QUERY_RAISED application-status flow
+      // `resolveQueriesForCustomer` handles above — without this,
+      // whoever requested a re-upload here (not via "Raise Query") was
+      // never told the customer responded. Reproduced live: the
+      // reviewer was an admin acting directly on an unassigned lead
+      // (`assignedToId` null), so notifying only the assigned employee
+      // notified nobody at all — the reviewer themselves is the
+      // reliable target; the assigned employee (if any, and different)
+      // is notified too since they own the lead going forward.
+      if (wasReuploadRequested) {
+        const alreadyNotified = new Set<string>();
+        if (reviewerToNotifyId) {
+          alreadyNotified.add(reviewerToNotifyId);
+          await this.notificationsService.createForUser({
+            userId: reviewerToNotifyId,
+            title: 'Document re-uploaded',
+            body: `The customer re-uploaded ${type.label} — ready for another look.`,
+            relatedEntityType: 'document',
+            relatedEntityId: existingAtSlot.id,
+          });
+        }
+        await this.loanApplicationsService.notifyAssignedEmployeesOfDocumentResubmission(
+          user.id,
+          type.label,
+          alreadyNotified,
+        );
+      }
       return DocumentResponseDto.fromEntity(updated);
     }
 

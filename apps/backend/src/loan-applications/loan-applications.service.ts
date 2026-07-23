@@ -541,8 +541,16 @@ export class LoanApplicationsService {
    * document — documents aren't scoped to a specific application, so
    * this resolves *every* QUERY_RAISED application for that customer
    * back to UNDER_REVIEW, on the assumption a re-upload is the
-   * customer's response to whatever was queried. Notifies the
-   * assigned employee so it reappears as needing another look.
+   * customer's response to whatever was queried.
+   *
+   * Notifies the assigned employee *and* whoever actually raised the
+   * query (`queryRaisedById`), deduplicated. Reproduced live: an admin
+   * raised the query directly on a lead that was never formally
+   * assigned via the Lead Assignment module (`assignedToId` null) —
+   * notifying only the assigned employee notified nobody at all.
+   * `queryRaisedById` is always present for a QUERY_RAISED application
+   * (it's stamped when the query is raised — see `review()`), unlike
+   * `assignedToId`, so it's the reliable target.
    */
   async resolveQueriesForCustomer(customerId: string): Promise<void> {
     const queried = await this.loanApplicationRepository.findAllByApplicantAndStatus(
@@ -570,10 +578,15 @@ export class LoanApplicationsService {
           }),
         );
 
-        if (application.assignedToId) {
+        const recipientIds = new Set(
+          [application.queryRaisedById, application.assignedToId].filter(
+            (id): id is string => id != null,
+          ),
+        );
+        for (const recipientId of recipientIds) {
           await this.notificationsService.createForUser(
             {
-              userId: application.assignedToId,
+              userId: recipientId,
               title: 'Customer responded to your query',
               body: 'The customer re-uploaded documents — this lead is ready for another look.',
               relatedEntityType: 'loan_application',
@@ -584,5 +597,50 @@ export class LoanApplicationsService {
         }
       }
     });
+  }
+
+  /**
+   * Called by DocumentsService when a re-upload resolves a document
+   * that was specifically flagged `reupload_requested` (Document
+   * Verification's own reviewer-facing workflow — independent of the
+   * QUERY_RAISED application-status flow `resolveQueriesForCustomer`
+   * handles). Complements DocumentsService's own notification to the
+   * reviewer who actually flagged the document (`verifiedById`) — this
+   * additionally notifies the employee this lead is assigned to, if
+   * any and not already notified as the reviewer, since they own the
+   * lead going forward even if a different person (e.g. an admin)
+   * reviewed this particular document. `alreadyNotifiedUserIds` avoids
+   * a duplicate notification when the assigned employee *is* the
+   * reviewer — the common case. One notification per distinct assigned
+   * employee across this customer's still-open applications (a
+   * customer can have more than one non-terminal application, and
+   * documents aren't scoped to a specific one).
+   */
+  async notifyAssignedEmployeesOfDocumentResubmission(
+    customerId: string,
+    documentLabel: string,
+    alreadyNotifiedUserIds: ReadonlySet<string> = new Set(),
+  ): Promise<void> {
+    const applications = await this.loanApplicationRepository.findAllByApplicant(customerId);
+    const notifiedEmployeeIds = new Set(alreadyNotifiedUserIds);
+
+    for (const application of applications) {
+      if (
+        !application.assignedToId ||
+        TERMINAL_LOAN_APPLICATION_STATUSES.includes(application.status) ||
+        notifiedEmployeeIds.has(application.assignedToId)
+      ) {
+        continue;
+      }
+      notifiedEmployeeIds.add(application.assignedToId);
+
+      await this.notificationsService.createForUser({
+        userId: application.assignedToId,
+        title: 'Document re-uploaded',
+        body: `The customer re-uploaded ${documentLabel} — ready for another look.`,
+        relatedEntityType: 'loan_application',
+        relatedEntityId: application.id,
+      });
+    }
   }
 }
