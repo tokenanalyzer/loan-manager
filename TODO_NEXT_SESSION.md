@@ -1,109 +1,177 @@
 # TODO — Next Session
 
-State as of 2026-07-21. This file replaces both prior versions (2026-07-16/17
-and 2026-07-20 snapshots, reconciled during today's merge) — see git history
-if you need either one verbatim.
+State as of 2026-07-23 (end of session). Replaces the 2026-07-21 snapshot —
+see git history if you need it verbatim. Companion document:
+`docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md` — the detailed, authoritative
+record of exactly what exists in GCP right now. Read that before touching
+any cloud resource.
 
 ## 0. Commit/push status — resolved
 
-Today's full session (document OR-groups, LAP groundwork, a platform-wide
-production-readiness audit and fixes across Customer App/Backend/Admin
-Panel/Employee CRM, and reconciling with the separately-merged
-`worktree-expressive-wibbling-torvalds` PR) is committed and pushed to
-`origin/main`. `flutter analyze` (both Flutter apps), the backend Jest suite,
-`tsc --noEmit` (backend/shared-types/admin-panel), and a real admin-panel
-production build all pass cleanly as of this checkpoint.
+Everything from today's session is committed and pushed to `origin/main`
+(working tree clean, in sync with origin as of this checkpoint). Backend
+Jest suite and `flutter analyze` (customer-app) both pass cleanly.
 
-## 1. The "unexpected loan submission" mystery (2026-07-20) — likely resolved, not yet confirmed
+## 1. Completed today (2026-07-23)
 
-A "Personal Loan submitted, ₹10,00,000.00" entry appeared on a customer's
-Home screen after a single Android back-button press, with no form
-submitted. Today's audit found and fixed the actual, reproducible cause of
-this class of bug: `LoanApplicationFlowScreen` had no `PopScope`, so
-Android's hardware back button popped the *entire wizard route* from any
-step instead of stepping back one page (now fixed — mirrors `AppShell`'s
-existing `PopScope` pattern). This doesn't prove that specific incident was
-this bug (rule out via `audit_log`/`loan_applications.created_at` for that
-customer if it recurs), but it's the most likely explanation and is now
-fixed regardless.
+- **Fixed the notification → Documents → crash bug** (`context.push` to a
+  `StatefulShellRoute` tab root corrupting GoRouter's page stack) — root
+  cause traced end-to-end from DB → API → admin action → notification →
+  Customer App, fixed, and verified live on a physical device (reject a
+  document via Admin Panel → notification arrives → tap → Replace → upload
+  succeeds, no crash).
+- **Admin Panel audit completed** — full backend-endpoint-to-UI coverage
+  matrix, gap checklist, and a prioritized 4-tier roadmap. Explicitly
+  **not implemented** — Admin Panel work stays frozen until the Customer
+  App is production-ready and frozen, per explicit instruction.
+- **Traced a customer-contact-data question end-to-end** — confirmed the
+  mobile number is not lost anywhere in the DB→API→DTO→Frontend chain;
+  the real gap is upstream (Google-only sign-ins never collect a phone
+  number, no in-app way to backfill one). Found one genuine, separate gap
+  while tracing this: **Loan ID is never displayed on the Admin Panel's
+  Lead Details page** — not yet fixed (Admin Panel frozen).
+- **Committed 9 previously-uncommitted files** from earlier work, each
+  independently verified as a real fix: Android back-gesture crash at
+  shell tab roots, cold-start double-GoRouter-redirect race, profile-edit
+  validation-scroll-into-view, profile-view text overflow, backend
+  notification-recipient routing on re-upload/query-response.
+- **Required-document validation at loan submission** (backend) — the
+  approved Phase-1 release blocker. New `getMissingRequiredDocumentsForSubmission`
+  (presence-only check, distinct from the stricter `verified`-status
+  approval-time gate, which is unchanged and remains the second safety
+  layer). Unit-tested; verified live with real Business Loan and Vehicle
+  Loan submissions.
+- **Found and fixed a real regression during QA**: the earlier back-gesture
+  crash fix had (incorrectly) routed every hardware back-press through a
+  raw `appRouter.pop()`, bypassing every in-route `PopScope` in the app —
+  silently undoing the wizard's existing step-back protection. Caught by
+  deliberately testing the wizard's back button mid-flow, not by code
+  review alone. Fixed properly: only the actual "nothing to pop" crash
+  case is special-cased now; everything else falls through to the
+  standard, PopScope-respecting path.
+- **Android release signing** — generated a real production upload
+  keystore, wired `build.gradle`, verified with `apksigner` that release
+  builds are actually signed with it (not debug).
+- **Production deployment plan** — pivoted from an earlier Railway
+  recommendation to **Google Cloud + Firebase** per explicit direction.
+  Full architecture plan (Cloud Run, Cloud SQL, GCS-mounted-volume
+  approach for documents, Secret Manager, domain/SSL, logging/monitoring,
+  cost estimate) written and approved.
+- **GCP production infrastructure — started, paused after Cloud SQL.**
+  See §2 below and `docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md` for exact
+  detail.
+- **Signed Release APK delivered today** — production keystore, pointed
+  at the local dev backend (not production) for immediate use, since GCP
+  deployment is mid-flight. `apps/customer-app/build/app/outputs/flutter-apk/app-release.apk`.
 
-## 2. Phone Authentication — **frozen, do not touch**
+## 2. Current production infrastructure status
 
-Approved and frozen 2026-07-21 after a full audit (see project memory
-`project_phone_auth_frozen.md`). The `https://loan-manager-india.firebaseapp.com/...`
-browser/Custom-Tabs step during OTP is Firebase's own documented security
-fallback (confirmed via Firebase's own docs + our resolved Gradle dependency
-tree — `androidx.browser` is a direct dependency of `firebase-auth` itself,
-not our code), triggered because the app is currently sideloaded rather than
-Play-Store-distributed. SHA-1 and SHA-256 are both correctly registered.
-**Do not re-investigate or modify** this module unless a reproducible issue
-appears after installing via a real Google Play Internal Testing build.
+**Read `docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md` for full detail.** Headline:
 
-## 3. Manual/external tasks still needed before a real production launch
+- GCP project `loan-manager-india` (660520519709) — the same project the
+  Firebase project already lives in, reused deliberately, billing enabled.
+- 12 APIs enabled (10 originally approved + Compute Engine + Service
+  Networking, approved separately once private networking needed them).
+- VPC networking complete: custom VPC, subnet, private-services peering —
+  all created and verified.
+- **Cloud SQL instance `loan-manager-prod-db` exists and is RUNNABLE** —
+  PostgreSQL 16, asia-south1, `db-custom-1-3840`, private IP only, backups
+  + PITR + deletion protection all on. **No database, user, or password
+  created on it yet — deliberately deferred.**
+- Nothing else exists yet: no Cloud Storage bucket, no Secret Manager
+  secrets, no Cloud Run service, no domain mapping, no production Firebase
+  service account, release keystore's SHA-1/SHA-256 not yet registered in
+  Firebase console.
 
-- **Google Play Internal Testing build** — needed to confirm Phone Auth's
-  browser fallback disappears as expected (see item 2).
-- **Release signing** — the current APK is debug-signed; a real release
-  keystore + its SHA registered in Firebase Console is still needed.
-- **Real production environment values** — `env/staging.json`/
-  `env/production.json` (both Flutter apps) still have placeholder API
-  domains; backend `CORS_ORIGIN` needs a real production origin once those
-  domains exist.
-- **Employee App's own Firebase registration** — it has no `google-services.json`/
-  `GoogleService-Info.plist` of its own yet (separate Android package/iOS
-  bundle id from the Customer App); Email/Password sign-in needs confirming
-  as enabled for it.
-- **Full manual click-through** with a real phone number for OTP — everything
-  short of that has been verified (static analysis, live logcat on a real
-  device, one real-device install/launch session), but a true end-to-end
-  human pass is still worth doing.
+## 3. Remaining production deployment tasks — exact resume order
 
-## 4. Known, deliberately-deferred architectural items
+The user's stated order, unchanged:
 
-- Admin-facing "list everything" endpoints (all loan applications, all
-  customers, all unassigned leads) have no pagination yet — fine at current
-  data volume, a real concern at production scale. Fixing this properly is
-  an API contract change needing coordinated backend + admin-panel work, not
-  a quick patch — noted, not fabricated as a quick fix.
-- The Documents-step required-document gate is enforced server-side at
-  **approval** time (`LoanApplicationsService.review`'s blocking-documents
-  check) but not at **submission** time — a customer can still submit an
-  application with zero documents uploaded; the requirement only blocks the
-  employee/admin from approving it later. Low urgency with one client today,
-  worth closing before a second submit-endpoint consumer appears.
-- Firebase Storage is not integrated — documents are stored on local disk
-  (`LocalDiskStorageService`); a real Storage bucket already exists on the
-  Firebase project but nothing uses it yet. Deliberately deferred, not an
-  oversight.
-- Loan Against Property (LAP) as a full new loan category (its own
-  `LOAN_CATEGORY_BOUNDS` entry, `kLoanCategories` entry, UI/routing) was
-  explicitly deferred — see the local Rewards/LAP planning notes from
-  2026-07-21 for the already-designed shape; the OR-group document-catalog
-  work landed today is what makes adding it later a config-only change.
-- **Rewards System** — fully designed (backend module, admin management UI,
-  customer app feature) but explicitly not implemented; the plan exists only
-  as a local Claude Code plan file from today's session, not committed
-  anywhere in-repo. Revisit when the user says so.
+1. **Cloud Storage** — create the documents bucket, mounted as a Cloud Run
+   volume (`UPLOADS_DIR` points at the mount path — zero application code
+   changes; `LocalDiskStorageService` keeps working as-is). This is a
+   deliberate bridge, not the real `FirebaseStorageService` integration,
+   which stays deferred (see §5).
+2. **Secret Manager** — create secrets for `DATABASE_URL` and a
+   **production-dedicated** Firebase Admin service account (generate a
+   fresh one in Firebase Console — don't reuse the local-dev key).
+3. **Cloud SQL database + user** — create the application database and a
+   least-privilege user/password on the already-existing instance.
+4. **Cloud Run deployment** — deploy the backend container. Remember:
+   `main.ts` reads `BACKEND_PORT` (default 3000), Cloud Run needs
+   `BACKEND_PORT=8080` set explicitly and `--port=8080` at deploy time —
+   this was already identified as a gap in the approved plan, not yet applied.
+5. **Register the release keystore's fingerprints in Firebase Console** —
+   still a manual, user-only step (Project Settings → your Android app →
+   Add fingerprint). SHA-1/SHA-256 are in
+   `C:\Users\Administrator\LoanManagerSigning\customer-app\keytool-output.log`.
+6. **Domain mapping + SSL** for the Cloud Run service (automatic managed
+   cert once mapped).
+7. **Update Customer App `env/production.json`** — real API domain,
+   `FIREBASE_ENABLED=true`, real project ID — once the domain exists.
+8. **Verify the deployed production backend** — smoke test before pointing
+   a real release build at it.
+9. **Build + verify a production Release APK** on a physical device —
+   full flow: login, application, document upload, rejection, re-upload,
+   notifications, approval workflow — against the real production backend.
+10. **Freeze the Customer App.**
+11. Only then: begin the Admin Panel roadmap (already audited and
+    planned — see the published artifact from this session — but
+    explicitly not started).
 
-## 5. Roadmap (per user's stated direction, still not started)
+## 4. Exact next step for the next session
 
-Beyond the items above, the stated next phases are: **DSA App** (loan
-officer/agent-facing app), **Bank Portal** (real partner bank onboarding),
-**Super Admin Panel** (builds on `apps/admin-panel`). See
-`docs/MASTER_PRODUCT_SPEC.md` — the frozen single source of truth for
-anything beyond this file's immediate scope.
+**Create the Cloud Storage bucket** (documents, GCS-mounted-volume
+approach for Cloud Run) — the first item in §3's list. Everything needed
+to do this (VPC, APIs, region choice) already exists; nothing is blocking
+it.
 
-## 6. Known limitations (updated — some of these were stale)
+## 5. Known, deliberately-deferred architectural items (unchanged from before)
 
-- Firebase **is** a real, configured project (`loan-manager-india`) for the
-  backend and Customer App dev tier — this line was stale in prior versions
-  of this file. What's still genuinely missing is covered in §3 above.
-- No automated test coverage beyond a handful of unit/widget smoke tests.
-- **CIBIL/credit bureau integration** — Home's "Credit Profile" card uses an
-  honest "Profile Strength" meter, not a real score. Separate vendor/
+- Firebase Storage is not integrated as a real `StorageService`
+  implementation — the Cloud Storage bucket being created next session is
+  a mounted-volume bridge, not this. `LocalDiskStorageService` stays the
+  actual implementation.
+- **Rewards System** — fully designed, explicitly not implemented.
+  Revisit when the user says so.
+- Admin-facing "list everything" endpoints still have no pagination —
+  fine at current data volume, an API-contract change for later.
+
+## 6. Corrections to prior versions of this file
+
+- **Loan Against Property (LAP) is NOT deferred — it's live.** A prior
+  version of this file said LAP was "explicitly deferred." That was
+  stale: `kLoanCategories`, `LOAN_CATEGORY_BOUNDS.lap`, the
+  `propertyDetails` wizard step, and the `property_documents` catalog
+  entry are all live and were exercised successfully in this session's QA
+  (a real LAP-adjacent Vehicle Loan application submitted end-to-end with
+  no issue). Treat LAP as a normal, supported category.
+- **Release signing is done** (was listed as still-needed — see §1).
+
+## 7. Known limitations
+
+- No automated test coverage beyond a handful of unit/widget smoke tests
+  plus the two new Jest suites added this session (submission gate,
+  notification-recipient routing).
+- **CIBIL/credit bureau integration** — Home's "Credit Profile" card uses
+  an honest "Profile Strength" meter, not a real score. Separate vendor/
   compliance workstream.
 - **Payments/repayment tracking** — loans model disbursement but not a
   repayment schedule/collections.
-- Dev-DB has a handful of duplicate test loan applications from earlier
-  sessions — harmless, worth clearing before demoing so "Recent activity"
-  doesn't look cluttered. Still untouched intentionally.
+- **Dev-DB test data cleanup still not done.** This was approved as a
+  Phase 1 release-blocker item but not yet executed — and this session's
+  QA added *more* test applications (a Business Loan and a Vehicle Loan)
+  on top of what was already there. Do this before any demo, and before
+  it's forgotten entirely.
+- Manual QA on the remaining loan categories (Home, Education, LAP edge
+  cases) was handed off to the user mid-session ("all test pass manually
+  already") — not independently re-verified by Claude. Worth a sanity
+  check if anything looks off in those categories later.
+
+## 8. Roadmap (unchanged, still not started)
+
+Beyond production deployment and the Admin Panel roadmap: **DSA App**
+(loan officer/agent-facing app), **Bank Portal** (real partner bank
+onboarding), **Super Admin Panel** (builds on `apps/admin-panel`). See
+`docs/MASTER_PRODUCT_SPEC.md` — the frozen single source of truth for
+anything beyond this file's immediate scope.
