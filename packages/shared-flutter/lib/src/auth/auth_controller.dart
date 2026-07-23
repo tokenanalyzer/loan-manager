@@ -51,7 +51,25 @@ class AuthController extends ChangeNotifier {
       return;
     }
 
-    _setState(const AuthSyncing());
+    // Only surface the transient "syncing" state for a genuine cold
+    // start / sign-in — not for a same-user token refresh (Firebase's
+    // own periodic renewal, or a retry after an App Check/Play
+    // Integrity hiccup, both observed repeatedly in this app).
+    // Reproduced live: emitting AuthSyncing then immediately
+    // AuthAuthenticated again on every refresh fires this controller's
+    // `notifyListeners()` twice in quick succession, each independently
+    // triggering go_router's `refreshListenable`-driven redirect —
+    // close enough together to leave two Navigator pages with an
+    // identical key ("Failed assertion:
+    // '!keyReservation.contains(key)' is not true"). Skipping the
+    // redundant interstitial state for an unchanged user removes the
+    // race instead of trying to out-time it.
+    final currentState = _state;
+    final isSameUserRefresh =
+        currentState is AuthAuthenticated && currentState.uid == user.uid;
+    if (!isSameUserRefresh) {
+      _setState(const AuthSyncing());
+    }
     try {
       final idToken = await user.getIdToken();
       if (idToken == null) {

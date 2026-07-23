@@ -73,9 +73,27 @@ void main() {
     // re-evaluate at exactly this moment, since nothing else notifies
     // the router when a plain timer (as opposed to an auth-state change)
     // completes.
+    //
+    // Reproduced live (repeated crash-loop on cold start with an
+    // already-signed-in session): Firebase resolving right around this
+    // same moment fires `AuthController`'s own `refreshListenable`
+    // notification, which can land in the same frame as this timer's
+    // `refresh()` call — GoRouter then runs two overlapping
+    // redirect/rebuild passes for the same splash→home transition,
+    // producing two Navigator pages with an identical key ("Failed
+    // assertion: '!keyReservation.contains(key)' is not true", then a
+    // null-check crash in `GoRouterDelegate._findCurrentNavigator` on
+    // the next back-press since the page stack was left inconsistent).
+    // Deferring to a post-frame callback — and skipping the call
+    // entirely if the auth-triggered redirect already navigated us off
+    // `/splash` — keeps this a single redirect pass either way.
     Timer(kSplashAnimationDuration, () {
       AppBootstrapState.splashMinimumElapsed = true;
-      appRouter.refresh();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (appRouter.routerDelegate.currentConfiguration.uri.path == '/splash') {
+          appRouter.refresh();
+        }
+      });
     });
 
     runApp(const ProviderScope(child: CustomerApp()));
