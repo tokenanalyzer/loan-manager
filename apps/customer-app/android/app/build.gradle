@@ -5,6 +5,22 @@ plugins {
     id "com.google.gms.google-services"
 }
 
+// Release signing — key.properties is gitignored and never committed
+// (see docs/native-setup.md and apps/customer-app/android/.gitignore).
+// storeFile is an absolute path to the upload keystore kept OUTSIDE
+// this repo entirely; only this properties file (itself untracked)
+// references where it lives. Falls back to debug signing with a clear
+// warning when key.properties is absent, so `flutter build apk --debug`
+// and CI runs that don't need release signing still work.
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+def hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else {
+    logger.warn("WARNING: android/key.properties not found — release builds will be debug-signed. See docs/native-setup.md step 4.")
+}
+
 android {
     namespace = "com.loanmanager.loan_manager_customer_app"
     // Overridden above flutter.compileSdkVersion (34 on this Flutter
@@ -31,9 +47,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
+            signingConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
