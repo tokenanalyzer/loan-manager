@@ -8,6 +8,29 @@
 export type LoanApplicationStatus =
   'submitted' | 'under_review' | 'query_raised' | 'approved' | 'rejected' | 'withdrawn';
 
+/** A `LoanEntity`'s own lifecycle — created PENDING at approval, ACTIVE once genuinely disbursed. */
+export type LoanStatus = 'pending' | 'approved' | 'rejected' | 'active' | 'closed' | 'defaulted';
+
+/** The approved loan linked to a `LeadSummary`, once one exists (see `LoanApplicationResponseDto.loan`). */
+export interface LoanSummary {
+  id: string;
+  loanNumber: string;
+  principalAmount: string;
+  interestRate: string;
+  termMonths: number;
+  status: LoanStatus;
+  disbursedAt: string | null;
+  maturityDate: string | null;
+  monthlyInstallment: number;
+  totalInterest: number;
+  totalPayable: number;
+  /** Bank transaction reference (UTR) proving the disbursal genuinely happened — set only once disbursed. */
+  disbursementReference: string | null;
+  disbursedById: string | null;
+  disbursedByName: string | null;
+  disbursementNotes: string | null;
+}
+
 /**
  * Request-type reservation — only `FRESH_LOAN` is exercised by any
  * client today; the rest are reserved ahead of the Customer Benefits
@@ -54,6 +77,9 @@ export interface LeadSummary {
   propertyValue: string | null;
   hasExistingLoanOnProperty: boolean | null;
   existingLoanOutstandingAmount: string | null;
+  /** Present once the application has been approved and a Loan record exists (see Approve → Disburse). */
+  loanId?: string;
+  loan?: LoanSummary;
 }
 
 /** What the admin sees before assigning a lead: identity, live presence, and current workload. */

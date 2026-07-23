@@ -95,6 +95,8 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                   status: application.status,
                   submittedAt: application.submittedAt,
                   reviewedAt: application.reviewedAt,
+                  loanStatus: application.loan?.status,
+                  disbursedAt: application.loan?.disbursedAt,
                 );
                 final progress =
                     steps.where((s) => s.isComplete).length / steps.length;
@@ -153,7 +155,10 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                   ],
                                 ),
                               ),
-                              StatusBadge.forApplicationStatus(application.status),
+                              StatusBadge.forApplicationAndLoanStatus(
+                                application.status,
+                                application.loan?.status,
+                              ),
                             ],
                           ),
                           const SizedBox(height: 10),

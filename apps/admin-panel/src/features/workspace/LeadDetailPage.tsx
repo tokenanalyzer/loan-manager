@@ -15,11 +15,13 @@ import { PageContainer } from '../../components/ui/PageContainer';
 import { useAuth } from '../../core/auth-context';
 import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
 
+import { DisburseModal } from './DisburseModal';
 import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS, REVIEWABLE_STATUSES } from './lead-status-meta';
 import styles from './LeadDetailPage.module.css';
 import { ReviewModal } from './ReviewModal';
 import { useAutosaveNotes } from './useAutosaveNotes';
 import {
+  disburseLoan,
   fetchCustomerProfile,
   fetchCustomerSummary,
   fetchLead,
@@ -27,6 +29,7 @@ import {
   reviewLead,
   type CustomerProfile,
   type CustomerSummary,
+  type DisburseLoanPayload,
   type ReviewLeadPayload,
 } from './workspace-api';
 
@@ -139,6 +142,9 @@ export function LeadDetailPage(): JSX.Element {
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState<string | null>(null);
   const [blockingDocuments, setBlockingDocuments] = useState<BlockingRequiredDocument[] | null>(null);
+  const [disbursing, setDisbursing] = useState(false);
+  const [disburseBusy, setDisburseBusy] = useState(false);
+  const [disburseError, setDisburseError] = useState<string | null>(null);
 
   async function load(): Promise<void> {
     if (!id) return;
@@ -197,6 +203,23 @@ export function LeadDetailPage(): JSX.Element {
       setBlockingDocuments(data?.blockingDocuments ?? null);
     } finally {
       setReviewBusy(false);
+    }
+  }
+
+  async function handleDisburseSubmit(payload: DisburseLoanPayload): Promise<void> {
+    if (!id) return;
+    setDisburseBusy(true);
+    setDisburseError(null);
+    try {
+      const updated = await disburseLoan(id, payload);
+      setLead(updated);
+      setDisbursing(false);
+      void load();
+    } catch (err) {
+      const data = (err as { response?: { data?: { message?: string } } }).response?.data;
+      setDisburseError(data?.message ?? 'That action failed. Please try again.');
+    } finally {
+      setDisburseBusy(false);
     }
   }
 
@@ -329,6 +352,27 @@ export function LeadDetailPage(): JSX.Element {
                 </Button>
               </div>
             )}
+
+            {lead.status === 'approved' && lead.loan?.status === 'active' && (
+              <div className={styles.banner}>
+                <span className={styles.bannerTitle}>Loan disbursed</span>
+                <span className={styles.bannerMeta}>
+                  {lead.loan.loanNumber} · {lead.loan.disbursementReference ?? 'no reference on file'}
+                </span>
+                <span className={styles.bannerMeta}>
+                  {lead.loan.disbursedByName ? `By ${lead.loan.disbursedByName}` : 'Disbursed'}
+                  {lead.loan.disbursedAt && ` on ${new Date(lead.loan.disbursedAt).toLocaleString()}`}
+                </span>
+              </div>
+            )}
+
+            {disburseError && <ErrorState message={disburseError} />}
+
+            {lead.status === 'approved' && lead.loan?.status === 'pending' && (
+              <div className={styles.reviewActions}>
+                <Button onClick={() => setDisbursing(true)}>Disburse Loan</Button>
+              </div>
+            )}
           </Card>
 
           <Card>
@@ -346,6 +390,11 @@ export function LeadDetailPage(): JSX.Element {
               <Field label="State">{profile?.state ?? '—'}</Field>
               <Field label="Employment">{profile?.employmentStatus ?? '—'}</Field>
               <Field label="Monthly income">{profile?.monthlyIncome ?? '—'}</Field>
+              <Field label="Bank account">
+                {profile?.bankAccountLast4 ? `•••• ${profile.bankAccountLast4}` : '—'}
+              </Field>
+              <Field label="IFSC">{profile?.bankIfscCode ?? '—'}</Field>
+              <Field label="Account holder">{profile?.bankAccountHolderName ?? '—'}</Field>
             </div>
           </Card>
 
@@ -405,6 +454,17 @@ export function LeadDetailPage(): JSX.Element {
           busy={reviewBusy}
           onSubmit={(payload) => void handleReviewSubmit(payload)}
           onClose={() => setReviewAction(null)}
+        />
+      )}
+
+      {disbursing && lead.loan && (
+        <DisburseModal
+          principalAmount={lead.loan.principalAmount}
+          bankAccountLast4={profile?.bankAccountLast4}
+          bankIfscCode={profile?.bankIfscCode}
+          busy={disburseBusy}
+          onSubmit={(payload) => void handleDisburseSubmit(payload)}
+          onClose={() => setDisbursing(false)}
         />
       )}
     </PageContainer>

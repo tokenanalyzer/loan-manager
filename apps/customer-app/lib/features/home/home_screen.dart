@@ -902,11 +902,13 @@ class _ActivityRow extends StatelessWidget {
         ActivityKind.approved => Icons.check_circle_outline,
         ActivityKind.rejected => Icons.info_outline,
         ActivityKind.submitted => Icons.send_outlined,
+        ActivityKind.disbursed => Icons.account_balance_outlined,
         ActivityKind.notification => Icons.notifications_outlined,
       };
 
   Color _color(BuildContext context) => switch (item.kind) {
         ActivityKind.approved => AppColors.success,
+        ActivityKind.disbursed => AppColors.success,
         ActivityKind.rejected => Theme.of(context).colorScheme.error,
         _ => Theme.of(context).colorScheme.primary,
       };

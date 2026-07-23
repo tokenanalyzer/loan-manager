@@ -64,7 +64,7 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
   async findOneWithLoan(id: string): Promise<LoanApplicationEntity | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['loan', 'applicant', 'reviewedBy', 'queryRaisedBy'],
+      relations: ['loan', 'loan.disbursedBy', 'applicant', 'reviewedBy', 'queryRaisedBy'],
     });
   }
 

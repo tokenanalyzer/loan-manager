@@ -1,8 +1,9 @@
 import type { DataSource } from 'typeorm';
 
-import { LoanApplicationStatus, type UserEntity } from '../database/entities';
+import { LoanApplicationStatus, LoanStatus, UserRole, type UserEntity } from '../database/entities';
 import type { DocumentsService } from '../documents/documents.service';
 import type { NotificationsService } from '../notifications/notifications.service';
+import type { RewardsService } from '../rewards/rewards.service';
 
 import type { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import type { LoanApplicationRepository } from './loan-application.repository';
@@ -41,6 +42,7 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
       transaction: jest.fn().mockResolvedValue(undefined),
     } as unknown as DataSource;
     const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
+    const rewardsService = {} as RewardsService;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -49,6 +51,7 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
       documentsService,
       dataSource,
       loanJourneyDetectionService,
+      rewardsService,
     );
 
     return { service, dataSource, documentsService, loanApplicationRepository };
@@ -98,5 +101,113 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
     } as ReviewLoanApplicationDto);
 
     expect(documentsService.getBlockingDocumentsForApproval).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Disbursement gate — Apply → Review → Approve → Disburse. `disburse()`
+ * must refuse to run its transactional write path unless the
+ * application is APPROVED, has a loan record, that loan is still
+ * PENDING, and (for employees) the lead is assigned to the caller.
+ * These are the guards this method is responsible for; the write path
+ * itself (loan activation, reward generation, notification) runs inside
+ * `dataSource.transaction`, asserted here only by call count, matching
+ * how the review-gate tests above treat the transactional body as
+ * out of scope.
+ */
+describe('LoanApplicationsService.disburse — disbursement gate', () => {
+  function buildService(application: Record<string, unknown> | null) {
+    const loanApplicationRepository = {
+      findOneWithLoan: jest.fn().mockResolvedValue(application),
+    } as unknown as LoanApplicationRepository;
+    const loanRepository = {} as LoanRepository;
+    const notificationsService = {} as NotificationsService;
+    const documentsService = {} as DocumentsService;
+    const dataSource = {
+      transaction: jest.fn().mockResolvedValue(undefined),
+    } as unknown as DataSource;
+    const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
+    const rewardsService = {} as RewardsService;
+
+    const service = new LoanApplicationsService(
+      loanApplicationRepository,
+      loanRepository,
+      notificationsService,
+      documentsService,
+      dataSource,
+      loanJourneyDetectionService,
+      rewardsService,
+    );
+
+    return { service, dataSource, loanApplicationRepository };
+  }
+
+  const approvedApplication = {
+    id: 'app-1',
+    applicantId: 'owner-1',
+    categoryId: 'personal',
+    status: LoanApplicationStatus.APPROVED,
+    assignedToId: 'employee-1',
+    loan: { id: 'loan-1', status: LoanStatus.PENDING, termMonths: 24 },
+  };
+
+  const dto = { disbursementReference: 'UTR123456' };
+
+  it('throws NotFound when the application does not exist', async () => {
+    const { service } = buildService(null);
+    await expect(
+      service.disburse('missing', { id: 'employee-1', role: UserRole.EMPLOYEE } as UserEntity, dto),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('forbids an employee from disbursing a lead not assigned to them', async () => {
+    const { service, dataSource } = buildService(approvedApplication);
+    await expect(
+      service.disburse('app-1', { id: 'someone-else', role: UserRole.EMPLOYEE } as UserEntity, dto),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('allows an admin to disburse a lead assigned to someone else', async () => {
+    const { service, dataSource } = buildService(approvedApplication);
+    await service.disburse('app-1', { id: 'admin-1', role: UserRole.ADMIN } as UserEntity, dto);
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects disbursement of an application that is not yet approved', async () => {
+    const { service, dataSource } = buildService({
+      ...approvedApplication,
+      status: LoanApplicationStatus.UNDER_REVIEW,
+    });
+    await expect(
+      service.disburse('app-1', { id: 'employee-1', role: UserRole.EMPLOYEE } as UserEntity, dto),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects disbursement when the application has no loan record', async () => {
+    const { service, dataSource } = buildService({ ...approvedApplication, loan: null });
+    await expect(
+      service.disburse('app-1', { id: 'employee-1', role: UserRole.EMPLOYEE } as UserEntity, dto),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('rejects disbursement of a loan that has already been disbursed', async () => {
+    const { service, dataSource } = buildService({
+      ...approvedApplication,
+      loan: { id: 'loan-1', status: LoanStatus.ACTIVE, termMonths: 24 },
+    });
+    await expect(
+      service.disburse('app-1', { id: 'employee-1', role: UserRole.EMPLOYEE } as UserEntity, dto),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(dataSource.transaction).not.toHaveBeenCalled();
+  });
+
+  it('proceeds to the disbursement transaction once every guard passes', async () => {
+    const { service, dataSource, loanApplicationRepository } = buildService(approvedApplication);
+    await service.disburse('app-1', { id: 'employee-1', role: UserRole.EMPLOYEE } as UserEntity, dto);
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(loanApplicationRepository.findOneWithLoan).toHaveBeenCalledWith('app-1');
   });
 });

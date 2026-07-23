@@ -9,7 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { TableContainer } from '../../components/ui/TableContainer';
 
-import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS } from './lead-status-meta';
+import { getDisplayStatus, LEAD_STATUS_LABELS } from './lead-status-meta';
 import styles from './MyLeadsPage.module.css';
 import { fetchMyLeads } from './workspace-api';
 
@@ -139,9 +139,9 @@ export function MyLeadsPage(): JSX.Element {
                         <span className={styles.statusBadge}>
                           <span
                             className={styles.dot}
-                            style={{ background: LEAD_STATUS_COLORS[lead.status] }}
+                            style={{ background: getDisplayStatus(lead).color }}
                           />
-                          {LEAD_STATUS_LABELS[lead.status]}
+                          {getDisplayStatus(lead).label}
                         </span>
                       </td>
                       <td>{new Date(lead.submittedAt).toLocaleDateString()}</td>

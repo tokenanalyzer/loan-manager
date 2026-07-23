@@ -118,7 +118,10 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                         ],
                       ),
                     ),
-                    StatusBadge.forApplicationStatus(application.status),
+                    StatusBadge.forApplicationAndLoanStatus(
+                      application.status,
+                      application.loan?.status,
+                    ),
                   ],
                 ),
               ),
@@ -165,6 +168,8 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                       queryMessage: application.queryMessage,
                       queryRaisedAt: application.queryRaisedAt,
                       queryRespondedAt: application.queryRespondedAt,
+                      loanStatus: application.loan?.status,
+                      disbursedAt: application.loan?.disbursedAt,
                     ),
                   ),
                 ),
@@ -183,6 +188,44 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                     ),
                   ],
                 ),
+                if (application.loan!.isDisbursed) ...[
+                  const SizedBox(height: 12),
+                  FadeSlideIn(
+                    child: AppCard(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.account_balance_outlined,
+                              color: AppColors.success),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Loan disbursed', style: textTheme.titleSmall),
+                                const SizedBox(height: 4),
+                                Text(
+                                  application.loan!.disbursedAt != null
+                                      ? 'Credited to your bank account on '
+                                          '${Formatters.date(application.loan!.disbursedAt!)}.'
+                                      : 'Credited to your bank account.',
+                                  style: textTheme.bodyMedium,
+                                ),
+                                if (application.loan!.disbursementReference != null) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Ref: ${application.loan!.disbursementReference}',
+                                    style: textTheme.bodySmall,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 FadeSlideIn(
                   delay: const Duration(milliseconds: 60),

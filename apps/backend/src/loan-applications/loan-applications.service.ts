@@ -22,14 +22,17 @@ import {
 } from '../database/entities';
 import { DocumentsService } from '../documents/documents.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RewardsService } from '../rewards/rewards.service';
 
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
+import { DisburseLoanDto } from './dto/disburse-loan.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import { UpdateNotesDto } from './dto/update-notes.dto';
 import { DEFAULT_LOAN_REQUEST_TYPE, LOAN_CATEGORY_BOUNDS } from './loan-application.constants';
 import { LoanApplicationRepository } from './loan-application.repository';
 import { LoanJourneyDetectionService } from './loan-journey-detection.service';
 import { LoanRepository } from './loan.repository';
+import { calculateMaturityDate } from './utils/maturity-date.util';
 
 /**
  * A decided application — approved, rejected, or withdrawn. Used only
@@ -46,8 +49,9 @@ const TERMINAL_LOAN_APPLICATION_STATUSES = [
 
 /**
  * LoanApplicationsService — the loan-form business logic: submission,
- * role-scoped listing, and the review workflow (approve creates a
- * real Loan; reject just closes out the application).
+ * role-scoped listing, the review workflow (approve creates a real
+ * Loan; reject just closes out the application), and disbursement
+ * (`disburse` — the final Approve → Disburse step).
  *
  * Phase 5 scope: this is the first module in the project with real
  * business rules and state transitions. Phase 6 adds a real
@@ -76,6 +80,7 @@ export class LoanApplicationsService {
     @Inject(forwardRef(() => DocumentsService)) private readonly documentsService: DocumentsService,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly loanJourneyDetectionService: LoanJourneyDetectionService,
+    private readonly rewardsService: RewardsService,
   ) {}
 
   async submit(
@@ -382,6 +387,101 @@ export class LoanApplicationsService {
         },
         manager,
       );
+    });
+
+    const updated = await this.loanApplicationRepository.findOneWithLoan(application.id);
+    if (!updated) {
+      throw new NotFoundException('Loan application not found after update.');
+    }
+    return updated;
+  }
+
+  /**
+   * Disburse an approved loan — the final step of Apply → Review →
+   * Approve → Disburse. The actual bank transfer happens outside this
+   * system (there is no payment-gateway integration); this records
+   * proof that it happened (a bank transaction reference) and flips
+   * the loan PENDING → ACTIVE, the one fact every downstream feature
+   * keys off of: `RewardsService.generateForDisbursedLoan` (Personal
+   * Loan rewards) and `LoanRepository.hasActivePersonalLoan` (Top-Up
+   * journey detection) both require `LoanStatus.ACTIVE` — until this
+   * method runs, neither could ever fire, by construction.
+   *
+   * Employees may only disburse loans on leads assigned to them (same
+   * ownership rule as `findOneForUser`) — unlike `review`, this check
+   * is enforced explicitly here since disbursement is the one action
+   * with real financial consequence.
+   */
+  async disburse(id: string, actor: UserEntity, dto: DisburseLoanDto): Promise<LoanApplicationEntity> {
+    const application = await this.loanApplicationRepository.findOneWithLoan(id);
+    if (!application) {
+      throw new NotFoundException('Loan application not found.');
+    }
+
+    if (actor.role === UserRole.EMPLOYEE && application.assignedToId !== actor.id) {
+      throw new ForbiddenException('This lead is not assigned to you.');
+    }
+
+    if (application.status !== LoanApplicationStatus.APPROVED) {
+      throw new ConflictException(
+        `Only approved applications can be disbursed (status: ${application.status}).`,
+      );
+    }
+    if (!application.loan) {
+      throw new ConflictException('This application has no loan record to disburse.');
+    }
+    if (application.loan.status !== LoanStatus.PENDING) {
+      throw new ConflictException(
+        `This loan has already been disbursed (status: ${application.loan.status}).`,
+      );
+    }
+
+    const loanId = application.loan.id;
+    const termMonths = application.loan.termMonths;
+    const categoryId = application.categoryId ?? undefined;
+
+    await this.dataSource.transaction(async (manager) => {
+      const now = new Date();
+      const maturityDate = calculateMaturityDate(now, termMonths);
+
+      await manager.update(LoanEntity, loanId, {
+        status: LoanStatus.ACTIVE,
+        disbursedAt: now,
+        maturityDate,
+        disbursementReference: dto.disbursementReference,
+        disbursedById: actor.id,
+        disbursementNotes: dto.remarks ?? null,
+      });
+
+      const disbursedLoan = await manager.findOneOrFail(LoanEntity, { where: { id: loanId } });
+
+      await manager.save(
+        manager.create(AuditLogEntity, {
+          actorId: actor.id,
+          action: 'loan_disbursed',
+          entityName: 'loans',
+          entityId: loanId,
+          metadata: {
+            applicationId: application.id,
+            disbursementReference: dto.disbursementReference,
+          },
+        }),
+      );
+
+      await this.notificationsService.createForUser(
+        {
+          userId: application.applicantId,
+          title: 'Loan disbursed',
+          body: `Your loan of ${formatInr(disbursedLoan.principalAmount)} has been disbursed to your registered bank account.`,
+          relatedEntityType: 'loan_application',
+          relatedEntityId: application.id,
+        },
+        manager,
+      );
+
+      if (categoryId) {
+        await this.rewardsService.generateForDisbursedLoan(disbursedLoan, categoryId, manager);
+      }
     });
 
     const updated = await this.loanApplicationRepository.findOneWithLoan(application.id);

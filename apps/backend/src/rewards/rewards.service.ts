@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
+import { EntityManager } from 'typeorm';
 
 import { LoanEntity, RewardConfigEntity, RewardEntity, RewardStatus } from '../database/entities';
 
@@ -16,20 +17,12 @@ export interface UpdateRewardConfigParams {
  * RewardsService — the Personal Loan reward program.
  *
  * `generateForDisbursedLoan` is the *only* method that creates a
- * `RewardEntity`, and nothing in this codebase calls it yet — there is
- * no disbursement workflow for it to hook into (see the
- * AddRewardSystem migration's doc comment and
- * `LoanApplicationsService`, where `LoanEntity` rows are created on
- * approval but never transition to `ACTIVE`/get `disbursedAt` set).
- * That absence *is* the enforcement of "no reward before disbursement"
- * — there's no code path that can create one before that fact is real.
- *
- * When a real disbursement action ships, it should call
- * `generateForDisbursedLoan(loan, categoryId)` immediately after
- * setting `loan.status = ACTIVE` and `loan.disbursedAt`, ideally inside
- * the same transaction (mirrors how `NotificationsService.createForUser`
- * accepts an `EntityManager` for the same reason — not done here since
- * there's no caller yet to need it).
+ * `RewardEntity`. It is called by `LoanApplicationsService.disburse`
+ * immediately after setting `loan.status = ACTIVE` and
+ * `loan.disbursedAt`, inside the same transaction — this method accepts
+ * an optional `EntityManager` for exactly that reason (mirrors
+ * `NotificationsService.createForUser`). "No reward before disbursement"
+ * is enforced by there being no other code path that can create one.
  */
 @Injectable()
 export class RewardsService {
@@ -69,7 +62,11 @@ export class RewardsService {
     return this.rewardRepository.findAllByCustomer(customerId);
   }
 
-  async generateForDisbursedLoan(loan: LoanEntity, categoryId: string): Promise<RewardEntity | null> {
+  async generateForDisbursedLoan(
+    loan: LoanEntity,
+    categoryId: string,
+    manager?: EntityManager,
+  ): Promise<RewardEntity | null> {
     // Rewards apply only to Personal Loans — every other category is a
     // silent no-op, not an error, since a caller may reasonably call
     // this for any disbursed loan without pre-filtering by category.
@@ -83,12 +80,16 @@ export class RewardsService {
     }
 
     // Idempotent — safe to call more than once for the same loan.
-    const existing = await this.rewardRepository.findByLoanId(loan.id);
+    const existing = manager
+      ? await manager.findOne(RewardEntity, { where: { loanId: loan.id } })
+      : await this.rewardRepository.findByLoanId(loan.id);
     if (existing) {
       return existing;
     }
 
-    const config = await this.rewardConfigRepository.findByCategoryId(categoryId);
+    const config = manager
+      ? await manager.findOne(RewardConfigEntity, { where: { categoryId } })
+      : await this.rewardConfigRepository.findByCategoryId(categoryId);
     if (!config || !config.isActive) {
       this.logger.info(
         { loanId: loan.id, categoryId },
@@ -101,7 +102,7 @@ export class RewardsService {
     const percent = Number(config.rewardPercent);
     const rewardAmount = (principal * percent) / 100;
 
-    return this.rewardRepository.create({
+    const data = {
       loanId: loan.id,
       customerId: loan.customerId,
       categoryId,
@@ -110,6 +111,11 @@ export class RewardsService {
       rewardAmount: rewardAmount.toFixed(2),
       status: RewardStatus.ACCRUED,
       disbursedAt: loan.disbursedAt,
-    });
+    };
+
+    if (manager) {
+      return manager.save(manager.create(RewardEntity, data));
+    }
+    return this.rewardRepository.create(data);
   }
 }

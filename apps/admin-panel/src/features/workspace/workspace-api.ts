@@ -46,6 +46,20 @@ export async function reviewLead(id: string, payload: ReviewLeadPayload): Promis
   return data;
 }
 
+/** Approve → Disburse — the final lifecycle step, once an application is approved and its loan is still pending. */
+export interface DisburseLoanPayload {
+  disbursementReference: string;
+  remarks?: string;
+}
+
+export async function disburseLoan(id: string, payload: DisburseLoanPayload): Promise<LeadSummary> {
+  const { data } = await apiClient.patch<LeadSummary>(
+    `/v1/loan-applications/${id}/disburse`,
+    payload,
+  );
+  return data;
+}
+
 /** Activity History / Timeline — reuses the Lead Assignment audit trail. */
 export async function fetchLeadHistory(id: string): Promise<LeadAssignmentHistoryEntry[]> {
   const { data } = await apiClient.get<LeadAssignmentHistoryEntry[]>(
@@ -79,6 +93,9 @@ export interface CustomerProfile {
   monthlyIncome: string | null;
   companyName: string | null;
   designation: string | null;
+  bankAccountLast4: string | null;
+  bankIfscCode: string | null;
+  bankAccountHolderName: string | null;
 }
 
 export async function fetchCustomerSummary(customerId: string): Promise<CustomerSummary> {

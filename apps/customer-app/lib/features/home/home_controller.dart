@@ -7,7 +7,7 @@ import '../../core/models/loan_application.dart';
 import '../../core/models/user_profile.dart';
 import '../../core/riverpod/providers.dart';
 
-enum ActivityKind { submitted, approved, rejected, notification }
+enum ActivityKind { submitted, approved, rejected, disbursed, notification }
 
 class RecentActivityItem {
   const RecentActivityItem({
@@ -190,6 +190,15 @@ class HomeDashboardData {
           subtitle: Formatters.currency(application.requestedAmount),
           timestamp: application.submittedAt,
           kind: ActivityKind.submitted,
+        ));
+      }
+
+      if (application.loan?.isDisbursed ?? false) {
+        items.add(RecentActivityItem(
+          title: '$label disbursed',
+          subtitle: Formatters.currency(application.loan!.principalAmount),
+          timestamp: application.loan!.disbursedAt ?? application.reviewedAt ?? application.submittedAt,
+          kind: ActivityKind.disbursed,
         ));
       }
     }

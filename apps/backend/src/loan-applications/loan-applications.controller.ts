@@ -5,6 +5,7 @@ import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
 import { UserEntity, UserRole } from '../database/entities';
 
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
+import { DisburseLoanDto } from './dto/disburse-loan.dto';
 import { LoanApplicationResponseDto } from './dto/loan-application-response.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import { UpdateNotesDto } from './dto/update-notes.dto';
@@ -12,8 +13,8 @@ import { LoanApplicationsService } from './loan-applications.service';
 
 /**
  * LoanApplicationsController — the loan-form business logic's API
- * surface. Phase 5 scope: submit, list (role-scoped), get one,
- * review. No disbursement, repayment, or document endpoints yet.
+ * surface: submit, list (role-scoped), get one, review, and disburse.
+ * No repayment or document endpoints here (see DocumentsController).
  */
 @Controller({ path: 'loan-applications', version: '1' })
 export class LoanApplicationsController {
@@ -55,6 +56,18 @@ export class LoanApplicationsController {
     @Body() dto: ReviewLoanApplicationDto,
   ): Promise<LoanApplicationResponseDto> {
     const application = await this.loanApplicationsService.review(id, reviewer, dto);
+    return LoanApplicationResponseDto.fromEntity(application);
+  }
+
+  /** Approve → Disburse. Records the bank transaction reference and activates the loan (see LoanApplicationsService.disburse). */
+  @Patch(':id/disburse')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async disburse(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() actor: UserEntity,
+    @Body() dto: DisburseLoanDto,
+  ): Promise<LoanApplicationResponseDto> {
+    const application = await this.loanApplicationsService.disburse(id, actor, dto);
     return LoanApplicationResponseDto.fromEntity(application);
   }
 

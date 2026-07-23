@@ -10,8 +10,11 @@ import type { UserEntity } from './user.entity';
  * LoanEntity — an approved/active loan, optionally originating from a
  * LoanApplicationEntity.
  *
- * Phase 3 scope: schema only — no disbursement workflow, interest
- * accrual calculation, or repayment-schedule generation logic.
+ * Disbursement (PENDING → ACTIVE) is implemented in
+ * `LoanApplicationsService.disburse` — see that method for the
+ * transition and its side effects (reward generation, Top-Up
+ * eligibility). Interest accrual calculation and repayment-schedule
+ * generation are still out of scope.
  */
 @Entity('loans')
 @Unique('uq_loans_loan_number', ['loanNumber'])
@@ -60,6 +63,20 @@ export class LoanEntity extends AbstractEntity {
 
   @Column({ type: 'date', nullable: true })
   maturityDate?: string | null;
+
+  /** Bank transaction reference (UTR/NEFT/IMPS number) for the actual disbursal — proof the money genuinely moved, not backend-generated. */
+  @Column({ type: 'varchar', length: 128, nullable: true })
+  disbursementReference?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  disbursedById?: string | null;
+
+  @ManyToOne('UserEntity', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'disbursed_by_id', foreignKeyConstraintName: 'fk_loans_disbursed_by' })
+  disbursedBy?: UserEntity | null;
+
+  @Column({ type: 'text', nullable: true })
+  disbursementNotes?: string | null;
 
   @OneToMany('PaymentEntity', (payment: PaymentEntity) => payment.loan)
   payments?: PaymentEntity[];

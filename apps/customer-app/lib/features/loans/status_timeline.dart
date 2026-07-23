@@ -118,6 +118,8 @@ List<TimelineStep> buildApplicationTimeline({
   String? queryMessage,
   DateTime? queryRaisedAt,
   DateTime? queryRespondedAt,
+  String? loanStatus,
+  DateTime? disbursedAt,
 }) {
   final isDecided = status == 'approved' || status == 'rejected';
   final isRejected = status == 'rejected';
@@ -161,5 +163,14 @@ List<TimelineStep> buildApplicationTimeline({
       isNegative: isRejected,
       timestamp: reviewedAt,
     ),
+    if (status == 'approved')
+      TimelineStep(
+        label: 'Disbursed',
+        message: loanStatus == 'active'
+            ? 'Your loan has been credited to your bank account.'
+            : "We'll notify you once your loan is disbursed.",
+        isComplete: loanStatus == 'active',
+        timestamp: disbursedAt,
+      ),
   ];
 }

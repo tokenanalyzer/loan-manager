@@ -28,6 +28,21 @@ class StatusBadge extends StatelessWidget {
     return StatusBadge(label: label, color: color);
   }
 
+  /// The application's own `status` never becomes "disbursed" — that's
+  /// a fact about the linked loan, not the application. This combines
+  /// both so screens don't have to duplicate the check: shows
+  /// "Disbursed" once an approved application's loan is `active`,
+  /// otherwise falls back to [forApplicationStatus].
+  factory StatusBadge.forApplicationAndLoanStatus(
+    String applicationStatus,
+    String? loanStatus,
+  ) {
+    if (applicationStatus == 'approved' && loanStatus == 'active') {
+      return const StatusBadge(label: 'Disbursed', color: AppColors.success);
+    }
+    return StatusBadge.forApplicationStatus(applicationStatus);
+  }
+
   factory StatusBadge.forKycStatus(String status) {
     final (label, color) = switch (status) {
       'not_submitted' => ('KYC not submitted', AppColors.textTertiary),

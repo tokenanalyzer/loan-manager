@@ -14,6 +14,7 @@ class LoanDetails {
     required this.totalPayable,
     this.disbursedAt,
     this.maturityDate,
+    this.disbursementReference,
   });
 
   final String id;
@@ -27,6 +28,15 @@ class LoanDetails {
   final double monthlyInstallment;
   final double totalInterest;
   final double totalPayable;
+
+  /// Bank transaction reference (UTR) proving the disbursal genuinely
+  /// happened — set only once [status] is `active`.
+  final String? disbursementReference;
+
+  /// The loan has genuinely been disbursed — the one fact that
+  /// activates the Personal Loan reward program and Top-Up eligibility
+  /// (see `LoanApplicationsService.disburse` on the backend).
+  bool get isDisbursed => status == 'active';
 
   factory LoanDetails.fromJson(Map<String, dynamic> json) {
     return LoanDetails(
@@ -43,6 +53,7 @@ class LoanDetails {
       monthlyInstallment: (json['monthlyInstallment'] as num).toDouble(),
       totalInterest: (json['totalInterest'] as num).toDouble(),
       totalPayable: (json['totalPayable'] as num).toDouble(),
+      disbursementReference: json['disbursementReference'] as String?,
     );
   }
 }

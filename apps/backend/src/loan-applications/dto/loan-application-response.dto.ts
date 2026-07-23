@@ -13,6 +13,10 @@ export class LoanResponseDto {
   monthlyInstallment!: number;
   totalInterest!: number;
   totalPayable!: number;
+  disbursementReference!: string | null;
+  disbursedById!: string | null;
+  disbursedByName!: string | null;
+  disbursementNotes!: string | null;
 }
 
 export class LoanApplicationResponseDto {
@@ -99,6 +103,10 @@ export class LoanApplicationResponseDto {
       status: LoanStatus;
       disbursedAt?: Date | null;
       maturityDate?: string | null;
+      disbursementReference?: string | null;
+      disbursedById?: string | null;
+      disbursedBy?: { fullName?: string | null } | null;
+      disbursementNotes?: string | null;
     } | null;
   }): LoanApplicationResponseDto {
     const dto = new LoanApplicationResponseDto();
@@ -155,6 +163,10 @@ export class LoanApplicationResponseDto {
       loanDto.monthlyInstallment = emi.monthlyInstallment;
       loanDto.totalInterest = emi.totalInterest;
       loanDto.totalPayable = emi.totalPayable;
+      loanDto.disbursementReference = entity.loan.disbursementReference ?? null;
+      loanDto.disbursedById = entity.loan.disbursedById ?? null;
+      loanDto.disbursedByName = entity.loan.disbursedBy?.fullName ?? null;
+      loanDto.disbursementNotes = entity.loan.disbursementNotes ?? null;
       dto.loan = loanDto;
     }
 
