@@ -385,14 +385,27 @@ class _FieldRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: Theme.of(context).textTheme.bodyMedium),
-          Text(value,
+          const SizedBox(width: 12),
+          // Reproduced live: with `spaceBetween` and two unconstrained
+          // Text widgets, a long value (a real bank/nominee name,
+          // occupation string, IFSC, ...) had no width limit and
+          // overflowed off the right edge of the card. `Expanded` gives
+          // it the rest of the row's width and wraps/ellipsizes instead.
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
               style: Theme.of(context)
                   .textTheme
                   .bodyMedium
-                  ?.copyWith(fontWeight: FontWeight.w600)),
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
