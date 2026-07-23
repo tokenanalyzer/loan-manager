@@ -516,7 +516,7 @@ class _OverviewStatRow extends StatelessWidget {
             caption: activeCaption,
             onTap: () => active.isEmpty
                 ? context.push('/loans/categories')
-                : (missingDocs > 0 ? context.push('/documents') : context.go('/loans')),
+                : (missingDocs > 0 ? context.go('/documents') : context.go('/loans')),
           ),
         ),
         const SizedBox(width: 12),
@@ -955,7 +955,7 @@ class _RecentDocumentsSection extends StatelessWidget {
         SectionHeader(
           title: 'Recent documents',
           actionLabel: 'View all',
-          onAction: () => context.push('/documents'),
+          onAction: () => context.go('/documents'),
         ),
         const SizedBox(height: 8),
         AppCard(

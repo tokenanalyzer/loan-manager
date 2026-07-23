@@ -148,7 +148,7 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                         const SizedBox(height: 16),
                         PrimaryButton(
                           label: 'Re-upload documents',
-                          onPressed: () => context.push('/documents'),
+                          onPressed: () => context.go('/documents'),
                         ),
                       ],
                     ),
