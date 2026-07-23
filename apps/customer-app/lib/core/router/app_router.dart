@@ -130,7 +130,23 @@ final GoRouter appRouter = GoRouter(
       // `/login` instead just asks the user to resend the code.
       redirect: (context, state) => state.extra is (String, String) ? null : '/login',
       builder: (context, state) {
-        final (phoneNumber, verificationId) = state.extra as (String, String);
+        // `redirect` above only runs when this route is first matched —
+        // not on every subsequent rebuild. `refreshListenable` (Firebase
+        // auth state changes, e.g. this very screen's own phone
+        // verification completing) can force GoRouter to rebuild this
+        // already-matched route without replaying that guard, and the
+        // recomputed `GoRouterState.extra` comes back null since it
+        // wasn't part of a fresh `push`. Observed live: "type 'Null' is
+        // not a subtype of type '(String, String)' in type cast" right
+        // as auto sign-in completed. The top-level redirect moves the
+        // user off this screen on the very next frame in that case
+        // (auth is already resolved); render nothing disruptive instead
+        // of crashing on an unconditional cast.
+        final extra = state.extra;
+        if (extra is! (String, String)) {
+          return const SizedBox.shrink();
+        }
+        final (phoneNumber, verificationId) = extra;
         return OtpVerificationScreen(
           phoneNumber: phoneNumber,
           verificationId: verificationId,
