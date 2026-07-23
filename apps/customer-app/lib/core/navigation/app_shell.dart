@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 /// Persistent bottom-tab shell for the four primary sections (Home,
@@ -51,10 +52,23 @@ class AppShell extends StatelessWidget {
       // back stack (any pushed screen above it intercepts back first),
       // so this purely governs "back at a tab root": non-Home tabs
       // return to Home before the app is allowed to exit.
-      canPop: isHome,
+      //
+      // Always intercept (`canPop: false`) rather than letting Home's
+      // case fall through to go_router's own pop handling — reproduced
+      // live on a physical device: an edge back-gesture at the Home tab
+      // root crashed with "Null check operator used on a null value" in
+      // `GoRouterDelegate._findCurrentNavigator`, which throws when
+      // asked to pop with nothing left for *it* to pop. Deciding the
+      // "back at root" behavior here and exiting via `SystemNavigator
+      // .pop()` directly sidesteps that entirely.
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop || isHome) return;
-        _onDestinationSelected(0);
+        if (didPop) return;
+        if (isHome) {
+          SystemNavigator.pop();
+        } else {
+          _onDestinationSelected(0);
+        }
       },
       child: Scaffold(
         body: navigationShell,
