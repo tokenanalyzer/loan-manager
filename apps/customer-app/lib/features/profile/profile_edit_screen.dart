@@ -75,6 +75,37 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   bool _isSaving = false;
   bool _initialized = false;
 
+  // This form spans eight scrollable sections (Personal, KYC, Address,
+  // Employment, Existing obligations, Bank account, Nominee,
+  // References) — a validation error anywhere below the fold was
+  // previously invisible: `Form.validate()` shows red error text under
+  // the invalid field, but if that field is scrolled off-screen the
+  // customer just sees "Save" do nothing (reproduced live: a bad IFSC/
+  // PAN/phone entry silently blocked every save, with no network call
+  // ever made — see `_save`). These keys let `_save` find and scroll to
+  // whichever validated field actually failed, in form order.
+  final _fullNameFieldKey = GlobalKey<FormFieldState<String>>();
+  final _panFieldKey = GlobalKey<FormFieldState<String>>();
+  final _aadhaarFieldKey = GlobalKey<FormFieldState<String>>();
+  final _postalCodeFieldKey = GlobalKey<FormFieldState<String>>();
+  final _bankAccountFieldKey = GlobalKey<FormFieldState<String>>();
+  final _bankIfscFieldKey = GlobalKey<FormFieldState<String>>();
+  final _nomineePhoneFieldKey = GlobalKey<FormFieldState<String>>();
+  final _reference1PhoneFieldKey = GlobalKey<FormFieldState<String>>();
+  final _reference2PhoneFieldKey = GlobalKey<FormFieldState<String>>();
+
+  List<GlobalKey<FormFieldState<String>>> get _fieldKeysInFormOrder => [
+        _fullNameFieldKey,
+        _panFieldKey,
+        _aadhaarFieldKey,
+        _postalCodeFieldKey,
+        _bankAccountFieldKey,
+        _bankIfscFieldKey,
+        _nomineePhoneFieldKey,
+        _reference1PhoneFieldKey,
+        _reference2PhoneFieldKey,
+      ];
+
   @override
   void dispose() {
     _fullNameController.dispose();
@@ -111,6 +142,31 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
+      // Find whichever validated field actually failed and bring it
+      // into view — see `_fieldKeysInFormOrder`'s doc comment. Without
+      // this, a validation error in a section scrolled off-screen was
+      // indistinguishable from "Save" silently doing nothing.
+      for (final key in _fieldKeysInFormOrder) {
+        if (key.currentState?.hasError ?? false) {
+          final fieldContext = key.currentContext;
+          if (fieldContext != null) {
+            await Scrollable.ensureVisible(
+              fieldContext,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              alignment: 0.5,
+            );
+          }
+          break;
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please fix the highlighted field before saving.'),
+          ),
+        );
+      }
       return;
     }
 
@@ -302,6 +358,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       const LabeledSection(icon: Icons.person_outline, label: 'Personal'),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _fullNameFieldKey,
                         controller: _fullNameController,
                         textCapitalization: TextCapitalization.words,
                         decoration: const InputDecoration(labelText: 'Full name'),
@@ -382,6 +439,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _panFieldKey,
                         controller: _panController,
                         textCapitalization: TextCapitalization.characters,
                         maxLength: 10,
@@ -400,6 +458,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _aadhaarFieldKey,
                         controller: _aadhaarController,
                         keyboardType: TextInputType.number,
                         maxLength: 12,
@@ -450,6 +509,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _postalCodeFieldKey,
                         controller: _postalCodeController,
                         keyboardType: TextInputType.number,
                         maxLength: 6,
@@ -610,6 +670,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _bankAccountFieldKey,
                         controller: _bankAccountController,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
@@ -628,6 +689,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _bankIfscFieldKey,
                         controller: _bankIfscController,
                         textCapitalization: TextCapitalization.characters,
                         maxLength: 11,
@@ -683,6 +745,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _nomineePhoneFieldKey,
                         controller: _nomineePhoneController,
                         keyboardType: TextInputType.phone,
                         maxLength: 10,
@@ -714,6 +777,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _reference1PhoneFieldKey,
                         controller: _reference1PhoneController,
                         keyboardType: TextInputType.phone,
                         maxLength: 10,
@@ -740,6 +804,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
+                        key: _reference2PhoneFieldKey,
                         controller: _reference2PhoneController,
                         keyboardType: TextInputType.phone,
                         maxLength: 10,
