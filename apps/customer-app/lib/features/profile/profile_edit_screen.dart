@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constants/indian_states.dart';
 import '../../core/constants/profile_options.dart';
@@ -261,6 +262,16 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile saved.')),
         );
+        // This screen is always reached via context.push (from the
+        // Profile tab's view screen, or from the Apply Loan flow's
+        // "Complete KYC to apply" gate) — popping back after a
+        // successful save returns the customer to whichever of those
+        // triggered it. Without this, saving from the KYC gate left the
+        // customer stranded on this form with no indication they needed
+        // to manually go back to resume their loan application.
+        if (context.canPop()) {
+          context.pop();
+        }
       },
       failure: (error) {
         ScaffoldMessenger.of(context).showSnackBar(
