@@ -7,13 +7,9 @@
 # resulting shape for `gcloud run services describe --format export`
 # comparison / future `services replace` use.
 #
-# Known placeholders that must be resolved before this is ever applied:
-#   - image: tag "latest" should be a real digest/tag from Artifact Registry
-#     once built (repo already created: asia-south1-docker.pkg.dev/loan-manager-india/backend)
-#   - CORS_ORIGIN: production domain not yet registered (checkpoint doc §7 step 6)
-#   - FIREBASE_ADMIN_* secret env vars: commented out until the production
-#     Firebase Admin service account key exists (see docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md §4)
-#   - FIREBASE_ENABLED: stays "false" until the above secrets are wired in
+# Remaining placeholder:
+#   - CORS_ORIGIN: production domain not yet registered (checkpoint doc §7)
+# FIREBASE_ADMIN_* secrets and FIREBASE_ENABLED=true are live as of 2026-07-24.
 
 apiVersion: serving.knative.dev/v1
 kind: Service
@@ -57,7 +53,7 @@ spec:
             - name: DATABASE_MAX_CONNECTIONS
               value: "10"
             - name: FIREBASE_ENABLED
-              value: "false" # flip once FIREBASE_ADMIN_* secrets below are real
+              value: "true"
             - name: UPLOADS_DIR
               value: /mnt/documents
             - name: DATABASE_URL
@@ -65,15 +61,15 @@ spec:
                 secretKeyRef:
                   name: DATABASE_URL
                   key: latest
-            # - name: FIREBASE_ADMIN_PROJECT_ID
-            #   valueFrom:
-            #     secretKeyRef: { name: FIREBASE_ADMIN_PROJECT_ID, key: latest }
-            # - name: FIREBASE_ADMIN_CLIENT_EMAIL
-            #   valueFrom:
-            #     secretKeyRef: { name: FIREBASE_ADMIN_CLIENT_EMAIL, key: latest }
-            # - name: FIREBASE_ADMIN_PRIVATE_KEY
-            #   valueFrom:
-            #     secretKeyRef: { name: FIREBASE_ADMIN_PRIVATE_KEY, key: latest }
+            - name: FIREBASE_ADMIN_PROJECT_ID
+              valueFrom:
+                secretKeyRef: { name: FIREBASE_ADMIN_PROJECT_ID, key: latest }
+            - name: FIREBASE_ADMIN_CLIENT_EMAIL
+              valueFrom:
+                secretKeyRef: { name: FIREBASE_ADMIN_CLIENT_EMAIL, key: latest }
+            - name: FIREBASE_ADMIN_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef: { name: FIREBASE_ADMIN_PRIVATE_KEY, key: latest }
           volumeMounts:
             - name: documents
               mountPath: /mnt/documents
