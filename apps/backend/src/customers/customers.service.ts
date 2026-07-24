@@ -54,6 +54,13 @@ export class CustomersService {
       await this.userRepository.update(user.id, { fullName: dto.fullName });
     }
 
+    // Only ever fills a missing phone — never overwrites one already
+    // set from a verified Phone-OTP sign-in (see the DTO field's doc
+    // comment for why).
+    if (dto.mobileNumber !== undefined && !user.phone) {
+      await this.userRepository.update(user.id, { phone: dto.mobileNumber });
+    }
+
     const existing = await this.customerProfileRepository.findByUserId(user.id);
 
     const payload: Record<string, unknown> = {

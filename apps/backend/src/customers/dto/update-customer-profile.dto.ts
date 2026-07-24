@@ -38,6 +38,21 @@ export class UpdateCustomerProfileDto {
   @MaxLength(128)
   fullName?: string;
 
+  /**
+   * Also lives on `UserEntity`, alongside `fullName` above and for the
+   * same structural reason. Only ever fills a *missing* phone (see
+   * `CustomersService.upsertOwnProfile`) — Google Sign-In gives no
+   * phone number at all, unlike Phone-OTP sign-in, which already sets
+   * this from the verified Firebase token and must never be
+   * overwritten by this self-reported, unverified value.
+   */
+  @IsOptional()
+  @IsString()
+  @Matches(/^[6-9][0-9]{9}$/, {
+    message: 'mobileNumber must be a valid 10-digit Indian mobile number.',
+  })
+  mobileNumber?: string;
+
   @IsOptional()
   @IsDateString()
   dateOfBirth?: string;
