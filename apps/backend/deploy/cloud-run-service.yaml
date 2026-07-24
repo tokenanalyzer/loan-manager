@@ -1,0 +1,91 @@
+# Cloud Run service manifest — loan-manager-backend (production)
+#
+# Reference/documentation manifest, not yet applied. The VPC egress and
+# Cloud SQL annotations below are easier to get right via `gcloud run deploy`
+# flags (see deploy/README.md) than hand-authored YAML, so treat the README
+# command as the source of truth for the actual deploy and this file as the
+# resulting shape for `gcloud run services describe --format export`
+# comparison / future `services replace` use.
+#
+# Known placeholders that must be resolved before this is ever applied:
+#   - image: tag "latest" should be a real digest/tag from Artifact Registry
+#     once built (repo already created: asia-south1-docker.pkg.dev/loan-manager-india/backend)
+#   - CORS_ORIGIN: production domain not yet registered (checkpoint doc §7 step 6)
+#   - FIREBASE_ADMIN_* secret env vars: commented out until the production
+#     Firebase Admin service account key exists (see docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md §4)
+#   - FIREBASE_ENABLED: stays "false" until the above secrets are wired in
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: loan-manager-backend
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+        run.googleapis.com/execution-environment: gen2
+        # Direct VPC egress — reaches Cloud SQL's private IP (10.124.16.3)
+        # without a separate Serverless VPC Access connector.
+        run.googleapis.com/network-interfaces: '[{"network":"loan-manager-vpc","subnetwork":"loan-manager-subnet-asia-south1"}]'
+        # Cloud SQL Auth Proxy sidecar, managed by Cloud Run.
+        run.googleapis.com/cloudsql-instances: loan-manager-india:asia-south1:loan-manager-prod-db
+    spec:
+      serviceAccountName: loan-manager-backend-run@loan-manager-india.iam.gserviceaccount.com
+      containers:
+        - image: asia-south1-docker.pkg.dev/loan-manager-india/backend/loan-manager-backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: BACKEND_PORT
+              value: "8080"
+            - name: BACKEND_HOST
+              value: 0.0.0.0
+            - name: API_PREFIX
+              value: api
+            - name: CORS_ORIGIN
+              value: "https://TBD-production-domain" # placeholder — see checkpoint §7 step 6
+            - name: LOG_LEVEL
+              value: info
+            - name: DATABASE_SSL
+              value: "true"
+            - name: DATABASE_LOGGING
+              value: "false"
+            - name: DATABASE_MAX_CONNECTIONS
+              value: "10"
+            - name: FIREBASE_ENABLED
+              value: "false" # flip once FIREBASE_ADMIN_* secrets below are real
+            - name: UPLOADS_DIR
+              value: /mnt/documents
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: DATABASE_URL
+                  key: latest
+            # - name: FIREBASE_ADMIN_PROJECT_ID
+            #   valueFrom:
+            #     secretKeyRef: { name: FIREBASE_ADMIN_PROJECT_ID, key: latest }
+            # - name: FIREBASE_ADMIN_CLIENT_EMAIL
+            #   valueFrom:
+            #     secretKeyRef: { name: FIREBASE_ADMIN_CLIENT_EMAIL, key: latest }
+            # - name: FIREBASE_ADMIN_PRIVATE_KEY
+            #   valueFrom:
+            #     secretKeyRef: { name: FIREBASE_ADMIN_PRIVATE_KEY, key: latest }
+          volumeMounts:
+            - name: documents
+              mountPath: /mnt/documents
+          resources:
+            limits:
+              cpu: "1"
+              memory: 512Mi
+      volumes:
+        - name: documents
+          csi:
+            driver: gcsfuse.run.googleapis.com
+            readOnly: false
+            volumeAttributes:
+              bucketName: loan-manager-india-prod-documents
+              mountOptions: implicit-dirs

@@ -1,0 +1,22 @@
+# Cloud Build config — builds the backend production image and pushes it
+# to Artifact Registry. Run from the repo root:
+#   gcloud builds submit --config apps/backend/cloudbuild.yaml .
+#
+# Does not deploy anything — see deploy/README.md for the `gcloud run
+# deploy` step, which is a separate, explicit action.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - apps/backend/Dockerfile
+      - -t
+      - asia-south1-docker.pkg.dev/loan-manager-india/backend/loan-manager-backend:$SHORT_SHA
+      - -t
+      - asia-south1-docker.pkg.dev/loan-manager-india/backend/loan-manager-backend:latest
+      - .
+images:
+  - asia-south1-docker.pkg.dev/loan-manager-india/backend/loan-manager-backend:$SHORT_SHA
+  - asia-south1-docker.pkg.dev/loan-manager-india/backend/loan-manager-backend:latest
+options:
+  logging: CLOUD_LOGGING_ONLY

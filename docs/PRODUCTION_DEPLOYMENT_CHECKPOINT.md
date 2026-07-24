@@ -1,12 +1,11 @@
 # Production Deployment Checkpoint
 
-**Checkpoint date:** 2026-07-23 (end of session)
-**Status:** GCP production deployment in progress, **deliberately paused** after Cloud SQL instance creation, per explicit instruction. Nothing below this checkpoint has been created yet.
+**Checkpoint date:** 2026-07-24 (mid-session, while user tests the Release APK on a physical device)
+**Status:** GCP production deployment in progress. Cloud SQL database/user, Secret Manager (`DATABASE_URL`), Cloud Storage bucket, Artifact Registry repo, and a dedicated Cloud Run runtime service account all created and verified this session. Cloud Run deployment is **prepared but deliberately not executed** — see §7.
 
 This is the authoritative, up-to-date record of exactly what exists in
 production infrastructure right now. Read this before assuming anything
-about what's deployed — the answer as of today is: **a database server
-exists and is empty; nothing else does.**
+about what's deployed.
 
 ---
 
@@ -23,10 +22,12 @@ flowchart LR
     direction TB
     VPC["Custom VPC: loan-manager-vpc<br/>Subnet: loan-manager-subnet-asia-south1 (10.10.0.0/24)"]
     PEER["Private Services Access peering<br/>range: google-managed-services-loan-manager-vpc<br/>(10.124.16.0/20)"]
-    SQL[("Cloud SQL: loan-manager-prod-db<br/>PostgreSQL 16, asia-south1<br/>PRIVATE IP 10.124.16.3 — RUNNABLE, EMPTY")]
-    GCS(["Cloud Storage bucket<br/>NOT YET CREATED"])
-    SM["Secret Manager<br/>enabled, no secrets yet"]
-    RUN["Cloud Run service<br/>NOT YET DEPLOYED"]
+    SQL[("Cloud SQL: loan-manager-prod-db<br/>PostgreSQL 16, asia-south1<br/>PRIVATE IP 10.124.16.3 — RUNNABLE<br/>db+user created, schema grant pending")]
+    GCS(["Cloud Storage bucket<br/>loan-manager-india-prod-documents<br/>CREATED, public access prevented"])
+    SM["Secret Manager<br/>DATABASE_URL created"]
+    AR["Artifact Registry<br/>backend repo — CREATED, empty"]
+    SA["SA: loan-manager-backend-run<br/>CREATED, IAM granted"]
+    RUN["Cloud Run service<br/>PREPARED, NOT DEPLOYED"]
   end
 
   subgraph fb["Firebase (same GCP project)"]
@@ -34,19 +35,22 @@ flowchart LR
   end
 
   VPC --> PEER --> SQL
-  RUN -.->|"not yet connected"| SQL
-  RUN -.->|"not yet mounted"| GCS
-  RUN -.->|"not yet configured"| SM
+  RUN -.->|"config ready, not deployed"| SQL
+  RUN -.->|"config ready, not deployed"| GCS
+  RUN -.->|"config ready, not deployed"| SM
+  SA -.->|IAM grants| SQL
+  SA -.->|IAM grants| GCS
+  SA -.->|IAM grants| SM
   CA -->|"HTTPS, LAN only today"| LocalBackend["Local dev backend<br/>NestJS on this dev machine<br/>192.168.1.9:3000"]
   LocalBackend --> LocalDB[("Local dev Postgres<br/>Docker, separate from Cloud SQL")]
   CA -.->|Phone OTP| FA
 ```
 
-**What's real and working today:** the local dev stack (backend + Postgres in Docker on this machine, reachable at `192.168.1.9:3000`) and Firebase Phone Auth against the shared `loan-manager-india` project. The signed Release APK built today points at the **local** backend, not GCP.
+**What's real and working today:** the local dev stack (backend + Postgres in Docker on this machine, reachable at `192.168.1.9:3000`) and Firebase Phone Auth against the shared `loan-manager-india` project. The signed Release APK built 2026-07-23 points at the **local** backend, not GCP, and is currently in the user's hands for physical-device QA.
 
-**What's provisioned in GCP but not yet connected to anything:** the VPC, the peering, and the Cloud SQL instance.
+**What's provisioned in GCP but not yet live:** VPC, peering, Cloud SQL (db+user created), Secret Manager (`DATABASE_URL`), Cloud Storage bucket, Artifact Registry repo, dedicated Cloud Run runtime service account with IAM grants, and a full Cloud Run deployment configuration (`apps/backend/deploy/`) — all prepared, nothing deployed.
 
-**What doesn't exist yet:** Cloud Storage bucket, Secret Manager secrets, Cloud Run service, any domain/SSL mapping.
+**What doesn't exist yet:** any Cloud Run revision, any domain/SSL mapping, the production Firebase Admin secret, schema privileges for `loan_manager_app`.
 
 ---
 
@@ -69,7 +73,12 @@ flowchart LR
 | Connection name | `loan-manager-india:asia-south1:loan-manager-prod-db` |
 | Estimated cost | ~$55–65/month (ballpark from published Enterprise-edition rates for this tier/region — confirm via GCP Pricing Calculator or first invoice) |
 
-**Deliberately not yet created on this instance:** any database, any user, any password. The instance itself is fully configured and verified; it's just empty. This was an explicit instruction to defer, not an oversight.
+**Created this session (2026-07-24):**
+- Database `loan_manager_prod` (default charset/collation).
+- User `loan_manager_app` with a generated 32-char alphanumeric password.
+- Root user `postgres`'s password: **not yet set** — attempting to set it via `gcloud sql users set-password` was blocked by the Claude Code safety classifier (setting a superuser credential needs explicit user approval). See §7 item 1.
+
+**Still outstanding on this instance:** `loan_manager_app` has no schema privileges on `loan_manager_prod` yet (Postgres 16 revokes `CREATE` on `public` from non-owners by default) — the grant script exists at `apps/backend/deploy/bootstrap-grants.sql` but can't run yet, since nothing outside `loan-manager-vpc` can reach the private IP and the `postgres` password isn't set. Resolving this needs either your go-ahead to set the root password, or you can set it yourself and tell me.
 
 ---
 
@@ -105,9 +114,11 @@ flowchart LR
 | Resource | Detail |
 |---|---|
 | Cloud SQL instance | `loan-manager-prod-db` — see §2 |
-| Cloud Storage bucket | Not created |
-| Secret Manager secrets | Not created |
-| Cloud Run service | Not deployed |
+| Cloud Storage bucket | `gs://loan-manager-india-prod-documents`, `asia-south1`, uniform bucket-level access, **public access prevention enforced** |
+| Secret Manager secrets | `DATABASE_URL` (created). `CLOUDSQL_ROOT_PASSWORD`, `FIREBASE_ADMIN_PROJECT_ID`/`CLIENT_EMAIL`/`PRIVATE_KEY` — not yet created |
+| Artifact Registry | `asia-south1-docker.pkg.dev/loan-manager-india/backend` — created, no image pushed yet |
+| Cloud Run runtime SA | `loan-manager-backend-run@loan-manager-india.iam.gserviceaccount.com` — created; granted `secretmanager.secretAccessor` (on `DATABASE_URL` only), `cloudsql.client` (project-level), `storage.objectAdmin` (on the documents bucket only) |
+| Cloud Run service | Not deployed — full config prepared in `apps/backend/deploy/` (`cloud-run-service.yaml`, `README.md`, `bootstrap-grants.sql`) and `apps/backend/cloudbuild.yaml` |
 | Domain mapping | Not configured |
 
 **Local tooling:** `gcloud` CLI (v577.0.0) installed on this dev machine via winget, added to the user's PATH permanently, authenticated as `z31761990@gmail.com`, active project set to `loan-manager-india`.
@@ -162,18 +173,46 @@ This build will need to be re-cut once the production backend (Cloud Run + real 
 
 ## 7. Pending production tasks — exact resume order
 
-1. **Cloud Storage** — create the documents bucket; mount as a Cloud Run volume (`UPLOADS_DIR` points at the mount path, zero app code changes — `LocalDiskStorageService` keeps working unchanged). Bridge approach, not a real `FirebaseStorageService` integration (that stays deferred).
-2. **Secret Manager** — create secrets for `DATABASE_URL` and a **new, production-dedicated** Firebase Admin service account (§4).
-3. **Cloud SQL database + user** — create the application database and a least-privilege user/password on the already-existing instance (§2).
-4. **Cloud Run deployment** — deploy the backend container. **Known gap to apply at this step:** `main.ts` reads `BACKEND_PORT` (defaults to 3000); Cloud Run needs `BACKEND_PORT=8080` set explicitly and `--port=8080` at deploy time, or the container won't receive traffic correctly.
-5. **Register release keystore fingerprints in Firebase Console** (§4/§5) — manual, user-only action.
-6. **Domain mapping + SSL** for the Cloud Run service (Google-managed cert, automatic once DNS is pointed).
-7. **Update Customer App `env/production.json`** — real API domain, `FIREBASE_ENABLED=true`, real project ID.
-8. **Smoke-test the deployed production backend** before pointing a real release build at it.
-9. **Build + verify a new production Release APK** (pointed at the real prod domain) end-to-end on a physical device: login, loan application, document upload, rejection, re-upload, notifications, approval workflow.
-10. **Freeze the Customer App.**
-11. Only then: begin the Admin Panel implementation roadmap (already audited and planned this session — explicitly not started).
+Completed 2026-07-24: Cloud SQL database + user + generated credentials,
+`DATABASE_URL` in Secret Manager, Cloud Storage bucket, Artifact Registry
+repo, dedicated Cloud Run runtime service account with least-privilege IAM
+grants, full Cloud Run deployment config (manifest + cloudbuild + README),
+storage mount design (GCS FUSE volume, zero app code changes needed —
+`LocalDiskStorageService` already uses plain `fs` calls that work
+unchanged against the mount).
 
-**Immediate next step for the next session: item 1 (Cloud Storage bucket).** Nothing blocks it — VPC, APIs, and region are already in place.
+Remaining, in order:
+
+1. **Set the `postgres` root password and run the schema grant.** Blocked
+   this session — the safety classifier requires your explicit approval
+   before setting a Cloud SQL superuser password (see §2). Either tell me
+   to proceed, or run `gcloud sql users set-password postgres
+   --instance=loan-manager-prod-db --password=<choice>` yourself and let
+   me know so I can store it in Secret Manager. Either way, the actual
+   `GRANT` in `apps/backend/deploy/bootstrap-grants.sql` still needs a
+   connection from inside `loan-manager-vpc` — realistically run as a
+   one-off `gcloud run jobs execute` right after the first Cloud Run
+   deploy, since that's the first thing with VPC connectivity.
+2. **Production Firebase Admin service account** — Console-only, manual:
+   Firebase Console → Project Settings → Service Accounts → Generate new
+   private key. Give me the resulting JSON's fields (not the file itself
+   in chat) and I'll store them as `FIREBASE_ADMIN_PROJECT_ID` /
+   `_CLIENT_EMAIL` / `_PRIVATE_KEY` secrets and flip `FIREBASE_ENABLED=true`
+   in the manifest.
+3. **Build the image**: `gcloud builds submit --config apps/backend/cloudbuild.yaml .`
+   — safe to run any time, produces an image, no live service.
+4. **Run migrations** against `loan_manager_prod` once (1) is resolved.
+5. **Deploy to Cloud Run** using `apps/backend/deploy/README.md`'s
+   documented command — only once (1)–(4) are done and you've reviewed
+   the config. `--no-allow-unauthenticated` on first deploy deliberately.
+6. **Register release keystore fingerprints in Firebase Console** (§4/§5) — manual, user-only action.
+7. **Domain mapping + SSL** for the Cloud Run service (Google-managed cert, automatic once DNS is pointed).
+8. **Update Customer App `env/production.json`** — real API domain, `FIREBASE_ENABLED=true`, real project ID.
+9. **Smoke-test the deployed production backend** before pointing a real release build at it.
+10. **Build + verify a new production Release APK** (pointed at the real prod domain) end-to-end on a physical device: login, loan application, document upload, rejection, re-upload, notifications, approval workflow.
+11. **Freeze the Customer App.**
+12. Only then: begin the Admin Panel implementation roadmap (already audited and planned — explicitly not started).
+
+**Immediate next step for the next session: item 1** (needs your go-ahead on the root password), in parallel with item 2 (Firebase Console action, whenever convenient) and item 3 (buildable right now, no dependencies).
 
 **Also still outstanding, unrelated to GCP infra:** dev-DB test data cleanup (approved scope, not yet executed — this session's QA added more test applications on top of existing clutter). See `TODO_NEXT_SESSION.md` §7.
