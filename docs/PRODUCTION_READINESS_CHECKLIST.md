@@ -136,24 +136,37 @@ Exactly one enabled version per secret, no orphaned/duplicate live versions, no 
 - [x] Infra-level verification against the live production URL: valid TLS handshake, correct NestJS 404 on an undefined route, correct app-level `401` (not Cloud Run's IAM 403) on a protected endpoint, live successful DB query in Cloud Run logs confirming Cloud SQL connectivity
 - [x] Signed production Release APK built and rebuilt (final artifact after the backend went fully live), signature verified against the release keystore both times
 
-**Deferred, user-owned, not part of infra scope:**
-- [ ] Full live Google Sign-In / Phone Auth round-trip test against the production URL
-- [ ] Verify the built APK on a physical device — full functional/UI pass (login, OTP, loan application, document upload, notifications, profile) is explicitly the user's own manual testing, not performed this session
-- [ ] Freeze the Customer App
+**Done — manual testing pass, 2026-07-24 (same day, on a physical device against the production URL):**
+- [x] Google Sign-In — passed (after reinstalling with the correctly-signed production APK; an earlier attempt was on a differently-signed build)
+- [x] Phone OTP login — passed
+- [x] Logout and login again — passed
+- [x] Apply Loan (KYC gate → wizard → review → submit) — passed, after fixing a real bug (see below)
+- [x] Upload Documents / Replace Documents — passed, including the Employee ID (optional) / Bank Statement (required) document-requirement change
+- [x] Notifications — passed
+- [x] Profile — passed, including the new self-reported mobile number field for Google Sign-In accounts
+- [x] Internet Off/On behavior — passed
+- [x] Confirmed the tested build is a genuine non-debuggable release build, signed with the production keystore, pointed at the live production backend
 
-**Explicitly out of scope for this release (per instruction):** Admin Panel, Employee CRM, any new features, any business logic changes, any end-to-end app/feature testing (user tests manually on a physical device).
+**Bugs found and fixed during this pass (each rebuilt, reinstalled, re-verified, committed, pushed):**
+1. `ProfileEditScreen` never navigated back after a successful save — stranded customers on the form after completing KYC from the Apply Loan gate instead of returning them to the loan wizard. Fixed: pop back to caller on success (`aecc200`).
+2. Loan Application Review never showed the account's mobile number (phone lives on `User`, not `CustomerProfile`, which is all the wizard state is built from) — added unconditionally to every category's review (`0f6c003`).
+3. Google Sign-In accounts have no phone number at all (Firebase gives none, unlike Phone-OTP). Added a self-reported "Mobile number" field to Profile Edit, editable only when no verified phone already exists — never overwrites a verified one (`f129fb4`, backend + app).
+
+**Requested data/config changes, applied as migrations/backend logic (not ad-hoc DB edits, per `document_types`' own design and a real permission constraint hit along the way — see checkpoint doc):**
+- Employee ID document requirement: now optional (`is_required: false`)
+- Bank Statement document requirement: confirmed required (`is_required: true`, unchanged)
+
+- [x] **Freeze the Customer App — 2026-07-24.** No further Customer App changes without an explicit new decision to unfreeze (see memory `customer-app-frozen-2026-07-24` / this file).
+
+**Explicitly out of scope for this release (per instruction):** Admin Panel, Employee CRM.
 
 ---
 
-## 8. Launch day deployment checklist
+## 8. Launch day deployment checklist — complete
 
-Everything infrastructure-side is done: domain, SSL, load balancer, public access, keystore fingerprints, and the signed Release APK (see checkpoint doc §8 for full detail, including the mid-provisioning cert issue and fix). Remaining is entirely the user's own manual pass:
+Everything infrastructure-side (domain, SSL, load balancer, public access, keystore fingerprints) and the full manual functional testing pass are done. The signed Release APK on the device as of this freeze is the final, frozen build. Only remaining step:
 
-1. **Test the full auth round-trip for real:** Phone OTP sign-in and Google Sign-In from an actual device against the production URL — confirm a Firebase ID token is issued, the backend accepts it, and a user record is created/synced correctly.
-2. **Run the full customer journey once, live:** login → loan application → document upload → employee query/rejection → re-upload → notification → approval.
-3. **Verify the already-built Release APK on a physical device**, same journey as step 2, end-to-end.
-4. **Freeze the Customer App** — no further changes without an explicit new decision to unfreeze.
-5. Only after all of the above: begin planning the Admin Panel implementation (still not started).
+1. Only now: begin planning the Admin Panel implementation (still not started).
 
 ---
 
