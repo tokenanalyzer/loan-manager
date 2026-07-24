@@ -1378,6 +1378,12 @@ class _ReviewStep extends ConsumerWidget {
     final steps = state.steps;
     final documentsOverview =
         ref.watch(documentsOverviewProvider(state.categoryId)).valueOrNull;
+    // Phone lives on the User record (from Firebase sign-in), not the
+    // CustomerProfile the rest of this wizard's state is built from —
+    // shown here unconditionally (not gated by `steps`/category) so
+    // every application, regardless of loan type, carries a contact
+    // number for whoever reviews it.
+    final phone = ref.watch(profileOverviewProvider).valueOrNull?.user.phone;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -1385,6 +1391,9 @@ class _ReviewStep extends ConsumerWidget {
         children: [
           Text('Review your application', style: textTheme.headlineSmall),
           const SizedBox(height: 16),
+          _ReviewSection(title: 'Contact', rows: [
+            _ReviewRow(label: 'Mobile number', value: phone),
+          ]),
           if (steps.contains(WizardStep.personal))
             _ReviewSection(title: 'Personal', rows: [
               _ReviewRow(label: 'Date of birth', value: state.dateOfBirth),

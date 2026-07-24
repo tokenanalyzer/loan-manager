@@ -36,6 +36,7 @@ class ProfileEditScreen extends ConsumerStatefulWidget {
 class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
+  final _mobileNumberController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   final _postalCodeController = TextEditingController();
@@ -73,6 +74,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   String? _dateOfBirth;
   bool _hasActiveExternalLoan = false;
 
+  // True once the account already has a verified phone number (from
+  // Phone-OTP sign-in) — that field is then read-only, since a
+  // self-reported number here must never be able to overwrite a
+  // verified one (see the backend DTO's matching doc comment).
+  bool _hasVerifiedPhone = false;
+
   bool _isSaving = false;
   bool _initialized = false;
 
@@ -86,6 +93,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   // ever made — see `_save`). These keys let `_save` find and scroll to
   // whichever validated field actually failed, in form order.
   final _fullNameFieldKey = GlobalKey<FormFieldState<String>>();
+  final _mobileNumberFieldKey = GlobalKey<FormFieldState<String>>();
   final _panFieldKey = GlobalKey<FormFieldState<String>>();
   final _aadhaarFieldKey = GlobalKey<FormFieldState<String>>();
   final _postalCodeFieldKey = GlobalKey<FormFieldState<String>>();
@@ -97,6 +105,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   List<GlobalKey<FormFieldState<String>>> get _fieldKeysInFormOrder => [
         _fullNameFieldKey,
+        _mobileNumberFieldKey,
         _panFieldKey,
         _aadhaarFieldKey,
         _postalCodeFieldKey,
@@ -110,6 +119,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   @override
   void dispose() {
     _fullNameController.dispose();
+    _mobileNumberController.dispose();
     _addressController.dispose();
     _cityController.dispose();
     _postalCodeController.dispose();
@@ -179,6 +189,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         await ref.read(customerProfileRepositoryProvider).updateMyProfile({
       if (_fullNameController.text.trim().isNotEmpty)
         'fullName': _fullNameController.text.trim(),
+      if (!_hasVerifiedPhone && _mobileNumberController.text.isNotEmpty)
+        'mobileNumber': _mobileNumberController.text.trim(),
       if (_addressController.text.isNotEmpty)
         'addressLine1': _addressController.text,
       if (_cityController.text.isNotEmpty) 'city': _cityController.text,
@@ -304,6 +316,8 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           final profile = overview.customerProfile;
           if (!_initialized) {
             _fullNameController.text = overview.user.fullName ?? '';
+            _hasVerifiedPhone = overview.user.phone != null;
+            _mobileNumberController.text = overview.user.phone ?? '';
             _addressController.text = profile?.addressLine1 ?? '';
             _cityController.text = profile?.city ?? '';
             _postalCodeController.text = profile?.postalCode ?? '';
@@ -380,6 +394,35 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 12),
+                      // Read-only once a verified phone exists (from
+                      // Phone-OTP sign-in) — otherwise editable, mainly
+                      // for Google Sign-In accounts, which Firebase
+                      // never gives a phone number for at all.
+                      if (_hasVerifiedPhone)
+                        InputDecorator(
+                          decoration: const InputDecoration(labelText: 'Mobile number'),
+                          child: Text(_mobileNumberController.text,
+                              style: textTheme.bodyLarge),
+                        )
+                      else
+                        TextFormField(
+                          key: _mobileNumberFieldKey,
+                          controller: _mobileNumberController,
+                          keyboardType: TextInputType.phone,
+                          maxLength: 10,
+                          decoration: const InputDecoration(
+                            labelText: 'Mobile number',
+                            counterText: '',
+                          ),
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return null;
+                            if (!RegExp(r'^[6-9][0-9]{9}$').hasMatch(value)) {
+                              return 'Enter a valid 10-digit mobile number.';
+                            }
+                            return null;
+                          },
+                        ),
                       const SizedBox(height: 12),
                       InkWell(
                         borderRadius: BorderRadius.circular(14),
