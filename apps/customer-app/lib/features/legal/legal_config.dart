@@ -19,7 +19,7 @@ class LegalConfig {
   static const String companyLegalName =
       'Rectangle Consultancy and Services Pvt. Ltd.';
   static const String platformName = 'Loan Manager';
-  static const String supportEmail = 'support@loanmanager.example.com';
+  static const String supportEmail = 'support@loanmanagerapp.com';
   static const String supportPhone = '+91-00000-00000';
   static const String registeredOffice =
       '[Registered office address — to be finalized by Legal/Compliance]';

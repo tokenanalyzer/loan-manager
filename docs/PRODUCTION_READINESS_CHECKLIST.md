@@ -14,7 +14,7 @@ Every variable actually set on the live Cloud Run revision (`loan-manager-backen
 | `BACKEND_PORT` | `8080` | plain env var | port, default 3000 | ✅ matches `--port=8080` |
 | `BACKEND_HOST` | `0.0.0.0` | plain env var | string, default `0.0.0.0` | ✅ correct |
 | `API_PREFIX` | `api` | plain env var | string, default `api` | ✅ correct |
-| `CORS_ORIGIN` | **not set** | — | string, default `*` | ⚠️ see note below |
+| `CORS_ORIGIN` | `https://loanmanagerapp.com` | plain env var | string, default `*` | ✅ set 2026-07-24, no longer a placeholder |
 | `LOG_LEVEL` | `info` | plain env var | enum, default `info` | ✅ correct |
 | `DATABASE_URL` | secret ref | `DATABASE_URL:latest` | required URI | ✅ present, exactly one enabled version |
 | `DATABASE_SSL` | `true` | plain env var | boolean, default false | ✅ correct — required for Cloud SQL |
@@ -26,7 +26,7 @@ Every variable actually set on the live Cloud Run revision (`loan-manager-backen
 | `FIREBASE_ADMIN_PRIVATE_KEY` | secret ref | `:latest` | optional string | ✅ present |
 | `UPLOADS_DIR` | `/mnt/documents` | plain env var | string, default `./uploads` | ✅ matches the GCS FUSE mount path exactly |
 
-**`CORS_ORIGIN` note:** not set, so it silently defaults to `*` (allow any origin). This is **not a launch blocker for the Customer App** — CORS is a browser-enforced policy and the Customer App is a native Flutter/Android HTTP client, not a browser page, so this setting has zero effect on it. It only matters once a browser-based client (the not-yet-started Admin Panel) calls this API cross-origin. **Must be set to the real Admin Panel origin before that app goes live** — tracked as a future item, not a Customer App blocker. No value was set here because the production domain doesn't exist yet either way.
+**`CORS_ORIGIN` note (updated 2026-07-24):** now set to `https://loanmanagerapp.com`. CORS is a browser-enforced policy and the Customer App is a native Flutter/Android HTTP client, so this setting has zero effect on it — it only matters once a browser-based client calls this API cross-origin. **Revisit once the Admin Panel/Employee Portal web app goes live**, since it will likely live on its own subdomain (e.g. `portal.loanmanagerapp.com`) and will need to be added or substituted here — not done now since that app doesn't exist yet and isn't in scope for this release.
 
 No unexpected, missing, or extra variables found. No secret values were read back to perform this audit — presence, secret-name references, and IAM bindings were checked, not content.
 
@@ -94,9 +94,11 @@ Exactly one enabled version per secret, no orphaned/duplicate live versions, no 
 - **Firebase Admin: live and verified.** Cloud Run logs show `Firebase Admin initialized.` on boot; a request to a protected route now returns `401 Missing bearer token` (correct guard behavior) instead of the old `503` fail-closed response from before the secrets existed.
 - **Project consistency confirmed:** backend's `FIREBASE_ADMIN_PROJECT_ID` secret, Customer App's `android/app/google-services.json` (`project_id: loan-manager-india`), and the GCP project itself are all the same project — no split-project drift.
 - **Phone Auth:** unchanged, frozen, working (per `phone_auth_frozen` memory) — this audit did not touch it.
-- **Not yet done (both require the production domain / your Console access, tracked already in the deployment checkpoint, not new findings):**
+- **Domain confirmed:** `loanmanagerapp.com` / API subdomain `api.loanmanagerapp.com`. Google Sign-In and Phone Auth need no domain-specific config changes — both go through native SDKs (`google_sign_in`, `firebase_auth.verifyPhoneNumber`), not browser OAuth redirects; no deep links/app links/Dynamic Links are configured in the app to update.
+- **Done 2026-07-24:** Customer App's `env/production.json` now has the real API URL (`https://api.loanmanagerapp.com/api`), `FIREBASE_ENABLED: true`, and `FIREBASE_PROJECT_ID: loan-manager-india`.
+- **Not yet done (Console/DNS actions only the user can do):**
   - Release keystore SHA-1/SHA-256 fingerprints not yet registered in Firebase Console — **required** before Phone Auth or Google Sign-In will work in a release-signed build.
-  - Customer App's `env/production.json` still has a placeholder API URL and `FIREBASE_ENABLED: false` — must be updated once the real domain exists.
+  - Domain ownership verification (`gcloud domains verify loanmanagerapp.com`) and the resulting Cloud Run domain mapping for `api.loanmanagerapp.com` — see `docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md` §8 for exact steps and DNS records.
 - **Not independently re-verified:** the actual *content* of the `FIREBASE_ADMIN_PROJECT_ID` secret wasn't read back to confirm it says `loan-manager-india` byte-for-byte (reading secret values back was avoided deliberately, consistent with "do not print any secrets"). Confidence is high because the source JSON came directly from the Firebase Console for this project, but this is a assumption, not an independently re-verified fact.
 
 ---
@@ -123,44 +125,44 @@ Exactly one enabled version per secret, no orphaned/duplicate live versions, no 
 - [x] Cloud Run service deployed, healthy, VPC-connected to Cloud SQL
 - [x] Firebase Admin secrets created, granted, wired in, verified live
 - [x] Service correctly locked down (no public IAM access) pending launch readiness
+- [x] Production domain assigned (`loanmanagerapp.com` / `api.loanmanagerapp.com`), `CORS_ORIGIN` set live, `deploy/` docs updated
+- [x] Customer App `env/production.json` updated (real API URL, `FIREBASE_ENABLED: true`, real project ID)
+- [x] `legal_config.dart` support email updated to `support@loanmanagerapp.com` (propagates to every legal/support screen)
+- [x] Domain ownership verified (Search Console, Domain property, `z31761990@gmail.com`) — confirmed via `gcloud domains list-user-verified`
+- [x] Release keystore SHA-1/SHA-256 registered in Firebase (via Management API, no Console click-through needed)
+- [x] Global External HTTPS Load Balancer provisioned (`asia-south1` doesn't support native Cloud Run domain mapping — see checkpoint §8 for why and the full resource list): static IP `34.111.88.162`, serverless NEG, backend service, managed SSL cert, URL map + HTTPS proxy + forwarding rule, plus an HTTP→HTTPS redirect
+- [x] Signed production Release APK built (`apps/customer-app/build/app/outputs/flutter-apk/app-release.apk`), signature verified against the release keystore
 
-**Blocked on you (genuine manual/ownership actions, not automatable):**
-- [ ] Register release keystore SHA-1/SHA-256 fingerprints in Firebase Console
-- [ ] Purchase/point production domain, configure DNS
-- [ ] Map custom domain to the Cloud Run service (Google-managed SSL cert, automatic once DNS resolves)
+**Blocked on you (genuine manual/DNS action, not automatable):**
+- [ ] Add DNS record at Spaceship: **A** record, host `api`, value `34.111.88.162` (NOT a CNAME — see checkpoint §8 for why)
+- [ ] Wait for the managed SSL cert (`loan-manager-api-cert`) to go `ACTIVE` (automatic once DNS resolves — check with `gcloud compute ssl-certificates describe loan-manager-api-cert --global`)
 
 **Deferred until the above are done (deliberately, not overlooked):**
-- [ ] Set `CORS_ORIGIN` to a real value (only matters once Admin Panel exists)
-- [ ] Update Customer App `env/production.json` with real API URL + `FIREBASE_ENABLED: true`
 - [ ] Allow public Cloud Run access (`run.invoker` for `allUsers`)
 - [ ] Full live Google Sign-In / Phone Auth round-trip test against the production URL
-- [ ] Build and verify the final production Release APK
+- [ ] Verify the built APK on a physical device
 - [ ] Freeze the Customer App
 
-**Explicitly out of scope for this release (per instruction):** Admin Panel, Employee CRM, any new features, any business logic changes.
+**Explicitly out of scope for this release (per instruction):** Admin Panel, Employee CRM, any new features, any business logic changes, any end-to-end app/feature testing (user tests manually on a physical device).
 
 ---
 
 ## 8. Launch day deployment checklist
 
-Run in this order once the domain is live and DNS has propagated:
+Domain (`loanmanagerapp.com`), support email, CORS, Customer App env config, keystore fingerprints, the load balancer, and the signed Release APK are all done (see checkpoint doc §8). Remaining, in order:
 
-1. **Confirm DNS propagation** for the production domain (`dig`/`nslookup` from an external network, not just this dev machine).
-2. **Map the domain to Cloud Run:**
-   `gcloud run domain-mappings create --service=loan-manager-backend --domain=<domain> --region=asia-south1`
-   Wait for the managed SSL certificate to provision (can take up to ~24h, usually much faster).
-3. **Update `CORS_ORIGIN`** on the Cloud Run service to the real Admin Panel origin (or leave restrictive/off if Admin Panel still isn't live — do not set to `*` in production).
-4. **Register the release keystore's SHA-1/SHA-256** in Firebase Console → Project Settings → Your apps → the Android app.
-5. **Update `apps/customer-app/env/production.json`**: real `API_BASE_URL` (`https://<domain>/api`), `FIREBASE_ENABLED: true`, real `FIREBASE_PROJECT_ID`.
-6. **Allow public access to Cloud Run:**
+1. **Add the DNS A record** at Spaceship: host `api`, value `34.111.88.162`.
+2. **Confirm DNS propagation** (`dig`/`nslookup` from an external network) and wait for the managed cert to go `ACTIVE`:
+   `gcloud compute ssl-certificates describe loan-manager-api-cert --global --format="value(managed.status,managed.domainStatus)"`
+   Typically minutes after DNS propagates, up to ~24h in rare cases.
+3. **Allow public access to Cloud Run** (the load balancer's serverless NEG still needs the underlying service to accept the request):
    `gcloud run services add-iam-policy-binding loan-manager-backend --region=asia-south1 --member=allUsers --role=roles/run.invoker`
-7. **Smoke-test the public URL** — hit a real endpoint over HTTPS from an external network (not just from this authenticated dev machine), confirm TLS cert is valid and trusted.
-8. **Test the full auth round-trip for real:** Phone OTP sign-in and Google Sign-In from an actual device against the production URL — confirm a Firebase ID token is issued, the backend accepts it, and a user record is created/synced correctly.
-9. **Run the full customer journey once, live:** login → loan application → document upload → employee query/rejection (via whatever path currently exists for that) → re-upload → notification → approval.
-10. **Build the final signed production Release APK**, pointed at the real production URL.
-11. **Verify the APK on a physical device**, same journey as step 9, end-to-end.
-12. **Freeze the Customer App** — no further changes without an explicit new decision to unfreeze.
-13. Only after all of the above: begin planning the Admin Panel implementation (still not started).
+4. **Smoke-test the public URL** — hit `https://api.loanmanagerapp.com` from an external network, confirm TLS cert is valid and trusted.
+5. **Test the full auth round-trip for real:** Phone OTP sign-in and Google Sign-In from an actual device against the production URL — confirm a Firebase ID token is issued, the backend accepts it, and a user record is created/synced correctly.
+6. **Run the full customer journey once, live:** login → loan application → document upload → employee query/rejection → re-upload → notification → approval.
+7. **Verify the already-built Release APK on a physical device**, same journey as step 6, end-to-end.
+8. **Freeze the Customer App** — no further changes without an explicit new decision to unfreeze.
+9. Only after all of the above: begin planning the Admin Panel implementation (still not started).
 
 ---
 
@@ -170,7 +172,7 @@ Ranked roughly by how much they matter, not by how easy they are to fix.
 
 1. **Cloud SQL is `ZONAL`, not regional/HA.** No automatic failover — a zone outage in `asia-south1` takes the database (and therefore the whole backend) down until Google recovers the zone, with recovery via backups/PITR rather than instant failover. For a lending product handling real financial/KYC data, this is worth a conscious decision: either accept the risk at this stage (small scale, early launch) or upgrade to `REGIONAL` availability (roughly 2x the Cloud SQL cost) before or shortly after real users are onboarded. This is a call only you can make — no code or config change is being suggested here.
 2. **Scale-to-zero + migration-on-every-boot.** `min-instances=0` means Cloud Run can fully idle down and cold-start on the next request. The container's `CMD` re-runs `migration:run:prod` on *every* boot, including every cold start — harmless today (idempotent, ~6 seconds observed), but two considerations: (a) if a future migration is slow or takes a lock, every cold start pays that cost until it's the new steady state; (b) if traffic ever causes two cold starts to race concurrently (e.g., a burst after being fully idle), both instances would run `migration:run:prod` against the same database at once — TypeORM's migration runner isn't designed for concurrent execution and could error or double-apply in a bad interleaving, though this is a narrow window (single Cloud SQL connection app, low traffic expected at launch). Mitigation options if this becomes a concern: set `min-instances=1` (removes scale-to-zero entirely, small constant cost), or move migrations to a separate one-off deploy step instead of the container boot path. Not urgent at current expected traffic, but worth knowing before assuming "it just works" at higher scale.
-3. **`CORS_ORIGIN` defaults to `*`.** Harmless today (no browser client exists yet), but must not be forgotten when the Admin Panel eventually goes live — a wildcard CORS policy on a production financial API would be a real gap at that point, not now.
+3. **`CORS_ORIGIN` resolved (2026-07-24)** — now `https://loanmanagerapp.com`, no longer a `*` wildcard. Revisit when the Admin Panel/Employee Portal web app is built, since it will likely need its own origin (e.g. a `portal.` subdomain) added here.
 4. **No dedicated health-check endpoint.** Verification so far relies on a 404 from an undefined route and Cloud Run's own TCP startup probe — both are reasonable proxies, but neither is a purpose-built liveness/readiness endpoint that could also assert DB connectivity, migration status, or Firebase Admin state on demand. Not a launch blocker; worth considering as a small, explicitly-scoped follow-up (would count as a new feature, so intentionally not added during this audit).
 5. **Resource sizing (1 vCPU / 512Mi, max 3 instances) is unvalidated under real load.** Reasonable defaults for a launch with a small initial user base, but there's no load-test data behind these numbers. Watch Cloud Run metrics after real traffic starts and right-size if you see memory pressure or throttling.
 6. **Single points of manual knowledge:** the Cloud SQL root password and app-user password only exist in Secret Manager now (by design — nothing was written to disk). If Secret Manager access is ever lost (e.g., accidental IAM lockout), there is no other copy. Standard secret-manager risk, not specific to this deployment, but worth noting for whoever manages GCP IAM long-term.

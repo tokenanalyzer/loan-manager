@@ -1,7 +1,6 @@
 # Production Deployment Checkpoint
 
-**Checkpoint date:** 2026-07-24 (mid-session, while user tests the Release APK on a physical device)
-**Status:** Backend is **live on Cloud Run** with Firebase Admin enabled (revision `loan-manager-backend-00005-cqx`, serving 100% traffic, `--no-allow-unauthenticated`). DB migrated, Firebase Admin initializes and the auth guard is active. Not yet publicly usable — no domain, `CORS_ORIGIN` still a placeholder, and full Google Sign-In/Phone Auth round-trip against production is untestable until the service is public. See §7 for what's left.
+**Checkpoint date:** 2026-07-24, continued after a power-outage interruption, same day. Production domain **`loanmanagerapp.com`** (support email `support@loanmanagerapp.com`) verified and now routed via a **Global External HTTPS Load Balancer** (not native Cloud Run domain mapping — `asia-south1` doesn't support that feature; see §8). Backend is **live on Cloud Run** with Firebase Admin enabled (revision `loan-manager-backend-00006-2dp`, serving 100% traffic, `--no-allow-unauthenticated`). `CORS_ORIGIN` is live as `https://loanmanagerapp.com`. Release keystore SHA-1/SHA-256 are registered in Firebase. A signed production Release APK has been built (`apps/customer-app/build/app/outputs/flutter-apk/app-release.apk`, points at `https://api.loanmanagerapp.com/api`). **Blocked on one DNS action from the domain owner** — see §8 for the exact record.
 
 This is the authoritative, up-to-date record of exactly what exists in
 production infrastructure right now. Read this before assuming anything
@@ -222,3 +221,59 @@ Remaining, in order:
 **Immediate next step for the next session: item 1** — a genuine Firebase Console action only the user can do. Nothing else is currently blocked (domain purchase/DNS in item 2 is also user-owned).
 
 **Also still outstanding, unrelated to GCP infra:** dev-DB test data cleanup (approved scope, not yet executed — this session's QA added more test applications on top of existing clutter). See `TODO_NEXT_SESSION.md` §7.
+
+---
+
+## 8. Production domain configuration (2026-07-24, post-outage session)
+
+**Domain:** `loanmanagerapp.com`, purchased/owned by the user (registrar not managed by this session). **API subdomain:** `api.loanmanagerapp.com` — the backend is not mapped to the apex domain; the apex is reserved for the brand/marketing surface (legal pages, support email domain), consistent with the existing `env/*.json` convention (`api.loanmanager.example.com` was already the placeholder pattern before this session). **Support email:** `support@loanmanagerapp.com` — the only production contact address; no other addresses were invented.
+
+**Done this session:**
+- `CORS_ORIGIN` updated live on Cloud Run to `https://loanmanagerapp.com` (revision `loan-manager-backend-00006-2dp`). `apps/backend/deploy/cloud-run-service.yaml` and `deploy/README.md` updated to match (no more `TBD-production-domain` placeholder).
+- `apps/customer-app/env/production.json`: `API_BASE_URL` → `https://api.loanmanagerapp.com/api`, `FIREBASE_ENABLED` → `true`, `FIREBASE_PROJECT_ID` → `loan-manager-india` (matches the already-live Firebase project; verified against `firebase_options_placeholder.dart`, which — despite the filename — already holds the real Android Firebase config).
+- `apps/customer-app/lib/features/legal/legal_config.dart`: `supportEmail` → `support@loanmanagerapp.com`. This is the single source every legal screen and `ContactSupportScreen`/`faq_screen.dart` reads from — no other file hardcodes a support address, so this one edit propagates everywhere. Other placeholder fields in that file (registered office address, CIN, grievance officer) were deliberately left untouched — those need real legal facts this session has no source for, not a domain/email substitution.
+- Verified Google Sign-In and Phone Auth need **no** domain-related changes: both go through native Firebase/Google SDKs (`google_sign_in`, `firebase_auth.verifyPhoneNumber`), not browser OAuth redirects — no deep links, app links, or Firebase Dynamic Links are configured in the app. The only Firebase item tied to the release build is the keystore SHA-1/SHA-256 registration in Firebase Console, already tracked in §4/§5 and unaffected by domain choice.
+- Backend has no email-sending service (`grep` for mailer/SMTP found nothing) — the only "email" touchpoint in the whole product is the Customer App's `mailto:` link in `ContactSupportScreen`, already covered above.
+
+**Domain ownership verification — done.** Completed by the user directly via Google Search Console (Domain property, DNS TXT method) under `z31761990@gmail.com`. Confirmed via `gcloud domains list-user-verified` listing `loanmanagerapp.com`.
+
+**Native Cloud Run domain mapping is NOT available in `asia-south1`.** `gcloud beta run domain-mappings create --domain=api.loanmanagerapp.com --region=asia-south1` fails with:
+
+> `Creating domain mappings is not allowed in asia-south1.` (`UNIMPLEMENTED`, HTTP 501)
+
+Confirmed reproducible, and confirmed region-bound (the same command against `us-central1` got past the region check but then failed with "Route loan-manager-backend does not exist" — i.e. domain mappings are tied to a Cloud Run "Route" resource that only exists in the region the service itself runs in, and Google has not enabled the feature for `asia-south1` at all). Moving the backend to a supported region was considered and rejected — Cloud SQL/VPC/private networking are deliberately in `asia-south1` for India data residency/latency, and re-provisioning them elsewhere is a far larger, riskier change than routing around a load-balancer feature gap. User confirmed proceeding with the standard Google-documented workaround instead.
+
+**Built instead: a Global External HTTPS Load Balancer with a Serverless NEG**, pointing at the existing `loan-manager-backend` Cloud Run service in `asia-south1` — no changes to the Cloud Run service itself. Resources created (all in project `loan-manager-india`):
+
+| Resource | Name | Detail |
+|---|---|---|
+| Global static IP | `loan-manager-api-ip` | `34.111.88.162` |
+| Serverless NEG | `loan-manager-backend-neg` | region `asia-south1`, targets Cloud Run service `loan-manager-backend` |
+| Backend service | `loan-manager-api-backend` | global, `EXTERNAL_MANAGED`, NEG attached |
+| Google-managed SSL cert | `loan-manager-api-cert` | domain `api.loanmanagerapp.com`, status `PROVISIONING` until DNS resolves |
+| URL map (HTTPS) | `loan-manager-api-urlmap` | default service → `loan-manager-api-backend` |
+| Target HTTPS proxy | `loan-manager-api-https-proxy` | uses `loan-manager-api-cert` |
+| Forwarding rule (443) | `loan-manager-api-https-fwd` | binds `loan-manager-api-ip` → HTTPS proxy |
+| URL map (HTTP redirect) | `loan-manager-api-http-redirect` | 301s everything to HTTPS |
+| Target HTTP proxy | `loan-manager-api-http-proxy` | uses the redirect URL map |
+| Forwarding rule (80) | `loan-manager-api-http-fwd` | binds the same IP → HTTP proxy, for the redirect |
+
+Adds a small recurring cost (roughly $18–25/month for the forwarding rules, GCP's standard external HTTPS LB pricing) on top of the existing Cloud Run/Cloud SQL costs — flagged to and accepted by the user before creating these resources.
+
+**Blocked on one DNS action — add this record in Spaceship:**
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| A | `api` | `34.111.88.162` | 3600 or Auto |
+
+**Not** a CNAME — that pattern is only for native Cloud Run domain mappings, which this project isn't using. Leave the existing apex records (SPF, `google-site-verification` TXT) untouched.
+
+Once DNS resolves, the managed cert (`loan-manager-api-cert`) transitions `PROVISIONING` → `ACTIVE` automatically — no manual cert/key handling. Check with:
+```
+gcloud compute ssl-certificates describe loan-manager-api-cert --global --format="value(managed.status,managed.domainStatus)"
+```
+Typically minutes after DNS propagates, can take up to ~24h in rare cases.
+
+**Not done, and deliberately not part of this session's scope:** flipping the Cloud Run service to `--allow-unauthenticated` (public access). It remains intentionally locked down until the load balancer + managed cert are confirmed live end-to-end — flip it only after the cert shows `ACTIVE`, as a distinct, deliberate action.
+
+**Also done this session:** release keystore SHA-1/SHA-256 registered in Firebase for the Android app (`1:660520519709:android:21ebd181c8625fdc8edef4`) — via the Firebase Management API directly (`firebase.googleapis.com/v1beta1/.../androidApps/{appId}/sha`), authenticated with the existing gcloud credentials, no Firebase Console click-through needed. Both fingerprints verified against the actual keystore file (`keytool -list -v`) before submission, and confirmed present afterward via a follow-up GET. A signed production Release APK was built (`flutter build apk --release --dart-define-from-file=env/production.json`) at `apps/customer-app/build/app/outputs/flutter-apk/app-release.apk` (67.9 MB) and its signature verified via `apksigner` to match the same SHA-1/SHA-256 — it points at `https://api.loanmanagerapp.com/api`, which will start working once the DNS record above propagates and public access is enabled. No app functionality was tested (explicitly out of scope this session — the user tests manually on a physical device).

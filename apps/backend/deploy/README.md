@@ -29,16 +29,14 @@ Dockerfile/migration bugs found and fixed via a live smoke test.
 
 ## Outstanding
 
-1. **Production Firebase Admin service account key** — Console-only
-   action (Firebase Console → Project Settings → Service Accounts →
-   Generate new private key). Once you have the JSON, its three fields go
-   into Secret Manager as `FIREBASE_ADMIN_PROJECT_ID`,
-   `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY`; grant the
-   runtime SA `secretAccessor` on them; redeploy with `FIREBASE_ENABLED=true`.
-2. **Production domain** — not yet purchased/mapped. `CORS_ORIGIN` in
-   `cloud-run-service.yaml` is a placeholder until then.
+1. ~~Production Firebase Admin service account key~~ — done, live since 2026-07-24.
+2. **Production domain** — `loanmanagerapp.com` purchased; API subdomain
+   `api.loanmanagerapp.com` is mapped to this service (or pending domain
+   verification — see `docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md` §8 for
+   exact status and the DNS records required). `CORS_ORIGIN` is live as
+   `https://loanmanagerapp.com` (set 2026-07-24).
 3. **Public access** — deliberately still off (`--no-allow-unauthenticated`)
-   until (1) and (2) are resolved.
+   until domain mapping + SSL are confirmed live.
 
 ## Three bugs found and fixed via the live smoke test (see checkpoint §7 for detail)
 
@@ -80,7 +78,7 @@ gcloud run deploy loan-manager-backend \
   --vpc-egress=private-ranges-only \
   --add-cloudsql-instances=loan-manager-india:asia-south1:loan-manager-prod-db \
   --set-secrets=DATABASE_URL=DATABASE_URL:latest \
-  --set-env-vars=NODE_ENV=production,BACKEND_PORT=8080,BACKEND_HOST=0.0.0.0,API_PREFIX=api,LOG_LEVEL=info,DATABASE_SSL=true,DATABASE_LOGGING=false,DATABASE_MAX_CONNECTIONS=10,FIREBASE_ENABLED=false,UPLOADS_DIR=/mnt/documents \
+  --set-env-vars=NODE_ENV=production,BACKEND_PORT=8080,BACKEND_HOST=0.0.0.0,API_PREFIX=api,LOG_LEVEL=info,DATABASE_SSL=true,DATABASE_LOGGING=false,DATABASE_MAX_CONNECTIONS=10,FIREBASE_ENABLED=false,UPLOADS_DIR=/mnt/documents,CORS_ORIGIN=https://loanmanagerapp.com \
   --port=8080 \
   --add-volume=name=documents,type=cloud-storage,bucket=loan-manager-india-prod-documents \
   --add-volume-mount=volume=documents,mount-path=/mnt/documents \

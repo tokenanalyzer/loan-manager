@@ -42,7 +42,7 @@ A full 3-pass audit (Documents, Application Wizard, Home/Profile/Loan-detail/App
 
 ## Known Limitations
 
-- `apps/customer-app/env/production.json` has `"FIREBASE_ENABLED": false` with no real Firebase project id. **This must be set to a real, configured Firebase project before the actual production release** — with it disabled, the entire auth flow (login, session, sign-out) is a deliberate no-op (`AuthNotConfiguredScreen`), which is correct for this sprint's environment but is not a shippable production state.
+- ~~`apps/customer-app/env/production.json` has `"FIREBASE_ENABLED": false`~~ — **resolved 2026-07-24**: now `true` with real project id `loan-manager-india` and `API_BASE_URL` pointed at `https://api.loanmanagerapp.com/api`. See `docs/PRODUCTION_DEPLOYMENT_CHECKPOINT.md` §8.
 - The Lending Partners section has no backend data source yet by design — see Remaining Issues.
 - Automated test coverage is minimal (one smoke test verifying the app boots to Home). No widget/unit tests exist yet for the document upload flow, wizard validation, or review-step field mapping.
 - The wizard's Review step shows the bank account number only if the user (re)typed it this session — the backend never returns a previously-stored full account number (by design, security), so a returning applicant who doesn't revisit the Income step won't see it in review even though it's on file.

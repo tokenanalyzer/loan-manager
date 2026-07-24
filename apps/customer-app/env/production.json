@@ -1,6 +1,6 @@
 {
-  "API_BASE_URL": "https://api.loanmanager.example.com/api",
+  "API_BASE_URL": "https://api.loanmanagerapp.com/api",
   "APP_ENV": "production",
-  "FIREBASE_ENABLED": false,
-  "FIREBASE_PROJECT_ID": ""
+  "FIREBASE_ENABLED": true,
+  "FIREBASE_PROJECT_ID": "loan-manager-india"
 }

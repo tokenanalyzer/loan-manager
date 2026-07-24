@@ -7,8 +7,8 @@
 # resulting shape for `gcloud run services describe --format export`
 # comparison / future `services replace` use.
 #
-# Remaining placeholder:
-#   - CORS_ORIGIN: production domain not yet registered (checkpoint doc §7)
+# Production domain: loanmanagerapp.com (API subdomain: api.loanmanagerapp.com).
+# CORS_ORIGIN set to https://loanmanagerapp.com live on Cloud Run as of 2026-07-24.
 # FIREBASE_ADMIN_* secrets and FIREBASE_ENABLED=true are live as of 2026-07-24.
 
 apiVersion: serving.knative.dev/v1
@@ -43,7 +43,7 @@ spec:
             - name: API_PREFIX
               value: api
             - name: CORS_ORIGIN
-              value: "https://TBD-production-domain" # placeholder — see checkpoint §7 step 6
+              value: "https://loanmanagerapp.com"
             - name: LOG_LEVEL
               value: info
             - name: DATABASE_SSL
