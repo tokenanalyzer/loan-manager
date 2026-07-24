@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 import 'reflect-metadata';
 import { config as loadEnv } from 'dotenv';
 import { DataSource } from 'typeorm';
@@ -23,7 +25,11 @@ export const AppDataSource = new DataSource({
   logging: process.env.DATABASE_LOGGING === 'true',
   entities: ALL_ENTITIES,
   namingStrategy: new SnakeNamingStrategy(),
-  migrations: ['src/database/migrations/*.ts'],
+  // Resolved relative to this file's own location so the same glob works
+  // whether run via ts-node against src/ (dev, migration:generate/revert)
+  // or via plain node against the compiled dist/ (production migration:run
+  // — the prod Docker image ships dist/ only, no src/).
+  migrations: [path.join(__dirname, `migrations/*.${__filename.endsWith('.ts') ? 'ts' : 'js'}`)],
   synchronize: false,
   // Default ('all') wraps every pending migration in a single transaction
   // per `migration:run` invocation, which breaks the documented

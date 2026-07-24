@@ -29,4 +29,7 @@ COPY --from=build /app/apps/backend/package.json ./package.json
 COPY --from=build /app/apps/backend/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+# Runs pending migrations (idempotent — TypeORM records applied ones) before
+# every boot, so a fresh production database gets its schema on first
+# deploy without a separate one-off job.
+CMD ["sh", "-c", "pnpm run migration:run:prod && node dist/main.js"]
