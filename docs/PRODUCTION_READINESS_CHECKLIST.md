@@ -130,17 +130,15 @@ Exactly one enabled version per secret, no orphaned/duplicate live versions, no 
 - [x] `legal_config.dart` support email updated to `support@loanmanagerapp.com` (propagates to every legal/support screen)
 - [x] Domain ownership verified (Search Console, Domain property, `z31761990@gmail.com`) — confirmed via `gcloud domains list-user-verified`
 - [x] Release keystore SHA-1/SHA-256 registered in Firebase (via Management API, no Console click-through needed)
-- [x] Global External HTTPS Load Balancer provisioned (`asia-south1` doesn't support native Cloud Run domain mapping — see checkpoint §8 for why and the full resource list): static IP `34.111.88.162`, serverless NEG, backend service, managed SSL cert, URL map + HTTPS proxy + forwarding rule, plus an HTTP→HTTPS redirect
-- [x] Signed production Release APK built (`apps/customer-app/build/app/outputs/flutter-apk/app-release.apk`), signature verified against the release keystore
+- [x] Global External HTTPS Load Balancer provisioned (`asia-south1` doesn't support native Cloud Run domain mapping — see checkpoint §8 for why and the full resource list): static IP `34.111.88.162`, serverless NEG, backend service, managed SSL cert (`loan-manager-api-cert-v2`, after the original cert got stuck on a stale pre-DNS validation and was replaced), URL map + HTTPS proxy + forwarding rule, plus an HTTP→HTTPS redirect
+- [x] DNS A record added by user, resolved correctly; managed SSL cert `ACTIVE`
+- [x] Public Cloud Run access enabled (`run.invoker` for `allUsers`) — done only after the cert was confirmed working via a real HTTPS request
+- [x] Infra-level verification against the live production URL: valid TLS handshake, correct NestJS 404 on an undefined route, correct app-level `401` (not Cloud Run's IAM 403) on a protected endpoint, live successful DB query in Cloud Run logs confirming Cloud SQL connectivity
+- [x] Signed production Release APK built and rebuilt (final artifact after the backend went fully live), signature verified against the release keystore both times
 
-**Blocked on you (genuine manual/DNS action, not automatable):**
-- [ ] Add DNS record at Spaceship: **A** record, host `api`, value `34.111.88.162` (NOT a CNAME — see checkpoint §8 for why)
-- [ ] Wait for the managed SSL cert (`loan-manager-api-cert`) to go `ACTIVE` (automatic once DNS resolves — check with `gcloud compute ssl-certificates describe loan-manager-api-cert --global`)
-
-**Deferred until the above are done (deliberately, not overlooked):**
-- [ ] Allow public Cloud Run access (`run.invoker` for `allUsers`)
+**Deferred, user-owned, not part of infra scope:**
 - [ ] Full live Google Sign-In / Phone Auth round-trip test against the production URL
-- [ ] Verify the built APK on a physical device
+- [ ] Verify the built APK on a physical device — full functional/UI pass (login, OTP, loan application, document upload, notifications, profile) is explicitly the user's own manual testing, not performed this session
 - [ ] Freeze the Customer App
 
 **Explicitly out of scope for this release (per instruction):** Admin Panel, Employee CRM, any new features, any business logic changes, any end-to-end app/feature testing (user tests manually on a physical device).
@@ -149,20 +147,13 @@ Exactly one enabled version per secret, no orphaned/duplicate live versions, no 
 
 ## 8. Launch day deployment checklist
 
-Domain (`loanmanagerapp.com`), support email, CORS, Customer App env config, keystore fingerprints, the load balancer, and the signed Release APK are all done (see checkpoint doc §8). Remaining, in order:
+Everything infrastructure-side is done: domain, SSL, load balancer, public access, keystore fingerprints, and the signed Release APK (see checkpoint doc §8 for full detail, including the mid-provisioning cert issue and fix). Remaining is entirely the user's own manual pass:
 
-1. **Add the DNS A record** at Spaceship: host `api`, value `34.111.88.162`.
-2. **Confirm DNS propagation** (`dig`/`nslookup` from an external network) and wait for the managed cert to go `ACTIVE`:
-   `gcloud compute ssl-certificates describe loan-manager-api-cert --global --format="value(managed.status,managed.domainStatus)"`
-   Typically minutes after DNS propagates, up to ~24h in rare cases.
-3. **Allow public access to Cloud Run** (the load balancer's serverless NEG still needs the underlying service to accept the request):
-   `gcloud run services add-iam-policy-binding loan-manager-backend --region=asia-south1 --member=allUsers --role=roles/run.invoker`
-4. **Smoke-test the public URL** — hit `https://api.loanmanagerapp.com` from an external network, confirm TLS cert is valid and trusted.
-5. **Test the full auth round-trip for real:** Phone OTP sign-in and Google Sign-In from an actual device against the production URL — confirm a Firebase ID token is issued, the backend accepts it, and a user record is created/synced correctly.
-6. **Run the full customer journey once, live:** login → loan application → document upload → employee query/rejection → re-upload → notification → approval.
-7. **Verify the already-built Release APK on a physical device**, same journey as step 6, end-to-end.
-8. **Freeze the Customer App** — no further changes without an explicit new decision to unfreeze.
-9. Only after all of the above: begin planning the Admin Panel implementation (still not started).
+1. **Test the full auth round-trip for real:** Phone OTP sign-in and Google Sign-In from an actual device against the production URL — confirm a Firebase ID token is issued, the backend accepts it, and a user record is created/synced correctly.
+2. **Run the full customer journey once, live:** login → loan application → document upload → employee query/rejection → re-upload → notification → approval.
+3. **Verify the already-built Release APK on a physical device**, same journey as step 2, end-to-end.
+4. **Freeze the Customer App** — no further changes without an explicit new decision to unfreeze.
+5. Only after all of the above: begin planning the Admin Panel implementation (still not started).
 
 ---
 
