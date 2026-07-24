@@ -21,13 +21,22 @@ RUN pnpm --filter=@loan-manager/shared-types build
 RUN pnpm --filter=@loan-manager/backend build
 
 # ---------- Production ----------
+# Keeps the same monorepo directory layout as the build stage (root
+# node_modules/.pnpm store + apps/backend/node_modules symlinks into it) —
+# pnpm's isolated workspace layout means apps/backend's actual runtime deps
+# (typeorm, @nestjs/*, pg, ...) live as symlinks under apps/backend/node_modules,
+# not hoisted to the root. Flattening into a single /app/{package.json,dist,
+# node_modules} (as before) copied only the root node_modules, leaving every
+# one of those symlinks missing and the container unable to boot at all.
 FROM node:20-alpine AS production
 ENV NODE_ENV=production
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.7.0 --activate
-COPY --from=build /app/apps/backend/package.json ./package.json
-COPY --from=build /app/apps/backend/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/apps/backend/node_modules ./apps/backend/node_modules
+COPY --from=build /app/apps/backend/package.json ./apps/backend/package.json
+COPY --from=build /app/apps/backend/dist ./apps/backend/dist
+WORKDIR /app/apps/backend
 EXPOSE 3000
 # Runs pending migrations (idempotent — TypeORM records applied ones) before
 # every boot, so a fresh production database gets its schema on first
