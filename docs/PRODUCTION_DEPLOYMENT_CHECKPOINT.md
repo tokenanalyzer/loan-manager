@@ -1,7 +1,7 @@
 # Production Deployment Checkpoint
 
 **Checkpoint date:** 2026-07-24 (mid-session, while user tests the Release APK on a physical device)
-**Status:** Backend is **live on Cloud Run**, migrated, and verified end-to-end (revision `loan-manager-backend-00004-mrd`, serving 100% traffic, `--no-allow-unauthenticated`). Not yet publicly usable — no domain, no Firebase Admin auth, `CORS_ORIGIN` still a placeholder. See §7 for what's left.
+**Status:** Backend is **live on Cloud Run** with Firebase Admin enabled (revision `loan-manager-backend-00005-cqx`, serving 100% traffic, `--no-allow-unauthenticated`). DB migrated, Firebase Admin initializes and the auth guard is active. Not yet publicly usable — no domain, `CORS_ORIGIN` still a placeholder, and full Google Sign-In/Phone Auth round-trip against production is untestable until the service is public. See §7 for what's left.
 
 This is the authoritative, up-to-date record of exactly what exists in
 production infrastructure right now. Read this before assuming anything
@@ -128,7 +128,8 @@ flowchart LR
 
 - Project `loan-manager-india` reused for production (not a separate project) — deliberate, to keep Phone Auth's already-approved/frozen state intact rather than re-earning SHA registration and Play Integrity trust from zero on a new project.
 - **Phone Auth: unchanged, frozen, working.** No modifications made this session. See the `phone_auth_frozen` memory/`TODO_NEXT_SESSION.md` §2 (prior version) for why it's frozen.
-- **Not yet done:** a dedicated **production** Firebase Admin service account has not been generated (local dev currently uses its own service account key — a separate production one should be created via Firebase Console → Project Settings → Service Accounts → Generate new private key, then stored in Secret Manager, never in a repo file).
+- **Production Firebase Admin service account: done (2026-07-24).** User generated the key via Firebase Console, sent Claude the local file path; the three fields (`project_id`, `client_email`, `private_key`) were extracted directly into Secret Manager (`FIREBASE_ADMIN_PROJECT_ID`/`_CLIENT_EMAIL`/`_PRIVATE_KEY`) without ever being printed or committed, and the source JSON was never touched into the repo. Runtime SA granted `secretAccessor` on all three. Cloud Run redeployed (revision `loan-manager-backend-00005-cqx`) with `FIREBASE_ENABLED=true`. **Verified live:** logs show `Firebase Admin initialized.` and `FirebaseAdminModule dependencies initialized`; a request to `/api/v1/auth/session` with no token now returns `401 Missing bearer token` (the guard's real behavior) instead of the old `503 FIREBASE_ENABLED=false` fail-closed response.
+- **Not yet verified: full Google Sign-In / Phone Auth round-trip against production.** The FirebaseAuthGuard verifies whichever Firebase ID token it's handed — from the backend's perspective there's no separate "Google" vs "Phone" code path, both produce a standard Firebase ID token that `verifyIdToken()` checks identically. Confirming that verification path actually accepts a *real* token (not just correctly rejects a missing one) needs either a genuine client sign-in or the service opened to unauthenticated traffic long enough to test with a real token via curl — blocked right now because (a) Cloud Run's own `--no-allow-unauthenticated` ingress check occupies the single `Authorization` header slot for its own IAM verification, so a second app-level bearer token can't be smuggled through in the same request, and (b) the Customer App's `env/production.json` still points at the local dev backend, not this Cloud Run URL. This becomes testable once domain mapping + public access + a production-pointed build exist (§7).
 - **Not yet done:** the release keystore's SHA-1/SHA-256 fingerprints (below) are not yet registered in the Firebase Console. Required before Phone Auth will work correctly in a release-signed build.
 - Cloud Messaging (FCM): confirmed not implemented in either app (a listed-but-unused dependency in the Customer App, explicit "no push delivery" comment in the backend). No action needed unless/until that becomes a real feature.
 
@@ -209,20 +210,15 @@ deploy regardless of this session's changes):
 
 Remaining, in order:
 
-1. **Production Firebase Admin service account** — Console-only, manual:
-   Firebase Console → Project Settings → Service Accounts → Generate new
-   private key, for project `loan-manager-india`. Give me the resulting
-   JSON's fields (not the file itself in chat) and I'll store them as
-   `FIREBASE_ADMIN_PROJECT_ID` / `_CLIENT_EMAIL` / `_PRIVATE_KEY` secrets,
-   grant the runtime SA access, and redeploy with `FIREBASE_ENABLED=true`.
-2. **Register release keystore fingerprints in Firebase Console** (§4/§5) — manual, user-only action.
-3. **Domain mapping + SSL** for the Cloud Run service (Google-managed cert, automatic once DNS is pointed). Also update `CORS_ORIGIN` (currently a placeholder) once the domain is known.
-4. **Update Customer App `env/production.json`** — real API domain, `FIREBASE_ENABLED=true`, real project ID.
-5. **Allow public access** (`gcloud run services add-iam-policy-binding ... --member=allUsers --role=roles/run.invoker`) once (1)–(4) are done — the service is intentionally locked down until then.
+1. **Register release keystore fingerprints in Firebase Console** (§4/§5) — manual, user-only action.
+2. **Domain mapping + SSL** for the Cloud Run service (Google-managed cert, automatic once DNS is pointed). Also update `CORS_ORIGIN` (currently a placeholder) once the domain is known.
+3. **Update Customer App `env/production.json`** — real API domain, `FIREBASE_ENABLED=true`, real project ID.
+4. **Allow public access** (`gcloud run services add-iam-policy-binding ... --member=allUsers --role=roles/run.invoker`) once (1)–(3) are done — the service is intentionally locked down until then.
+5. **Full Google Sign-In / Phone Auth round-trip test against production** — needs (3)/(4) done first; see §4's note on why this couldn't be curl-tested while the service is IAM-locked.
 6. **Build + verify a new production Release APK** (pointed at the real prod domain) end-to-end on a physical device: login, loan application, document upload, rejection, re-upload, notifications, approval workflow.
 7. **Freeze the Customer App.**
 8. Only then: begin the Admin Panel implementation roadmap (already audited and planned — explicitly not started).
 
-**Immediate next step for the next session: item 1** — a genuine Firebase Console action only the user can do. Nothing else is currently blocked.
+**Immediate next step for the next session: item 1** — a genuine Firebase Console action only the user can do. Nothing else is currently blocked (domain purchase/DNS in item 2 is also user-owned).
 
 **Also still outstanding, unrelated to GCP infra:** dev-DB test data cleanup (approved scope, not yet executed — this session's QA added more test applications on top of existing clutter). See `TODO_NEXT_SESSION.md` §7.
