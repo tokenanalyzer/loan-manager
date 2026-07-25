@@ -32,3 +32,17 @@ final class AuthError extends AuthState {
 
   final String message;
 }
+
+/// Firebase's cached credential is still considered valid, but the most
+/// recent attempt to sync it with the backend (or refresh the Firebase
+/// token itself) failed for a *transport* reason — timeout, no
+/// connection, DNS, a backend 5xx — rather than a confirmed 401/403 or
+/// an invalid Firebase session. Callers should treat this like
+/// [AuthAuthenticated] for access purposes (nothing has actually
+/// invalidated the session) rather than routing back to sign-in, since
+/// the network simply isn't cooperating right now.
+final class AuthOffline extends AuthState {
+  const AuthOffline({required this.uid});
+
+  final String uid;
+}

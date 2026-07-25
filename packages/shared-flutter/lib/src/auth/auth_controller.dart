@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../logging/app_logger.dart';
 import '../network/api_client.dart';
+import '../network/network_exception.dart';
 import 'auth_state.dart';
 
 /// Shared authentication controller.
@@ -93,15 +94,42 @@ class AuthController extends ChangeNotifier {
           _setState(AuthAuthenticated(uid: user.uid, idToken: idToken));
         },
         failure: (error) {
-          _logger.error('Session sync failed', error);
-          _setState(AuthError(error.message));
+          if (_isConfirmedAuthFailure(error)) {
+            _logger.error('Session sync failed', error);
+            _setState(AuthError(error.message));
+          } else {
+            // A transport-level failure (timeout, no connection, DNS, a
+            // backend 5xx) survived ApiClient's own retries — Firebase's
+            // credential is still valid, so keep the user signed in
+            // rather than bouncing them to sign-in over a network
+            // condition, not an actual auth rejection.
+            _logger.warning(
+                'Session sync failed transiently — keeping cached session',
+                error);
+            _setState(AuthOffline(uid: user.uid));
+          }
         },
       );
     } catch (error, stackTrace) {
-      _logger.error('Auth state handling failed', error, stackTrace);
-      _setState(AuthError(error.toString()));
+      if (error is FirebaseAuthException &&
+          error.code == 'network-request-failed') {
+        _logger.warning(
+            'Firebase token refresh failed transiently — keeping cached session',
+            error);
+        _setState(AuthOffline(uid: user.uid));
+      } else {
+        _logger.error('Auth state handling failed', error, stackTrace);
+        _setState(AuthError(error.toString()));
+      }
     }
   }
+
+  /// Only a confirmed rejection from our own backend (401/403 — an
+  /// actually invalid/expired session) should sign the user out. Any
+  /// other failure shape (timeout, no connection, a 5xx) is a transport
+  /// problem, not proof the session itself is bad.
+  bool _isConfirmedAuthFailure(NetworkException error) =>
+      error.statusCode == 401 || error.statusCode == 403;
 
   Future<void> signOut() => _firebaseAuth.signOut();
 

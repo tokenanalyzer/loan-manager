@@ -15,8 +15,13 @@ import 'network_exception.dart';
 class ApiClient {
   ApiClient({
     required String baseUrl,
-    Duration connectTimeout = const Duration(seconds: 15),
-    Duration receiveTimeout = const Duration(seconds: 15),
+    // 20s rather than a shorter default: BSNL and congested-cell
+    // connections are often legitimately slow rather than broken (e.g.
+    // carrier DNS-over-TLS validation alone was observed taking ~30s
+    // before falling back on one live trace) — this only affects how
+    // long a *failing* request takes to give up, not the common case.
+    Duration connectTimeout = const Duration(seconds: 20),
+    Duration receiveTimeout = const Duration(seconds: 20),
     List<Interceptor> interceptors = const [],
   }) : _dio = Dio(
           BaseOptions(
@@ -76,21 +81,18 @@ class ApiClient {
   Future<ApiResult<T>> request<T>(
     Future<Response<dynamic>> Function(Dio dio) call, {
     required T Function(dynamic data) mapper,
-  }) async {
-    try {
-      final response = await call(_dio);
-      return ApiSuccess(mapper(_normalizeEmptyBody(response.data)));
-    } on DioException catch (error) {
-      return ApiFailure(_mapDioException(error));
-    } catch (error) {
-      return ApiFailure(NetworkException.unexpected(error));
-    }
-  }
+  }) =>
+      _executeWithRetry(() => call(_dio), mapper: mapper);
 
   /// Multipart file upload (e.g. document upload). Keeps Dio's
   /// `FormData`/`MultipartFile` types encapsulated here rather than
   /// leaking them into feature repositories, which only depend on
   /// this `ApiClient` — not on Dio directly.
+  ///
+  /// Builds `FormData` fresh on every call — including on a retry —
+  /// rather than once up front: Dio's multipart file streams can only
+  /// be read once, so reusing the same `FormData` across attempts would
+  /// silently send an empty/truncated body on the second try.
   Future<ApiResult<T>> uploadFile<T>(
     String path, {
     required String filePath,
@@ -98,23 +100,78 @@ class ApiClient {
     Map<String, dynamic>? fields,
     required T Function(dynamic data) mapper,
     void Function(int sent, int total)? onSendProgress,
+  }) {
+    final fileName = filePath.split(RegExp(r'[\\/]')).last;
+    return _executeWithRetry(
+      () async {
+        final formData = FormData.fromMap({
+          ...?fields,
+          fieldName: await MultipartFile.fromFile(filePath, filename: fileName),
+        });
+        return _dio.post<dynamic>(
+          path,
+          data: formData,
+          onSendProgress: onSendProgress,
+        );
+      },
+      mapper: mapper,
+    );
+  }
+
+  /// Retry delays for transient failures — short and few (2 retries,
+  /// ~1.1s total backoff) so a genuine outage still fails promptly, but
+  /// the single dropped packet / tower handover / momentary carrier DNS
+  /// hiccup that's normal on cellular networks doesn't surface as a
+  /// hard error on the first unlucky attempt.
+  static const _retryDelays = [
+    Duration(milliseconds: 300),
+    Duration(milliseconds: 800),
+  ];
+
+  Future<ApiResult<T>> _executeWithRetry<T>(
+    Future<Response<dynamic>> Function() call, {
+    required T Function(dynamic data) mapper,
   }) async {
-    try {
-      final fileName = filePath.split(RegExp(r'[\\/]')).last;
-      final formData = FormData.fromMap({
-        ...?fields,
-        fieldName: await MultipartFile.fromFile(filePath, filename: fileName),
-      });
-      final response = await _dio.post<dynamic>(
-        path,
-        data: formData,
-        onSendProgress: onSendProgress,
-      );
-      return ApiSuccess(mapper(_normalizeEmptyBody(response.data)));
-    } on DioException catch (error) {
-      return ApiFailure(_mapDioException(error));
-    } catch (error) {
-      return ApiFailure(NetworkException.unexpected(error));
+    var attempt = 0;
+    while (true) {
+      try {
+        final response = await call();
+        return ApiSuccess(mapper(_normalizeEmptyBody(response.data)));
+      } on DioException catch (error) {
+        if (attempt < _retryDelays.length && _isRetryable(error)) {
+          await Future<void>.delayed(_retryDelays[attempt]);
+          attempt++;
+          continue;
+        }
+        return ApiFailure(_mapDioException(error));
+      } catch (error) {
+        return ApiFailure(NetworkException.unexpected(error));
+      }
+    }
+  }
+
+  /// Only retries failures where we can be confident the request never
+  /// reached the server (nothing to duplicate): a connection that never
+  /// established at all. `sendTimeout`/`receiveTimeout` mean a
+  /// connection *was* made and the request may already be mid-flight or
+  /// fully processed server-side — retrying those blind on a write
+  /// (loan application submission, document upload, KYC review) risks a
+  /// duplicate side effect, so they're only retried for side-effect-free
+  /// `GET` requests.
+  bool _isRetryable(DioException error) {
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.connectionError:
+        return true;
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.transformTimeout:
+        return error.requestOptions.method == 'GET';
+      case DioExceptionType.badResponse:
+      case DioExceptionType.cancel:
+      case DioExceptionType.badCertificate:
+      case DioExceptionType.unknown:
+        return false;
     }
   }
 

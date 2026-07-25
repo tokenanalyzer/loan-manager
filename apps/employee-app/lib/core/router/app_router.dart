@@ -35,7 +35,7 @@ final GoRouter appRouter = GoRouter(
     final isOnAuthRoute = state.matchedLocation.startsWith('/login');
 
     return switch (authState) {
-      AuthAuthenticated() => isOnAuthRoute ? '/' : null,
+      AuthAuthenticated() || AuthOffline() => isOnAuthRoute ? '/' : null,
       AuthUnauthenticated() || AuthError() => isOnAuthRoute ? null : '/login',
       AuthInitial() || AuthSyncing() => null,
     };

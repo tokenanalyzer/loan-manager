@@ -91,7 +91,11 @@ final GoRouter appRouter = GoRouter(
       return isSplash ? null : '/splash';
     }
 
-    if (authState is AuthAuthenticated) {
+    if (authState is AuthAuthenticated || authState is AuthOffline) {
+      // AuthOffline means the cached Firebase session is still valid but
+      // the last backend sync failed transiently (see AuthController) —
+      // treated identically to AuthAuthenticated for routing, so a
+      // network blip doesn't bounce an already-signed-in user to /login.
       _hasAuthenticatedOnce = true;
       return (isSplash || isOnboarding || isAuthRoute) ? '/' : null;
     }
