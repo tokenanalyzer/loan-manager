@@ -6,7 +6,7 @@
  * role-based routing.
  */
 
-export type UserRole = 'customer' | 'employee' | 'admin';
+export type UserRole = 'customer' | 'employee' | 'manager' | 'org_admin' | 'admin';
 
 /** The shape returned by `POST /v1/auth/session` and `GET /v1/auth/me`. */
 export interface UserProfile {

@@ -6,9 +6,19 @@
  * implemented against them yet.
  */
 
+/**
+ * ORG_ADMIN and MANAGER sit between EMPLOYEE and ADMIN. ADMIN is
+ * labelled "Super Admin" in the UI (see admin-panel's ROLE_LABELS) —
+ * that mapping predates these two values and is left unchanged, so
+ * ORG_ADMIN carries the "Admin" label instead. See
+ * ROLE_PERMISSIONS in ../../auth/permissions.ts for what each tier
+ * can actually do.
+ */
 export enum UserRole {
   CUSTOMER = 'customer',
   EMPLOYEE = 'employee',
+  MANAGER = 'manager',
+  ORG_ADMIN = 'org_admin',
   ADMIN = 'admin',
 }
 
