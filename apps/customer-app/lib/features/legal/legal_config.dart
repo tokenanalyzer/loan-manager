@@ -20,9 +20,13 @@ class LegalConfig {
       'Rectangle Consultancy and Services Pvt. Ltd.';
   static const String platformName = 'Loan Manager';
   static const String supportEmail = 'support@loanmanagerapp.com';
-  static const String supportPhone = '+91-00000-00000';
+  static const String supportPhone = '+91 73041 73640';
   static const String registeredOffice =
-      '[Registered office address — to be finalized by Legal/Compliance]';
+      'Office No. B/116, 1st Floor\n'
+      'MEK Company Industrial Area\n'
+      'Pune–Mumbai Road\n'
+      'Thane – 400612\n'
+      'Maharashtra, India';
   static const String grievanceOfficerContact =
       '[Grievance officer name and contact — to be finalized by Legal/Compliance]';
 
