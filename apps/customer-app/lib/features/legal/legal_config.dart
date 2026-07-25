@@ -28,7 +28,9 @@ class LegalConfig {
       'Thane – 400612\n'
       'Maharashtra, India';
   static const String grievanceOfficerContact =
-      '[Grievance officer name and contact — to be finalized by Legal/Compliance]';
+      'Adil Hussain\n'
+      'adilhusain3413@gmail.com\n'
+      '+91 9967873413';
 
   /// Manually updated whenever the policy text changes materially —
   /// not derived from a build timestamp, so a code deploy with no
