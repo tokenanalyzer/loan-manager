@@ -141,3 +141,38 @@ Rollback, if ever needed: `git revert 47eaf4981cbae00a6b6a8a205821df6c499f3dc6`
 - Vi and BSNL were not directly live-traced this milestone (no test SIM
   available) — covered by the same infrastructure and client-resilience
   changes, but not empirically confirmed on those specific carriers.
+
+## Post-milestone additions and final release verification (same day)
+
+Two small, separately-committed changes landed after the networking
+milestone above, then the signed production Release build was
+rebuilt, reinstalled, and verified end-to-end with all of them
+included:
+
+- `b53ab0102d3087c964e1510cc975a36794d8b90c` — About Us page updated
+  with the real registered office address and support phone number
+  (`legal_config.dart`'s `registeredOffice`/`supportPhone`, the single
+  source `about_company_screen.dart` reads from). No other legal page
+  references these two fields, so Privacy Policy/Terms/Disclaimer/
+  Consent are unaffected. `grievanceOfficerContact` remains an
+  intentional placeholder — no data was supplied for it.
+- `dc28799d99f74c3ba1f2896362a97c765ee3b563` — Android task/Recents
+  title fixed from `"Loan Manager — Customer"` to `"Loan Manager"`
+  (`CustomerApp`'s `MaterialApp.title` in `app.dart` — Flutter's
+  `Title` widget sets this independently of the manifest's
+  `android:label`, which already read `"Loan Manager"`).
+
+**Release verification, physical device, signed production build:**
+debug build fully uninstalled; release APK rebuilt
+(`flutter build apk --release --dart-define-from-file=env/production.json`)
+and its signature confirmed against the production upload keystore
+(SHA-1 `f8:97:d4:b0:3b:b2:8b:94:91:9c:99:25:8a:ff:9b:ef:cb:cc:a8:0c`,
+matching the fingerprint already registered in Firebase) before
+install. Confirmed on-device: app launches; package has no
+`DEBUGGABLE` flag (`versionName 0.2.0`, `versionCode 1`); app name and
+Recent Apps title both read exactly `"Loan Manager"`; Google Sign-In
+restores the cached session and syncs against the live production
+backend; Home dashboard loads real data; About Us shows the updated
+office address and phone number; the networking/retry/`AuthOffline`
+path from this milestone is exercised live by that same successful
+sign-in and sync.
