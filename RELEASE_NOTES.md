@@ -176,3 +176,46 @@ backend; Home dashboard loads real data; About Us shows the updated
 office address and phone number; the networking/retry/`AuthOffline`
 path from this milestone is exercised live by that same successful
 sign-in and sync.
+
+## Final sign-off (same day)
+
+One more small change landed after the verification above, then the
+signed Release build was rebuilt and re-verified end-to-end a second
+time:
+
+- `230f61ec563f057a4a0c6fbe998328e8749fa542` — Grievance Officer
+  section of the About Us page updated (`legal_config.dart`'s
+  `grievanceOfficerContact`, previously a placeholder): **Adil
+  Hussain, adilhusain3413@gmail.com, +91 9967873413**. Same isolation
+  guarantee as the office address/phone change — this field is read
+  only by `about_company_screen.dart`; no other legal page is
+  affected.
+
+**Full release verification checklist — all 10 items confirmed live,
+signed production build, physical device:**
+
+1. Signed release (not debug) — `apksigner` cert matches the
+   registered production keystore; no `DEBUGGABLE` flag.
+2. App launches successfully.
+3. App name reads exactly "Loan Manager".
+4. Recent Apps/task title reads exactly "Loan Manager".
+5. Login works — cached Firebase session restored and synced live.
+6. Dashboard loads real production data.
+7. About Us shows the correct registered office address, phone
+   number, and all three Grievance Officer fields.
+8. Privacy Policy, Terms & Conditions, Loan Facilitation Disclaimer,
+   Customer Consent, and Data Deletion Policy all confirmed
+   unaffected — both by git history (only `legal_config.dart` was
+   ever touched by the two legal-content commits) and by live
+   on-device navigation through the full Privacy Policy page,
+   top to bottom.
+9. Networking/retry/`AuthOffline` path exercised live by the
+   successful sign-in and dashboard sync.
+10. No crashes or regressions — zero `FATAL EXCEPTION`/
+    `AndroidRuntime:E` entries in `adb logcat` across the full
+    verification session.
+
+**Declared production-ready.** This is the closing checkpoint for the
+v1.0-network-stability arc plus its two follow-on content fixes (About
+Us, Grievance Officer) and the app-title fix — everything is verified
+on a genuinely signed release artifact, not just in code review.
