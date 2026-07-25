@@ -219,3 +219,10 @@ signed production build, physical device:**
 v1.0-network-stability arc plus its two follow-on content fixes (About
 Us, Grievance Officer) and the app-title fix — everything is verified
 on a genuinely signed release artifact, not just in code review.
+
+## Customer App re-frozen
+
+With the checklist above fully passed, the Customer App is frozen
+again — no further code changes without an explicit new decision to
+unfreeze. Same posture as the original 2026-07-24 freeze, now covering
+this session's additions too.
