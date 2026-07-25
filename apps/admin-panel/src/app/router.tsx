@@ -4,6 +4,7 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { StaffListPage } from '../features/settings/StaffListPage';
 import { EmployeeStatusPage } from '../features/work-status/EmployeeStatusPage';
 import { LeadDetailPage } from '../features/workspace/LeadDetailPage';
 import { MyLeadsPage } from '../features/workspace/MyLeadsPage';
@@ -69,6 +70,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute roles={['admin']}>
             <EmployeeStatusPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'settings/team',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <StaffListPage />
           </ProtectedRoute>
         ),
       },

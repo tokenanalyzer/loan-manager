@@ -62,6 +62,25 @@ export class UserEntity extends AbstractEntity {
   @Column({ type: 'timestamptz', nullable: true })
   lastActiveAt?: Date | null;
 
+  /**
+   * Set only by the staff-provisioning flow (`UsersService.createStaffUser`)
+   * — never by customer self-signup. Doubles as the "was this row
+   * created through staff provisioning" signal in
+   * `AuthService`'s pending-invite linking check.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  invitedAt?: Date | null;
+
+  /**
+   * Set exactly once, when a pre-provisioned account's placeholder
+   * `firebaseUid` sentinel is replaced by a real one on first sign-in
+   * (see `AuthService.activateStaffInvite`). Null means "never
+   * completed first-time activation" — one of the required conditions
+   * before that row can ever be linked.
+   */
+  @Column({ type: 'timestamptz', nullable: true })
+  activatedAt?: Date | null;
+
   @OneToOne('CustomerProfileEntity', (profile: CustomerProfileEntity) => profile.user)
   customerProfile?: CustomerProfileEntity;
 

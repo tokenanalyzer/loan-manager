@@ -12,4 +12,5 @@ export * from './auth';
 export * from './documents';
 export * from './lead-assignment';
 export * from './notifications';
+export * from './users';
 export * from './work-status';

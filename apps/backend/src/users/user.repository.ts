@@ -22,6 +22,31 @@ export class UserRepository extends BaseRepository<UserEntity> {
     return this.repository.findOne({ where: { firebaseUid } });
   }
 
+  /**
+   * Email has a unique constraint on `users`, so this can only ever
+   * match zero or one row — there is no "multiple matches" case at
+   * the database level. Used by `AuthService`'s pending-staff-invite
+   * linking check.
+   */
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    return this.repository.findOne({ where: { email } });
+  }
+
+  /** Staff directory (EMPLOYEE/ADMIN only) for the Admin Panel's Team screen — paginated from the start. */
+  async findStaffPaginated(
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: UserEntity[]; total: number }> {
+    const [items, total] = await this.repository.findAndCount({
+      where: [{ role: UserRole.EMPLOYEE }, { role: UserRole.ADMIN }],
+      relations: ['employeeProfile'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items, total };
+  }
+
   async findAllByRole(role: UserRole): Promise<UserEntity[]> {
     return this.repository.find({ where: { role }, order: { createdAt: 'DESC' } });
   }

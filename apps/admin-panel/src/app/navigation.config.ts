@@ -19,6 +19,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: 'home', roles: ['admin'] },
   { label: 'Leads', path: '/leads', icon: 'inbox', roles: ['admin'] },
   { label: 'Employee Status', path: '/employee-status', icon: 'clock', roles: ['admin'] },
+  { label: 'Team', path: '/settings/team', icon: 'user', roles: ['admin'] },
   { label: 'My Leads', path: '/my-leads', icon: 'inbox', roles: ['employee'] },
   { label: 'Notifications', path: '/notifications', icon: 'bell', roles: ['admin', 'employee'] },
 ];

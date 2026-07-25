@@ -5,6 +5,7 @@ import { QueryFailedError } from 'typeorm';
 
 import { UserEntity, UserRole } from '../database/entities';
 import { UserRepository } from '../users/user.repository';
+import { PENDING_STAFF_UID_PREFIX } from '../users/users.service';
 
 /**
  * AuthService — syncs a verified Firebase identity with our `users` table.
@@ -33,6 +34,18 @@ export class AuthService {
       return this.syncExisting(existing, decoded);
     }
 
+    if (decoded.email) {
+      const pendingInvite = await this.findLinkablePendingInvite(decoded.email);
+      if (pendingInvite) {
+        return this.activateStaffInvite(pendingInvite, decoded);
+      }
+    }
+
+    // Unchanged from before this change: no linkable pending invite
+    // (including the case where an email matched but wasn't
+    // linkable — see findLinkablePendingInvite) always falls through
+    // to exactly this same customer-creation path, preserving the
+    // existing customer authentication flow byte-for-byte.
     return this.userRepository.create({
       firebaseUid: decoded.uid,
       email: decoded.email ?? null,
@@ -42,6 +55,50 @@ export class AuthService {
       role: UserRole.CUSTOMER,
       isActive: true,
     });
+  }
+
+  /**
+   * All six conditions below are required — see the approved
+   * architecture rule this implements: never promote a CUSTOMER into
+   * EMPLOYEE/ADMIN automatically, and fail safe (return null, meaning
+   * "not linkable") rather than link on any ambiguity. `email` is
+   * unique on `users`, so there is never more than one candidate row
+   * to evaluate — "multiple matches" cannot occur at the database
+   * level.
+   */
+  private async findLinkablePendingInvite(email: string): Promise<UserEntity | null> {
+    const candidate = await this.userRepository.findByEmail(email.trim().toLowerCase());
+    if (!candidate) {
+      return null;
+    }
+
+    const isLinkable =
+      candidate.role !== UserRole.CUSTOMER &&
+      candidate.firebaseUid.startsWith(PENDING_STAFF_UID_PREFIX) &&
+      candidate.activatedAt === null &&
+      candidate.isActive === true &&
+      candidate.invitedAt !== null;
+
+    return isLinkable ? candidate : null;
+  }
+
+  /** Replaces the placeholder sentinel with the real Firebase UID and stamps activation — the one and only time this row's `firebaseUid` ever changes. */
+  private async activateStaffInvite(
+    pending: UserEntity,
+    decoded: DecodedIdToken,
+  ): Promise<UserEntity> {
+    const now = new Date();
+    const updated = await this.userRepository.update(pending.id, {
+      firebaseUid: decoded.uid,
+      activatedAt: now,
+      lastActiveAt: now,
+      photoUrl: pending.photoUrl ?? (typeof decoded.picture === 'string' ? decoded.picture : null),
+    });
+    this.logger.info(
+      { userId: pending.id, role: pending.role },
+      'Staff invite activated via Firebase sign-in.',
+    );
+    return updated ?? pending;
   }
 
   /**
