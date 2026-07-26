@@ -71,10 +71,12 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
       .mockResolvedValue({ firebaseUid: 'firebase-uid-1', inviteLink: 'https://example.com/invite' });
     const deleteUser = jest.fn().mockResolvedValue(undefined);
     const revokeSessions = jest.fn().mockResolvedValue(undefined);
+    const generatePasswordSetupLink = jest.fn().mockResolvedValue('https://example.com/reset');
     const firebaseAdminService = {
       provisionStaffAccount,
       deleteUser,
       revokeSessions,
+      generatePasswordSetupLink,
     } as unknown as FirebaseAdminService;
 
     const findActiveAssignedTo = jest.fn().mockResolvedValue([]);
@@ -421,6 +423,179 @@ describe('UsersService — Disable / Archive / Restore lifecycle', () => {
 
       await expect(service.restoreStaffUser('target-1', actor)).rejects.toBeInstanceOf(ConflictException);
       expect(update).not.toHaveBeenCalled();
+    });
+  });
+});
+
+/**
+ * Phase 4 — "Resend Invite" / "Password Reset" share one backend
+ * method; the audit action name is the only thing that distinguishes
+ * them (`staff_invite_resent` when never activated, `staff_password_reset`
+ * once they have), and both are blocked for a non-ACTIVE account.
+ */
+describe('UsersService — resendInviteOrResetPassword', () => {
+  const actor = { id: 'admin-1', role: UserRole.ADMIN } as never;
+
+  function buildTarget(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'target-1',
+      role: UserRole.EMPLOYEE,
+      status: AccountStatus.ACTIVE,
+      firebaseUid: 'target-firebase-uid',
+      email: 'target@example.invalid',
+      activatedAt: null,
+      ...overrides,
+    };
+  }
+
+  function buildHarness(target: ReturnType<typeof buildTarget>) {
+    const findOneById = jest.fn().mockResolvedValue(target);
+    const findOneWithEmployeeProfile = jest
+      .fn()
+      .mockImplementation((id) => Promise.resolve({ ...target, id, employeeProfile: null }));
+    const userRepository = { findOneById, findOneWithEmployeeProfile } as unknown as UserRepository;
+
+    const employeeProfileRepository = {} as unknown as EmployeeProfileRepository;
+
+    const generatePasswordSetupLink = jest.fn().mockResolvedValue('https://example.com/fresh-link');
+    const firebaseAdminService = { generatePasswordSetupLink } as unknown as FirebaseAdminService;
+
+    const loanApplicationRepository = {} as unknown as LoanApplicationRepository;
+
+    const auditLogCreate = jest.fn().mockImplementation((data) => data);
+    const auditLogSave = jest.fn().mockResolvedValue(undefined);
+    const auditLogRepository = {
+      create: auditLogCreate,
+      save: auditLogSave,
+    } as unknown as Repository<AuditLogEntity>;
+
+    const service = new UsersService(
+      userRepository,
+      employeeProfileRepository,
+      firebaseAdminService,
+      loanApplicationRepository,
+      auditLogRepository,
+    );
+
+    return { service, generatePasswordSetupLink, auditLogCreate };
+  }
+
+  it('generates a fresh link and logs staff_invite_resent for a never-activated account', async () => {
+    const { service, generatePasswordSetupLink, auditLogCreate } = buildHarness(
+      buildTarget({ activatedAt: null }),
+    );
+
+    const result = await service.resendInviteOrResetPassword('target-1', actor);
+
+    expect(generatePasswordSetupLink).toHaveBeenCalledWith('target@example.invalid');
+    expect(auditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'staff_invite_resent', actorId: 'admin-1' }),
+    );
+    expect(result.inviteLink).toBe('https://example.com/fresh-link');
+  });
+
+  it('logs staff_password_reset for an account that has already signed in', async () => {
+    const { service, auditLogCreate } = buildHarness(buildTarget({ activatedAt: new Date('2026-01-01') }));
+
+    await service.resendInviteOrResetPassword('target-1', actor);
+
+    expect(auditLogCreate).toHaveBeenCalledWith(expect.objectContaining({ action: 'staff_password_reset' }));
+  });
+
+  it('rejects a disabled account', async () => {
+    const { service, generatePasswordSetupLink } = buildHarness(
+      buildTarget({ status: AccountStatus.DISABLED }),
+    );
+
+    await expect(service.resendInviteOrResetPassword('target-1', actor)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(generatePasswordSetupLink).not.toHaveBeenCalled();
+  });
+
+  it('rejects an archived account', async () => {
+    const { service, generatePasswordSetupLink } = buildHarness(
+      buildTarget({ status: AccountStatus.ARCHIVED }),
+    );
+
+    await expect(service.resendInviteOrResetPassword('target-1', actor)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(generatePasswordSetupLink).not.toHaveBeenCalled();
+  });
+
+  it('rejects an account with no email on file', async () => {
+    const { service } = buildHarness(buildTarget({ email: null }));
+
+    await expect(service.resendInviteOrResetPassword('target-1', actor)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+});
+
+/** Phase 4 — search/filter/sort passthrough on the existing list endpoint. */
+describe('UsersService — listStaff (search/filter/sort)', () => {
+  function buildHarness() {
+    const findStaffPaginated = jest.fn().mockResolvedValue({ items: [], total: 0 });
+    const userRepository = { findStaffPaginated } as unknown as UserRepository;
+    const employeeProfileRepository = {} as unknown as EmployeeProfileRepository;
+    const firebaseAdminService = {} as unknown as FirebaseAdminService;
+    const loanApplicationRepository = {} as unknown as LoanApplicationRepository;
+    const auditLogRepository = {} as unknown as Repository<AuditLogEntity>;
+
+    const service = new UsersService(
+      userRepository,
+      employeeProfileRepository,
+      firebaseAdminService,
+      loanApplicationRepository,
+      auditLogRepository,
+    );
+
+    return { service, findStaffPaginated };
+  }
+
+  it('maps query fields through to the repository, uppercasing sortDir', async () => {
+    const { service, findStaffPaginated } = buildHarness();
+
+    await service.listStaff({
+      page: 2,
+      pageSize: 10,
+      search: 'priya',
+      role: UserRole.EMPLOYEE,
+      status: AccountStatus.ACTIVE,
+      sortBy: 'fullName',
+      sortDir: 'asc',
+    } as never);
+
+    expect(findStaffPaginated).toHaveBeenCalledWith({
+      page: 2,
+      pageSize: 10,
+      search: 'priya',
+      role: UserRole.EMPLOYEE,
+      status: AccountStatus.ACTIVE,
+      sortBy: 'fullName',
+      sortDir: 'ASC',
+    });
+  });
+
+  it('defaults to the pre-Phase-4 behavior when only page/pageSize/sortBy/sortDir are given', async () => {
+    const { service, findStaffPaginated } = buildHarness();
+
+    await service.listStaff({
+      page: 1,
+      pageSize: 20,
+      sortBy: 'createdAt',
+      sortDir: 'desc',
+    } as never);
+
+    expect(findStaffPaginated).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 20,
+      search: undefined,
+      role: undefined,
+      status: undefined,
+      sortBy: 'createdAt',
+      sortDir: 'DESC',
     });
   });
 });

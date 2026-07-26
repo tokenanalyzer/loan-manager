@@ -62,7 +62,7 @@ export class FirebaseAdminService {
     }
 
     try {
-      const inviteLink = await auth.generatePasswordResetLink(email);
+      const inviteLink = await this.generatePasswordSetupLink(email);
       return { firebaseUid, inviteLink };
     } catch (error) {
       this.logger.error(
@@ -70,6 +70,44 @@ export class FirebaseAdminService {
         'Invite-link generation failed after Firebase user creation — rolling back the Firebase user.',
       );
       await this.deleteUser(firebaseUid);
+      throw error;
+    }
+  }
+
+  /**
+   * Generates a fresh password-setup link for an *existing* Firebase
+   * user, without creating or changing anything else. Used directly by
+   * `provisionStaffAccount` above (a brand-new user's first link) and
+   * by `UsersService.resendInviteOrResetPassword` (Phase 4) — "Resend
+   * Invite" and "Password Reset" are the same Firebase operation on an
+   * existing account, distinguished only by UI label.
+   *
+   * Translates the specific failure mode where the `users` row's
+   * `firebaseUid` doesn't correspond to a real, actionable Firebase
+   * identity (`auth/user-not-found`, or the Admin SDK's known
+   * catch-all `auth/internal-error` for "Unable to create the email
+   * action link") into a clear `ConflictException` — this is a real
+   * gap only reachable by dev-fixture rows inserted directly against
+   * the database with a placeholder UID rather than provisioned
+   * through `createStaffUser`; every account provisioned through this
+   * system always has a real, actionable Firebase identity. Any other
+   * error is rethrown unchanged (still logged) so a genuinely
+   * transient Firebase problem isn't mischaracterized as this one.
+   */
+  async generatePasswordSetupLink(email: string): Promise<string> {
+    try {
+      return await getAuth(this.requireApp()).generatePasswordResetLink(email);
+    } catch (error) {
+      if (this.isMissingFirebaseIdentity(error)) {
+        this.logger.warn(
+          { err: error, email },
+          'Cannot generate a password-setup link: no real Firebase identity for this email — likely a dev-fixture row not provisioned through createStaffUser.',
+        );
+        throw new ConflictException(
+          "Could not generate a link for this account — it doesn't have a real Firebase identity " +
+            '(this can happen for dev/test rows inserted directly, rather than through staff provisioning).',
+        );
+      }
       throw error;
     }
   }
@@ -127,5 +165,16 @@ export class FirebaseAdminService {
 
   private isFirebaseErrorCode(error: unknown, code: string): boolean {
     return typeof error === 'object' && error !== null && (error as { code?: string }).code === code;
+  }
+
+  private isMissingFirebaseIdentity(error: unknown): boolean {
+    if (this.isFirebaseErrorCode(error, 'auth/user-not-found')) {
+      return true;
+    }
+    if (!this.isFirebaseErrorCode(error, 'auth/internal-error')) {
+      return false;
+    }
+    const nestedMessage = (error as { errorInfo?: { message?: string } }).errorInfo?.message ?? '';
+    return nestedMessage.includes('Unable to create the email action link');
   }
 }

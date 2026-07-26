@@ -1,6 +1,7 @@
 import type {
   CreatedStaffUser,
   CreateStaffUserPayload,
+  ListStaffQueryParams,
   PaginatedResult,
   StaffLifecycleReasonPayload,
   StaffUser,
@@ -13,9 +14,9 @@ import { apiClient } from '../../lib/api-client';
  * `apiClient` around `UsersController` on the backend (admin-only).
  */
 
-export async function fetchStaff(page = 1, pageSize = 20): Promise<PaginatedResult<StaffUser>> {
+export async function fetchStaff(params: ListStaffQueryParams = {}): Promise<PaginatedResult<StaffUser>> {
   const { data } = await apiClient.get<PaginatedResult<StaffUser>>('/v1/users', {
-    params: { page, pageSize },
+    params: { page: 1, pageSize: 20, ...params },
   });
   return data;
 }
@@ -41,5 +42,11 @@ export async function archiveStaffUser(id: string, reason: string): Promise<Staf
 
 export async function restoreStaffUser(id: string): Promise<StaffUser> {
   const { data } = await apiClient.patch<StaffUser>(`/v1/users/${id}/restore`);
+  return data;
+}
+
+/** Covers both "Resend Invite" and "Password Reset" — same backend action; the caller picks which label to show. */
+export async function resetStaffPassword(id: string): Promise<CreatedStaffUser> {
+  const { data } = await apiClient.post<CreatedStaffUser>(`/v1/users/${id}/reset-password`);
   return data;
 }

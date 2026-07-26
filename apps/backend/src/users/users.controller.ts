@@ -46,7 +46,7 @@ export class UsersController {
   @Get()
   @Auth(UserRole.ADMIN)
   async findAll(@Query() query: ListStaffQueryDto): Promise<PaginatedStaffUserResponseDto> {
-    return this.usersService.listStaff(query.page, query.pageSize);
+    return this.usersService.listStaff(query);
   }
 
   @Patch(':id/disable')
@@ -76,5 +76,21 @@ export class UsersController {
     @CurrentAppUser() actor: UserEntity,
   ): Promise<StaffUserResponseDto> {
     return this.usersService.restoreStaffUser(id, actor);
+  }
+
+  /**
+   * "Resend Invite" (never signed in) and "Password Reset" (has) are
+   * the same backend action — see `UsersService.resendInviteOrResetPassword`.
+   * The Admin Panel picks the label; this endpoint doesn't need to know
+   * which one the caller means.
+   */
+  @Post(':id/reset-password')
+  @AuthPermission(Permission.STAFF_RESET_PASSWORD)
+  async resetPassword(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() actor: UserEntity,
+  ): Promise<CreateStaffUserResponseDto> {
+    const { user, inviteLink } = await this.usersService.resendInviteOrResetPassword(id, actor);
+    return CreateStaffUserResponseDto.fromCreated(user, inviteLink);
   }
 }

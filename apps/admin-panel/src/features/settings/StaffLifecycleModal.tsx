@@ -5,34 +5,58 @@ import { Button } from '../../components/ui/Button';
 import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
 
-import { archiveStaffUser, disableStaffUser, restoreStaffUser } from './staff-api';
+import { archiveStaffUser, disableStaffUser, resetStaffPassword, restoreStaffUser } from './staff-api';
 
-type LifecycleAction = 'disable' | 'archive' | 'restore';
+export type LifecycleAction = 'disable' | 'archive' | 'restore' | 'reset-password';
 
-const COPY: Record<LifecycleAction, { title: string; description: string; cta: string }> = {
-  disable: {
-    title: 'Disable staff account',
-    description:
-      'A reversible suspension — sessions are revoked immediately and sign-in is blocked, but nothing else about the account changes. Restore it at any time.',
-    cta: 'Disable account',
-  },
-  archive: {
-    title: 'Archive staff account',
-    description:
-      'For someone who has actually left. Sessions are revoked and the account is removed from active assignment — still fully reversible via Restore, never a delete.',
-    cta: 'Archive account',
-  },
-  restore: {
-    title: 'Restore staff account',
-    description: 'This will reactivate the account and restore its previous role. Sign-in will work again immediately.',
-    cta: 'Restore account',
-  },
-};
+function copyFor(action: LifecycleAction, user: StaffUser): { title: string; description: string; cta: string } {
+  switch (action) {
+    case 'disable':
+      return {
+        title: 'Disable staff account',
+        description:
+          'A reversible suspension — sessions are revoked immediately and sign-in is blocked, but nothing else about the account changes. Restore it at any time.',
+        cta: 'Disable account',
+      };
+    case 'archive':
+      return {
+        title: 'Archive staff account',
+        description:
+          'For someone who has actually left. Sessions are revoked and the account is removed from active assignment — still fully reversible via Restore, never a delete.',
+        cta: 'Archive account',
+      };
+    case 'restore':
+      return {
+        title: 'Restore staff account',
+        description:
+          'This will reactivate the account and restore its previous role. Sign-in will work again immediately.',
+        cta: 'Restore account',
+      };
+    case 'reset-password':
+      return user.activatedAt
+        ? {
+            title: 'Reset password',
+            description:
+              "This generates a fresh, one-time password-setup link. Their current password keeps working until they use it.",
+            cta: 'Generate link',
+          }
+        : {
+            title: 'Resend invite',
+            description:
+              "This account hasn't signed in yet — generate a fresh invite link (the original one is no longer available).",
+            cta: 'Resend invite',
+          };
+  }
+}
 
 /**
- * Shared modal for the three Phase 3 lifecycle actions. Disable/Archive
- * require a mandatory reason (backend-enforced too — this is a UX
- * nudge, not the actual gate); Restore is a plain confirmation.
+ * Shared modal for all four Team Management lifecycle actions.
+ * Disable/Archive require a mandatory reason (backend-enforced too —
+ * this is a UX nudge, not the actual gate); Restore is a plain
+ * confirmation; Resend Invite/Password Reset (Phase 4 — same backend
+ * action, see `UsersService.resendInviteOrResetPassword`) confirm then
+ * show the freshly-generated one-time link, same pattern as
+ * `CreateStaffModal`'s post-creation view.
  */
 export function StaffLifecycleModal({
   action,
@@ -48,7 +72,9 @@ export function StaffLifecycleModal({
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const copy = COPY[action];
+  const [resultLink, setResultLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copy = copyFor(action, user);
   const requiresReason = action === 'disable' || action === 'archive';
   const canSubmit = !requiresReason || reason.trim() !== '';
 
@@ -58,12 +84,17 @@ export function StaffLifecycleModal({
     try {
       if (action === 'disable') {
         await disableStaffUser(user.id, reason.trim());
+        onDone();
       } else if (action === 'archive') {
         await archiveStaffUser(user.id, reason.trim());
-      } else {
+        onDone();
+      } else if (action === 'restore') {
         await restoreStaffUser(user.id);
+        onDone();
+      } else {
+        const result = await resetStaffPassword(user.id);
+        setResultLink(result.inviteLink);
       }
-      onDone();
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -72,6 +103,32 @@ export function StaffLifecycleModal({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleCopyLink(): Promise<void> {
+    if (!resultLink) return;
+    await navigator.clipboard.writeText(resultLink);
+    setCopied(true);
+  }
+
+  if (resultLink) {
+    return (
+      <Modal title={copy.title} onClose={onDone}>
+        <p>
+          A new one-time link was generated for <strong>{user.fullName ?? user.email}</strong>. Send it to them
+          — it won&apos;t be shown again.
+        </p>
+        <FormField label="Link" htmlFor="lifecycle-result-link">
+          <FormInput id="lifecycle-result-link" value={resultLink} readOnly onFocus={(e) => e.target.select()} />
+        </FormField>
+        <FormActions>
+          <Button variant="secondary" onClick={() => void handleCopyLink()}>
+            {copied ? 'Copied!' : 'Copy link'}
+          </Button>
+          <Button onClick={onDone}>Done</Button>
+        </FormActions>
+      </Modal>
+    );
   }
 
   return (
@@ -102,7 +159,7 @@ export function StaffLifecycleModal({
           Cancel
         </Button>
         <Button
-          variant={action === 'restore' ? 'primary' : 'danger'}
+          variant={action === 'restore' || action === 'reset-password' ? 'primary' : 'danger'}
           onClick={() => void handleConfirm()}
           disabled={!canSubmit || submitting}
         >

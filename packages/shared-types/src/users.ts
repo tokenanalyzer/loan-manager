@@ -10,6 +10,7 @@ export interface StaffUser {
   fullName: string | null;
   role: UserRole;
   isActive: boolean;
+  createdAt: string;
   status: AccountStatus;
   statusReason: string | null;
   statusChangedAt: string | null;
@@ -51,4 +52,18 @@ export interface CreateStaffUserPayload {
 /** Mirrors the backend's StaffLifecycleReasonDto — the payload for both `PATCH /v1/users/:id/disable` and `.../archive`. Restore takes no body. */
 export interface StaffLifecycleReasonPayload {
   reason: string;
+}
+
+/** Mirrors the backend's `STAFF_SORT_FIELDS` (apps/backend/src/users/user.repository.ts). */
+export type StaffSortField = 'fullName' | 'email' | 'role' | 'status' | 'createdAt' | 'lastLoginAt';
+
+/** Mirrors the backend's `ListStaffQueryDto` — all optional, all additive to the pre-Phase-4 `GET /v1/users?page=&pageSize=` contract. */
+export interface ListStaffQueryParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  role?: Extract<UserRole, 'employee' | 'admin'>;
+  status?: AccountStatus;
+  sortBy?: StaffSortField;
+  sortDir?: 'asc' | 'desc';
 }

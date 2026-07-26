@@ -5,6 +5,10 @@ import { Not, Repository } from 'typeorm';
 import { BaseRepository } from '../common/repository/base.repository';
 import { AccountStatus, UserEntity, UserRole } from '../database/entities';
 
+/** Whitelisted `findStaffPaginated` sort columns — the canonical list `ListStaffQueryDto` validates against, since a sort column is interpolated into `ORDER BY` and can't be parameterized like a value. */
+export const STAFF_SORT_FIELDS = ['fullName', 'email', 'role', 'status', 'createdAt', 'lastLoginAt'] as const;
+export type StaffSortField = (typeof STAFF_SORT_FIELDS)[number];
+
 /**
  * UserRepository — the first concrete repository extending the
  * generic BaseRepository<T> established in Phase 2.
@@ -32,18 +36,50 @@ export class UserRepository extends BaseRepository<UserEntity> {
     return this.repository.findOne({ where: { email } });
   }
 
-  /** Staff directory (EMPLOYEE/ADMIN only) for the Admin Panel's Team screen — paginated from the start. */
-  async findStaffPaginated(
-    page: number,
-    pageSize: number,
-  ): Promise<{ items: UserEntity[]; total: number }> {
-    const [items, total] = await this.repository.findAndCount({
-      where: [{ role: UserRole.EMPLOYEE }, { role: UserRole.ADMIN }],
-      relations: ['employeeProfile'],
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+  /**
+   * Staff directory (EMPLOYEE/ADMIN only) for the Admin Panel's Team
+   * screen — paginated from the start, with optional search/filter/sort
+   * (Phase 4). `sortBy` must be one of `STAFF_SORT_FIELDS` — validated
+   * by `ListStaffQueryDto` before this ever runs, but re-asserted here
+   * too since it's interpolated into the query builder's `ORDER BY`,
+   * which cannot be parameterized like a value.
+   */
+  async findStaffPaginated(params: {
+    page: number;
+    pageSize: number;
+    search?: string;
+    role?: UserRole;
+    status?: AccountStatus;
+    sortBy: string;
+    sortDir: 'ASC' | 'DESC';
+  }): Promise<{ items: UserEntity[]; total: number }> {
+    if (!STAFF_SORT_FIELDS.includes(params.sortBy as (typeof STAFF_SORT_FIELDS)[number])) {
+      throw new Error(`Invalid sort field: ${params.sortBy}`);
+    }
+
+    const qb = this.repository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.employeeProfile', 'employeeProfile')
+      .where('user.role IN (:...roles)', { roles: [UserRole.EMPLOYEE, UserRole.ADMIN] });
+
+    if (params.role) {
+      qb.andWhere('user.role = :role', { role: params.role });
+    }
+    if (params.status) {
+      qb.andWhere('user.status = :status', { status: params.status });
+    }
+    if (params.search?.trim()) {
+      qb.andWhere(
+        '(LOWER(user.fullName) LIKE :search OR LOWER(user.email) LIKE :search OR LOWER(employeeProfile.employeeCode) LIKE :search)',
+        { search: `%${params.search.trim().toLowerCase()}%` },
+      );
+    }
+
+    qb.orderBy(`user.${params.sortBy}`, params.sortDir)
+      .skip((params.page - 1) * params.pageSize)
+      .take(params.pageSize);
+
+    const [items, total] = await qb.getManyAndCount();
     return { items, total };
   }
 

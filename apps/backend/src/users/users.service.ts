@@ -8,6 +8,7 @@ import { LoanApplicationRepository } from '../loan-applications/loan-application
 import { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
 
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
+import { ListStaffQueryDto } from './dto/list-staff-query.dto';
 import { PaginatedStaffUserResponseDto, StaffUserResponseDto } from './dto/staff-user-response.dto';
 import { UserRepository } from './user.repository';
 
@@ -108,15 +109,29 @@ export class UsersService {
     return { user: withProfile ?? user, inviteLink };
   }
 
-  async listStaff(page: number, pageSize: number): Promise<PaginatedStaffUserResponseDto> {
-    const { items, total } = await this.userRepository.findStaffPaginated(page, pageSize);
+  /**
+   * Phase 4 additive: `query.search`/`role`/`status`/`sortBy`/`sortDir`
+   * all default to exactly what this endpoint already did (no filter,
+   * newest-first) — an existing caller that omits them sees identical
+   * results and pagination shape.
+   */
+  async listStaff(query: ListStaffQueryDto): Promise<PaginatedStaffUserResponseDto> {
+    const { items, total } = await this.userRepository.findStaffPaginated({
+      page: query.page,
+      pageSize: query.pageSize,
+      search: query.search,
+      role: query.role,
+      status: query.status,
+      sortBy: query.sortBy,
+      sortDir: query.sortDir.toUpperCase() as 'ASC' | 'DESC',
+    });
     return {
       items: items.map((item) => StaffUserResponseDto.fromEntity(item)),
       meta: {
-        page,
-        pageSize,
+        page: query.page,
+        pageSize: query.pageSize,
         totalItems: total,
-        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+        totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
       },
     };
   }
@@ -200,6 +215,45 @@ export class UsersService {
     await this.writeLifecycleAudit('staff_restored', target, actor, null, fromStatus, AccountStatus.ACTIVE);
 
     return this.getResponseDto(targetId);
+  }
+
+  /**
+   * Phase 4 — "Resend Invite" (an ACTIVE-status account that has never
+   * signed in) and "Password Reset" (one that has) are the same
+   * underlying action: generate a fresh Firebase password-setup link.
+   * One method covers both; the caller (Admin Panel) picks the label
+   * from `activatedAt`. Blocked for a disabled/archived target — a new
+   * link would be useless (sign-in is blocked regardless) and
+   * generating one would be misleading. The link is returned only in
+   * the response, never persisted — same rule as `createStaffUser`'s
+   * invite link.
+   */
+  async resendInviteOrResetPassword(targetId: string, actor: UserEntity): Promise<CreatedStaffUser> {
+    const target = await this.getStaffOrThrow(targetId);
+
+    if (target.status !== AccountStatus.ACTIVE) {
+      throw new ConflictException(
+        `Cannot send a password-setup link: this account is ${target.status}, not active.`,
+      );
+    }
+    if (!target.email) {
+      throw new ConflictException('This account has no email on file.');
+    }
+
+    const inviteLink = await this.firebaseAdminService.generatePasswordSetupLink(target.email);
+
+    await this.auditLogRepository.save(
+      this.auditLogRepository.create({
+        actorId: actor.id,
+        action: target.activatedAt ? 'staff_password_reset' : 'staff_invite_resent',
+        entityName: 'users',
+        entityId: target.id,
+        metadata: { email: target.email },
+      }),
+    );
+
+    const withProfile = await this.userRepository.findOneWithEmployeeProfile(target.id);
+    return { user: withProfile ?? target, inviteLink };
   }
 
   private async getStaffOrThrow(id: string): Promise<UserEntity> {

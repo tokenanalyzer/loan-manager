@@ -20,6 +20,9 @@ const PATHS = {
   inbox: 'M3 12h5l1.5 3h5L16 12h5M5 4h14l2 8v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-7l2-8Z',
   refresh: 'M4 4v6h6M20 20v-6h-6M4.5 15a8 8 0 0 0 14.9 2.5M19.5 9A8 8 0 0 0 4.6 6.5',
   bell: 'M6 8a6 6 0 1 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6ZM9.5 18a2.5 2.5 0 0 0 5 0',
+  chevronUp: 'M6 15l6-6 6 6',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM21 21l-4.35-4.35',
+  checkCircle: 'M9 12l2 2 4-4M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

@@ -6,6 +6,8 @@ export class StaffUserResponseDto {
   fullName!: string | null;
   role!: UserRole;
   isActive!: boolean;
+  /** When this row was created — powers the Team screen's "Added" sort column (Phase 4). */
+  createdAt!: Date;
   status!: AccountStatus;
   /** Non-null only while status is DISABLED/ARCHIVED — the reason captured at that transition. Cleared on Restore. */
   statusReason!: string | null;
@@ -27,6 +29,7 @@ export class StaffUserResponseDto {
     fullName?: string | null;
     role: UserRole;
     isActive: boolean;
+    createdAt: Date;
     status: AccountStatus;
     statusReason?: string | null;
     statusChangedAt?: Date | null;
@@ -44,6 +47,7 @@ export class StaffUserResponseDto {
     dto.fullName = entity.fullName ?? null;
     dto.role = entity.role;
     dto.isActive = entity.isActive;
+    dto.createdAt = entity.createdAt;
     dto.status = entity.status;
     dto.statusReason = entity.statusReason ?? null;
     dto.statusChangedAt = entity.statusChangedAt ?? null;
@@ -61,11 +65,14 @@ export class StaffUserResponseDto {
 }
 
 /**
- * Only returned from `POST /v1/users` — the invite/password-setup
- * link is generated fresh by Firebase for that one response and
- * deliberately never persisted (see `UsersService.createStaffUser`),
- * so there is no way to re-fetch it later; the Admin Panel's "Copy
- * Invite Link" action is the only chance to grab it.
+ * Returned from `POST /v1/users` (account creation) and
+ * `POST /v1/users/:id/reset-password` (Phase 4 — Resend Invite /
+ * Password Reset) — the one thing both have in common is a
+ * freshly-Firebase-generated password-setup link, deliberately never
+ * persisted (see `UsersService.createStaffUser` /
+ * `resendInviteOrResetPassword`), so there is no way to re-fetch it
+ * later; the Admin Panel's "Copy Invite Link" action is the only
+ * chance to grab it each time.
  */
 export class CreateStaffUserResponseDto extends StaffUserResponseDto {
   inviteLink!: string;

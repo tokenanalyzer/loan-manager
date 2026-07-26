@@ -68,3 +68,31 @@
   background: var(--color-background);
   color: var(--color-primary);
 }
+
+.success {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-control);
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+  margin-bottom: var(--space-4);
+}
+
+.successMessage {
+  flex: 1;
+  font-size: var(--font-size-body-md);
+  color: var(--color-text-primary);
+}
+
+.successDismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  padding: var(--space-1);
+}

@@ -74,6 +74,70 @@ describe('FirebaseAdminService', () => {
     await expect(service.deleteUser('some-uid')).resolves.toBeUndefined();
   });
 
+  describe('generatePasswordSetupLink', () => {
+    it('returns the link Firebase generates for the given email', async () => {
+      const auth = mockAuth({
+        generatePasswordResetLink: jest.fn().mockResolvedValue('https://example.com/reset-existing'),
+      });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      const link = await service.generatePasswordSetupLink('existing@b.com');
+
+      expect(auth.generatePasswordResetLink).toHaveBeenCalledWith('existing@b.com');
+      expect(link).toBe('https://example.com/reset-existing');
+    });
+
+    it('throws ServiceUnavailableException when Firebase Admin is not configured', async () => {
+      const service = new FirebaseAdminService(null, buildLogger());
+
+      await expect(service.generatePasswordSetupLink('a@b.com')).rejects.toBeInstanceOf(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('translates auth/user-not-found into a clear ConflictException', async () => {
+      mockAuth({
+        generatePasswordResetLink: jest.fn().mockRejectedValue({ code: 'auth/user-not-found' }),
+      });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await expect(service.generatePasswordSetupLink('a@b.com')).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('translates the "Unable to create the email action link" internal-error into a clear ConflictException (dev-fixture rows with no real Firebase identity)', async () => {
+      mockAuth({
+        generatePasswordResetLink: jest.fn().mockRejectedValue({
+          code: 'auth/internal-error',
+          errorInfo: { message: 'INTERNAL ASSERT FAILED: Unable to create the email action link' },
+        }),
+      });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await expect(service.generatePasswordSetupLink('a@b.com')).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('rethrows an unrelated auth/internal-error unchanged, not mischaracterized as a missing identity', async () => {
+      mockAuth({
+        generatePasswordResetLink: jest.fn().mockRejectedValue({
+          code: 'auth/internal-error',
+          errorInfo: { message: 'Some other transient problem' },
+        }),
+      });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await expect(service.generatePasswordSetupLink('a@b.com')).rejects.not.toBeInstanceOf(ConflictException);
+    });
+
+    it('rethrows an unrelated error unchanged', async () => {
+      mockAuth({
+        generatePasswordResetLink: jest.fn().mockRejectedValue(new Error('network blip')),
+      });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await expect(service.generatePasswordSetupLink('a@b.com')).rejects.toThrow('network blip');
+    });
+  });
+
   describe('revokeSessions', () => {
     it('calls revokeRefreshTokens for the given uid', async () => {
       const auth = mockAuth({ revokeRefreshTokens: jest.fn().mockResolvedValue(undefined) });

@@ -213,6 +213,74 @@ test lead were all deleted afterward.
 maker-checker/dual-approval workflows for any transition — noted as
 possible future enterprise work, not forgotten.
 
+### Phase 4 — Team Management enhancements: search/filter/sort, Password Reset/Resend Invite, UX polish ✅ 2026-07-26
+
+**What:** everything needed to make the Team screen usable as a real
+directory rather than a flat list, plus the last unimplemented
+Phase-1-reserved permission (`STAFF_RESET_PASSWORD`).
+
+- `GET /v1/users` gains optional `search`/`role`/`status`/`sortBy`/
+  `sortDir` — all additive, defaulting to the exact pre-Phase-4 behavior
+  (no filter, newest-first) when omitted.
+  `UserRepository.findStaffPaginated` rewritten with a query builder;
+  `sortBy` is validated against a whitelist (`STAFF_SORT_FIELDS`) both
+  at the DTO layer and again inside the repository, since a sort column
+  is interpolated into `ORDER BY` and can't be parameterized like a
+  value. Base role scope (EMPLOYEE/ADMIN only) is unchanged — the
+  `role` filter narrows within it, never expands it.
+- **Password Reset / Resend Invite** — one backend method
+  (`UsersService.resendInviteOrResetPassword`,
+  `POST /v1/users/:id/reset-password`, gated by the Phase-1-reserved
+  `STAFF_RESET_PASSWORD` permission) covers both: same underlying
+  Firebase operation (`FirebaseAdminService.generatePasswordSetupLink`,
+  factored out of `provisionStaffAccount`), distinguished only by audit
+  action name (`staff_invite_resent` vs. `staff_password_reset`,
+  chosen from `activatedAt`) and the Admin Panel's label. Blocked for a
+  non-ACTIVE account (409) — a new link would be useless since sign-in
+  is blocked regardless.
+- **Real bug found and fixed during live verification:** a dev-fixture
+  row with a placeholder (non-real) `firebaseUid` made
+  `generatePasswordResetLink` throw a raw, unhandled Firebase error,
+  surfacing as a generic 500. `FirebaseAdminService.generatePasswordSetupLink`
+  now recognizes this specific failure mode
+  (`auth/user-not-found`, or the Admin SDK's `auth/internal-error`
+  "Unable to create the email action link") and translates it into a
+  clear `ConflictException` — any other error is rethrown unchanged so
+  a genuinely transient Firebase problem isn't mischaracterized.
+- Admin Panel `StaffListPage`: search box (debounced), role/status
+  filter dropdowns, sortable column headers, Previous/Next pagination,
+  a `createdAt`-derived "Added" column, and Resend Invite/Reset
+  Password actions (label chosen from `activatedAt`, hidden for
+  disabled/archived rows to match the backend gate). `StaffLifecycleModal`
+  extended with a `reset-password` action (confirm → shows the fresh
+  one-time link, same "Copy link" pattern as account creation). New
+  `SuccessBanner` (`components/states/`, peer to Loading/Empty/Error)
+  shows a contextual message after every lifecycle action or account
+  creation.
+
+**Verification:** backend typecheck/lint/build/tests all pass (90/90,
++13 new: search/filter/sort passthrough, resend-invite/reset-password
+guard tests, and the new Firebase error-translation tests including
+the exact failure mode found live); `shared-types` and admin-panel
+typecheck/lint/build clean. No migration needed (no schema change).
+Verified live end-to-end against the real backend + Firebase project
+and the real Admin Panel UI: default list behavior unchanged; `search`,
+`role`, and `status` filters each verified independently against real
+rows; pagination meta verified with a small page size; Resend Invite
+verified for a never-signed-in account (audit: `staff_invite_resent`),
+then Password Reset verified after simulating activation (audit:
+`staff_password_reset`); reset-password confirmed blocked (409) for a
+disabled account; the 500→409 fix verified both via direct API call
+and by reproducing it in the actual browser UI (the error now renders
+as a clear message inside the modal instead of "Internal server
+error"); full UI walkthrough — search narrowing the table live, the
+success banner rendering after both account creation and Resend
+Invite, and the "Working…"/result-link states in the lifecycle modal.
+Test employees and their Firebase users deleted afterward.
+
+**Deliberately out of scope this phase:** Phase 5 (not started, per
+instruction).
+
 ---
 
 ## Up next
