@@ -15,6 +15,11 @@ export enum Permission {
   STAFF_READ = 'staff:read',
   STAFF_DISABLE = 'staff:disable',
   STAFF_ARCHIVE = 'staff:archive',
+  /** Re-activate a disabled/archived account. Kept separate from
+   *  STAFF_DISABLE/STAFF_ARCHIVE — re-granting access to a previously
+   *  deactivated account is at least as sensitive as removing it, and
+   *  deserves its own line in the audit trail. */
+  STAFF_RESTORE = 'staff:restore',
   STAFF_RESET_PASSWORD = 'staff:reset-password',
   /** Change what role an existing account holds. Kept separate from
    *  STAFF_CREATE_* — creating a Manager and promoting someone to
@@ -38,6 +43,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     Permission.STAFF_READ,
     Permission.STAFF_DISABLE,
     Permission.STAFF_ARCHIVE,
+    Permission.STAFF_RESTORE,
     Permission.STAFF_RESET_PASSWORD,
     Permission.AUDIT_READ,
   ],

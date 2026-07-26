@@ -23,6 +23,30 @@ export enum UserRole {
 }
 
 /**
+ * Team Management lifecycle state (Admin Authentication Module, Phase
+ * 3). Deliberately a distinct field from `UserEntity.isActive`, not a
+ * replacement for it: `isActive` stays the one thing `SyncUserGuard`
+ * enforces on every request (`ACTIVE` here always implies
+ * `isActive: true`; `DISABLED`/`ARCHIVED` always imply `isActive:
+ * false` — `UsersService`'s lifecycle methods keep both in lockstep),
+ * so no existing enforcement path changes. This enum exists so the
+ * Team screen and audit trail can distinguish *why* an account is
+ * inactive, which a boolean can't express.
+ *
+ * DISABLED — reversible, short/medium-term suspension. ARCHIVED — a
+ * superset of Disabled (also excluded from active operational
+ * surfaces like the Lead Assignment picker), for someone who has
+ * actually left. Neither is a delete: nothing about the row's
+ * historical attributions (reviews performed, leads assigned, audit
+ * `actorId`) ever changes.
+ */
+export enum AccountStatus {
+  ACTIVE = 'active',
+  DISABLED = 'disabled',
+  ARCHIVED = 'archived',
+}
+
+/**
  * Employee Work Status / Break Management. `ONLINE`/`BUSY` are
  * manually-settable non-break statuses; the five break types below
  * put the Employee Portal into Break Mode (see `WORK_STATUS_BREAK_TYPES`

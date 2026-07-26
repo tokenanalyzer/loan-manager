@@ -140,6 +140,79 @@ instruction — link-only for now, architecture leaves room for it),
 migrating `UsersController`'s `@Auth(ADMIN)` to the new
 `@AuthPermission`/`STAFF_CREATE_*` split (out of this phase's scope).
 
+### Phase 3 — Disable / Archive / Restore lifecycle ✅ 2026-07-26
+
+**What:** the full Team Management lifecycle approved in the Phase 3
+design review — an explicit `AccountStatus` (`ACTIVE`/`DISABLED`/
+`ARCHIVED`) alongside the existing `isActive` boolean (kept in lockstep
+by `UsersService`, so `SyncUserGuard`'s enforcement is unchanged), plus
+login metadata and Team-screen status badges.
+
+- `AccountStatus` enum (`src/database/entities/enums.ts`) +
+  `AddAccountStatusAndLoginMetadata` migration — `users` gains
+  `status`, `status_reason`, `status_changed_at`,
+  `status_changed_by_id` (mirrors the existing `kyc_reviewed_*`
+  pattern), and `last_login_at`/`last_failed_login_at`/
+  `last_login_ip`/`last_device`. Existing rows backfilled from
+  `is_active`.
+- `UsersService.disableStaffUser` / `archiveStaffUser` /
+  `restoreStaffUser` (`PATCH /v1/users/:id/disable|archive|restore`,
+  gated by the new `@AuthPermission(STAFF_DISABLE|STAFF_ARCHIVE|
+  STAFF_RESTORE)` — the first real usage of Phase 1's permission path).
+  Disable/Archive require a mandatory reason; both block a self-action
+  and block leaving zero active Super Admins
+  (`UserRepository.countActiveByRole`); Archive additionally blocks an
+  `EMPLOYEE` with active leads still assigned
+  (`LoanApplicationRepository.findActiveAssignedTo` — reuses Lead
+  Assignment's existing query, no new reassignment machinery). Every
+  transition writes one immutable `audit_logs` row
+  (`staff_disabled`/`staff_archived`/`staff_restored`).
+- Session revocation consolidated: `FirebaseAdminService.revokeSessions`
+  is now the one place that calls `revokeRefreshTokens` — Disable/
+  Archive use it for every staff role, and `WorkStatusService`
+  (Employee-only Force Logout/Disable, predates this phase) was
+  refactored to delegate to it instead of duplicating the logic
+  locally.
+- `AuthController.createSession` (`POST /v1/auth/session`) now stamps
+  `lastLoginAt`/`lastLoginIp`/`lastDevice` — the one endpoint that
+  represents an actual fresh login, as opposed to `SyncUserGuard`'s
+  per-request `lastActiveAt` presence stamp. `SyncUserGuard` stamps
+  `lastFailedLoginAt` when a still-valid Firebase token belongs to a
+  disabled/archived account — the one failed-login case attributable
+  to a specific user (a bad password never reaches this backend at
+  all; Firebase owns that failure).
+- `PermissionsGuard` — added to `AuthModule`'s providers/exports. It
+  existed since Phase 1 but had never actually been wired into any
+  module's DI, since no endpoint used `@AuthPermission` yet; this
+  phase's endpoints are the first real usage, so this was fixed as
+  part of making them work, not a separate change.
+- Admin Panel: `StaffListPage` now shows Active/Invited/Disabled/
+  Archived badges (with the current `statusReason` under
+  Disabled/Archived) and a Last sign-in column; per-row
+  Disable/Archive/Restore actions (hidden for the signed-in admin's own
+  row) open a new shared `StaffLifecycleModal` — reason required for
+  Disable/Archive, plain confirmation for Restore.
+
+**Verification:** backend typecheck/lint/build/tests all pass (77/77,
++19 new: lifecycle guard tests covering every approved rule, plus
+`FirebaseAdminService.revokeSessions` tests); `shared-types` and
+admin-panel typecheck/lint/build clean. Migration run against the local
+dev DB. Verified live end-to-end against the real backend + Firebase
+project: created a real test employee, disabled it (reason required,
+session-revocation call fired, audit row written), confirmed the
+already-disabled/already-active conflicts, confirmed self-disable and
+self-archive are rejected with 400, confirmed archiving is blocked
+while a real active lead is assigned and succeeds once it isn't,
+restored it back to Active, confirmed `POST /v1/auth/session` stamps
+real login metadata (IP/User-Agent), and confirmed a disabled/archived
+account's fresh (unrevoked) token still gets a 401 with
+`lastFailedLoginAt` stamped. Test employee, its Firebase user, and the
+test lead were all deleted afterward.
+
+**Deliberately out of scope this phase (per explicit instruction):**
+maker-checker/dual-approval workflows for any transition — noted as
+possible future enterprise work, not forgotten.
+
 ---
 
 ## Up next

@@ -1,9 +1,10 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { AuditLogEntity, UserEntity, UserRole } from '../database/entities';
+import { AccountStatus, AuditLogEntity, UserEntity, UserRole } from '../database/entities';
 import { FirebaseAdminService } from '../firebase/firebase-admin.service';
+import { LoanApplicationRepository } from '../loan-applications/loan-application.repository';
 import { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
 
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
@@ -32,6 +33,7 @@ export class UsersService {
     private readonly userRepository: UserRepository,
     private readonly employeeProfileRepository: EmployeeProfileRepository,
     private readonly firebaseAdminService: FirebaseAdminService,
+    private readonly loanApplicationRepository: LoanApplicationRepository,
     @InjectRepository(AuditLogEntity)
     private readonly auditLogRepository: Repository<AuditLogEntity>,
   ) {}
@@ -117,5 +119,162 @@ export class UsersService {
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
       },
     };
+  }
+
+  /**
+   * Disable — reversible, short/medium-term suspension. Requires a
+   * reason, revokes existing Firebase sessions immediately, and is
+   * blocked for a self-action or if it would leave zero active Super
+   * Admins. See `AccountStatus`'s doc comment for how this differs
+   * from Archive.
+   */
+  async disableStaffUser(targetId: string, reason: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+    const target = await this.getStaffOrThrow(targetId);
+    this.assertNotSelf(targetId, actor, 'disable');
+
+    if (target.status !== AccountStatus.ACTIVE) {
+      throw new ConflictException(`This account is already ${target.status}.`);
+    }
+    await this.assertNotLastActiveSuperAdmin(target, 'disabled');
+
+    const fromStatus = target.status;
+    await this.applyStatusTransition(target, AccountStatus.DISABLED, reason, actor);
+    await this.firebaseAdminService.revokeSessions(target.firebaseUid);
+    await this.writeLifecycleAudit('staff_disabled', target, actor, reason, fromStatus, AccountStatus.DISABLED);
+
+    return this.getResponseDto(targetId);
+  }
+
+  /**
+   * Archive — a superset of Disable (also revokes sessions), for
+   * someone who has actually left. Requires a reason, is blocked for a
+   * self-action or the last active Super Admin, and — for an
+   * EMPLOYEE — is blocked while they still have active leads assigned
+   * (see `LoanApplicationRepository.findActiveAssignedTo`); reassign
+   * those first via Lead Assignment's transfer-all, then archive.
+   * Reachable directly from ACTIVE or DISABLED.
+   */
+  async archiveStaffUser(targetId: string, reason: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+    const target = await this.getStaffOrThrow(targetId);
+    this.assertNotSelf(targetId, actor, 'archive');
+
+    if (target.status === AccountStatus.ARCHIVED) {
+      throw new ConflictException('This account is already archived.');
+    }
+    await this.assertNotLastActiveSuperAdmin(target, 'archived');
+
+    if (target.role === UserRole.EMPLOYEE) {
+      const activeLeads = await this.loanApplicationRepository.findActiveAssignedTo(target.id);
+      if (activeLeads.length > 0) {
+        throw new ConflictException(
+          `Cannot archive: this employee still has ${activeLeads.length} active lead(s) assigned. ` +
+            'Reassign them first (Lead Assignment — Transfer All), then archive.',
+        );
+      }
+    }
+
+    const fromStatus = target.status;
+    await this.applyStatusTransition(target, AccountStatus.ARCHIVED, reason, actor);
+    await this.firebaseAdminService.revokeSessions(target.firebaseUid);
+    await this.writeLifecycleAudit('staff_archived', target, actor, reason, fromStatus, AccountStatus.ARCHIVED);
+
+    return this.getResponseDto(targetId);
+  }
+
+  /**
+   * Restore — reverses Disable or Archive back to Active. No reason
+   * required (nothing in the approved design mandates one), no
+   * self-action guard (a disabled/archived account has no valid
+   * session to call this with anyway), no session revocation (there's
+   * nothing to revoke on the way back in).
+   */
+  async restoreStaffUser(targetId: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+    const target = await this.getStaffOrThrow(targetId);
+
+    if (target.status === AccountStatus.ACTIVE) {
+      throw new ConflictException('This account is already active.');
+    }
+
+    const fromStatus = target.status;
+    await this.applyStatusTransition(target, AccountStatus.ACTIVE, null, actor);
+    await this.writeLifecycleAudit('staff_restored', target, actor, null, fromStatus, AccountStatus.ACTIVE);
+
+    return this.getResponseDto(targetId);
+  }
+
+  private async getStaffOrThrow(id: string): Promise<UserEntity> {
+    const user = await this.userRepository.findOneById(id);
+    if (!user || user.role === UserRole.CUSTOMER) {
+      throw new NotFoundException('Staff account not found.');
+    }
+    return user;
+  }
+
+  private assertNotSelf(targetId: string, actor: UserEntity, action: 'disable' | 'archive'): void {
+    if (targetId === actor.id) {
+      throw new BadRequestException(`You cannot ${action} your own account.`);
+    }
+  }
+
+  /**
+   * Only Super Admin (`ADMIN`) accounts are gated — Manager/Employee/
+   * Org Admin deactivation can never lock the organization out of its
+   * own admin tooling. Already-inactive targets don't reduce the
+   * active count further, so they're exempt too.
+   */
+  private async assertNotLastActiveSuperAdmin(target: UserEntity, verb: 'disabled' | 'archived'): Promise<void> {
+    if (target.role !== UserRole.ADMIN || target.status !== AccountStatus.ACTIVE) {
+      return;
+    }
+    const otherActiveAdmins = await this.userRepository.countActiveByRole(UserRole.ADMIN, target.id);
+    if (otherActiveAdmins === 0) {
+      throw new ConflictException(`This account cannot be ${verb}: it is the last active Super Admin.`);
+    }
+  }
+
+  private async applyStatusTransition(
+    target: UserEntity,
+    toStatus: AccountStatus,
+    reason: string | null,
+    actor: UserEntity,
+  ): Promise<void> {
+    await this.userRepository.update(target.id, {
+      status: toStatus,
+      statusReason: reason,
+      statusChangedAt: new Date(),
+      statusChangedById: actor.id,
+      // Kept in lockstep with `status` — see AccountStatus's doc
+      // comment on why `isActive` still exists and is what
+      // SyncUserGuard actually enforces.
+      isActive: toStatus === AccountStatus.ACTIVE,
+    });
+  }
+
+  /** One immutable row per transition — never overwritten, never reused across transitions. */
+  private async writeLifecycleAudit(
+    action: string,
+    target: UserEntity,
+    actor: UserEntity,
+    reason: string | null,
+    fromStatus: AccountStatus,
+    toStatus: AccountStatus,
+  ): Promise<void> {
+    await this.auditLogRepository.save(
+      this.auditLogRepository.create({
+        actorId: actor.id,
+        action,
+        entityName: 'users',
+        entityId: target.id,
+        metadata: { reason, fromStatus, toStatus },
+      }),
+    );
+  }
+
+  private async getResponseDto(id: string): Promise<StaffUserResponseDto> {
+    const updated = await this.userRepository.findOneWithEmployeeProfile(id);
+    if (!updated) {
+      throw new NotFoundException('Staff account not found after update.');
+    }
+    return StaffUserResponseDto.fromEntity(updated);
   }
 }

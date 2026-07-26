@@ -5,6 +5,7 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { FirebaseAuthGuard } from './guards/firebase-auth.guard';
+import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { SyncUserGuard } from './guards/sync-user.guard';
 
@@ -23,7 +24,7 @@ import { SyncUserGuard } from './guards/sync-user.guard';
 @Module({
   imports: [UsersModule],
   controllers: [AuthController],
-  providers: [AuthService, FirebaseAuthGuard, SyncUserGuard, RolesGuard],
-  exports: [AuthService, FirebaseAuthGuard, SyncUserGuard, RolesGuard],
+  providers: [AuthService, FirebaseAuthGuard, SyncUserGuard, RolesGuard, PermissionsGuard],
+  exports: [AuthService, FirebaseAuthGuard, SyncUserGuard, RolesGuard, PermissionsGuard],
 })
 export class AuthModule {}

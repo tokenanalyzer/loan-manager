@@ -1,5 +1,8 @@
 import type { UserRole } from './auth';
 
+/** Mirrors the backend's `AccountStatus` enum (apps/backend/src/database/entities/enums.ts) — Team Management lifecycle state, Phase 3. */
+export type AccountStatus = 'active' | 'disabled' | 'archived';
+
 /** Mirrors the backend's StaffUserResponseDto (apps/backend/src/users/dto/staff-user-response.dto.ts). */
 export interface StaffUser {
   id: string;
@@ -7,8 +10,15 @@ export interface StaffUser {
   fullName: string | null;
   role: UserRole;
   isActive: boolean;
+  status: AccountStatus;
+  statusReason: string | null;
+  statusChangedAt: string | null;
   activatedAt: string | null;
   invitedAt: string | null;
+  lastLoginAt: string | null;
+  lastFailedLoginAt: string | null;
+  lastLoginIp: string | null;
+  lastDevice: string | null;
   employeeCode: string | null;
   department: string | null;
   branch: string | null;
@@ -36,4 +46,9 @@ export interface CreateStaffUserPayload {
   employeeCode?: string;
   department?: string;
   branch?: string;
+}
+
+/** Mirrors the backend's StaffLifecycleReasonDto — the payload for both `PATCH /v1/users/:id/disable` and `.../archive`. Restore takes no body. */
+export interface StaffLifecycleReasonPayload {
+  reason: string;
 }

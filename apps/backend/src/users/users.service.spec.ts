@@ -1,8 +1,9 @@
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
-import { AuditLogEntity, UserRole } from '../database/entities';
+import { AccountStatus, AuditLogEntity, UserRole } from '../database/entities';
 import type { FirebaseAdminService } from '../firebase/firebase-admin.service';
+import type { LoanApplicationRepository } from '../loan-applications/loan-application.repository';
 import type { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
 
 import type { CreateStaffUserDto } from './dto/create-staff-user.dto';
@@ -29,16 +30,35 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
     } as CreateStaffUserDto;
   }
 
-  function buildHarness() {
+  /** Default target row for the Phase 3 lifecycle tests below — an active Employee. */
+  function buildTarget(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'target-1',
+      role: UserRole.EMPLOYEE,
+      status: AccountStatus.ACTIVE,
+      firebaseUid: 'target-firebase-uid',
+      ...overrides,
+    };
+  }
+
+  function buildHarness(options: { target?: ReturnType<typeof buildTarget> | null } = {}) {
+    const target = options.target === undefined ? buildTarget() : options.target;
+
     const findByEmail = jest.fn().mockResolvedValue(null);
     const create = jest.fn().mockImplementation((data) => Promise.resolve({ id: 'new-user', ...data }));
     const findOneWithEmployeeProfile = jest
       .fn()
-      .mockImplementation((id) => Promise.resolve({ id, employeeProfile: null }));
+      .mockImplementation((id) => Promise.resolve({ id, employeeProfile: null, ...target }));
+    const findOneById = jest.fn().mockResolvedValue(target);
+    const update = jest.fn().mockImplementation((id, patch) => Promise.resolve({ ...target, id, ...patch }));
+    const countActiveByRole = jest.fn().mockResolvedValue(1);
     const userRepository = {
       findByEmail,
       create,
       findOneWithEmployeeProfile,
+      findOneById,
+      update,
+      countActiveByRole,
     } as unknown as UserRepository;
 
     const employeeProfileCreate = jest.fn().mockResolvedValue(undefined);
@@ -50,10 +70,17 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
       .fn()
       .mockResolvedValue({ firebaseUid: 'firebase-uid-1', inviteLink: 'https://example.com/invite' });
     const deleteUser = jest.fn().mockResolvedValue(undefined);
+    const revokeSessions = jest.fn().mockResolvedValue(undefined);
     const firebaseAdminService = {
       provisionStaffAccount,
       deleteUser,
+      revokeSessions,
     } as unknown as FirebaseAdminService;
+
+    const findActiveAssignedTo = jest.fn().mockResolvedValue([]);
+    const loanApplicationRepository = {
+      findActiveAssignedTo,
+    } as unknown as LoanApplicationRepository;
 
     const auditLogCreate = jest.fn().mockImplementation((data) => data);
     const auditLogSave = jest.fn().mockResolvedValue(undefined);
@@ -66,6 +93,7 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
       userRepository,
       employeeProfileRepository,
       firebaseAdminService,
+      loanApplicationRepository,
       auditLogRepository,
     );
 
@@ -73,9 +101,14 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
       service,
       findByEmail,
       create,
+      findOneById,
+      update,
+      countActiveByRole,
       employeeProfileCreate,
       provisionStaffAccount,
       deleteUser,
+      revokeSessions,
+      findActiveAssignedTo,
       auditLogCreate,
       auditLogSave,
     };
@@ -141,5 +174,253 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
 
     await expect(service.createStaffUser(buildDto(), actor)).rejects.toBeInstanceOf(ConflictException);
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Phase 3 (Disable/Archive/Restore lifecycle). Covers every guard from
+ * the approved design: mandatory-reason plumbing (validated at the DTO
+ * layer, not re-tested here — this exercises the service with an
+ * already-valid reason string), self-action prevention, the
+ * last-active-Super-Admin lockout guard, session revocation scoped to
+ * exactly Disable/Archive (never Restore), the employee-reassignment
+ * gate before Archive, and one immutable audit row per transition.
+ */
+describe('UsersService — Disable / Archive / Restore lifecycle', () => {
+  const actor = { id: 'admin-1', role: UserRole.ADMIN } as never;
+
+  function buildTarget(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 'target-1',
+      role: UserRole.EMPLOYEE,
+      status: AccountStatus.ACTIVE,
+      firebaseUid: 'target-firebase-uid',
+      ...overrides,
+    };
+  }
+
+  function buildHarness(target: ReturnType<typeof buildTarget>) {
+    const findOneById = jest.fn().mockResolvedValue(target);
+    const update = jest.fn().mockImplementation((id, patch) => Promise.resolve({ ...target, id, ...patch }));
+    const countActiveByRole = jest.fn().mockResolvedValue(1);
+    const findOneWithEmployeeProfile = jest
+      .fn()
+      .mockImplementation((id) => Promise.resolve({ ...target, id, employeeProfile: null }));
+    const userRepository = {
+      findOneById,
+      update,
+      countActiveByRole,
+      findOneWithEmployeeProfile,
+    } as unknown as UserRepository;
+
+    const employeeProfileRepository = {} as unknown as EmployeeProfileRepository;
+
+    const revokeSessions = jest.fn().mockResolvedValue(undefined);
+    const firebaseAdminService = { revokeSessions } as unknown as FirebaseAdminService;
+
+    const findActiveAssignedTo = jest.fn().mockResolvedValue([]);
+    const loanApplicationRepository = { findActiveAssignedTo } as unknown as LoanApplicationRepository;
+
+    const auditLogCreate = jest.fn().mockImplementation((data) => data);
+    const auditLogSave = jest.fn().mockResolvedValue(undefined);
+    const auditLogRepository = {
+      create: auditLogCreate,
+      save: auditLogSave,
+    } as unknown as Repository<AuditLogEntity>;
+
+    const service = new UsersService(
+      userRepository,
+      employeeProfileRepository,
+      firebaseAdminService,
+      loanApplicationRepository,
+      auditLogRepository,
+    );
+
+    return {
+      service,
+      findOneById,
+      update,
+      countActiveByRole,
+      revokeSessions,
+      findActiveAssignedTo,
+      auditLogCreate,
+      auditLogSave,
+    };
+  }
+
+  describe('disableStaffUser', () => {
+    it('transitions to DISABLED, revokes sessions, and writes one audit row', async () => {
+      const { service, update, revokeSessions, auditLogCreate, auditLogSave } = buildHarness(buildTarget());
+
+      await service.disableStaffUser('target-1', 'Under investigation', actor);
+
+      expect(update).toHaveBeenCalledWith(
+        'target-1',
+        expect.objectContaining({
+          status: AccountStatus.DISABLED,
+          statusReason: 'Under investigation',
+          statusChangedById: 'admin-1',
+          isActive: false,
+        }),
+      );
+      expect(revokeSessions).toHaveBeenCalledWith('target-firebase-uid');
+      expect(auditLogCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'admin-1',
+          action: 'staff_disabled',
+          entityId: 'target-1',
+          metadata: expect.objectContaining({ reason: 'Under investigation', toStatus: AccountStatus.DISABLED }),
+        }),
+      );
+      expect(auditLogSave).toHaveBeenCalled();
+    });
+
+    it('rejects disabling one\'s own account', async () => {
+      const { service, update } = buildHarness(buildTarget({ id: 'admin-1' }));
+
+      await expect(
+        service.disableStaffUser('admin-1', 'reason', { id: 'admin-1', role: UserRole.ADMIN } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('rejects disabling the last active Super Admin', async () => {
+      const { service, update, countActiveByRole } = buildHarness(
+        buildTarget({ id: 'target-admin', role: UserRole.ADMIN }),
+      );
+      countActiveByRole.mockResolvedValue(0);
+
+      await expect(service.disableStaffUser('target-admin', 'reason', actor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('allows disabling a Super Admin when another active Super Admin remains', async () => {
+      const { service, update, countActiveByRole } = buildHarness(
+        buildTarget({ id: 'target-admin', role: UserRole.ADMIN }),
+      );
+      countActiveByRole.mockResolvedValue(1);
+
+      await expect(
+        service.disableStaffUser('target-admin', 'reason', actor),
+      ).resolves.toBeDefined();
+      expect(update).toHaveBeenCalled();
+    });
+
+    it('rejects disabling an already-disabled account', async () => {
+      const { service, update } = buildHarness(buildTarget({ status: AccountStatus.DISABLED }));
+
+      await expect(service.disableStaffUser('target-1', 'reason', actor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('archiveStaffUser', () => {
+    it('transitions to ARCHIVED and revokes sessions when there is no active work', async () => {
+      const { service, update, revokeSessions, findActiveAssignedTo } = buildHarness(buildTarget());
+
+      await service.archiveStaffUser('target-1', 'Resigned', actor);
+
+      expect(findActiveAssignedTo).toHaveBeenCalledWith('target-1');
+      expect(update).toHaveBeenCalledWith(
+        'target-1',
+        expect.objectContaining({ status: AccountStatus.ARCHIVED, statusReason: 'Resigned' }),
+      );
+      expect(revokeSessions).toHaveBeenCalledWith('target-firebase-uid');
+    });
+
+    it('blocks archiving an employee with active leads still assigned', async () => {
+      const { service, update, findActiveAssignedTo } = buildHarness(buildTarget());
+      findActiveAssignedTo.mockResolvedValue([{ id: 'lead-1' }, { id: 'lead-2' }]);
+
+      await expect(service.archiveStaffUser('target-1', 'Resigned', actor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it('does not check active leads for a non-EMPLOYEE role', async () => {
+      const { service, findActiveAssignedTo } = buildHarness(buildTarget({ role: UserRole.MANAGER }));
+
+      await service.archiveStaffUser('target-1', 'Resigned', actor);
+
+      expect(findActiveAssignedTo).not.toHaveBeenCalled();
+    });
+
+    it('rejects archiving one\'s own account', async () => {
+      const { service } = buildHarness(buildTarget({ id: 'admin-1' }));
+
+      await expect(
+        service.archiveStaffUser('admin-1', 'reason', { id: 'admin-1', role: UserRole.ADMIN } as never),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects archiving the last active Super Admin', async () => {
+      const { service, countActiveByRole } = buildHarness(
+        buildTarget({ id: 'target-admin', role: UserRole.ADMIN }),
+      );
+      countActiveByRole.mockResolvedValue(0);
+
+      await expect(service.archiveStaffUser('target-admin', 'reason', actor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('allows archiving directly from DISABLED', async () => {
+      const { service, update } = buildHarness(buildTarget({ status: AccountStatus.DISABLED }));
+
+      await service.archiveStaffUser('target-1', 'Resigned', actor);
+
+      expect(update).toHaveBeenCalledWith(
+        'target-1',
+        expect.objectContaining({ status: AccountStatus.ARCHIVED }),
+      );
+    });
+
+    it('rejects archiving an already-archived account', async () => {
+      const { service, update } = buildHarness(buildTarget({ status: AccountStatus.ARCHIVED }));
+
+      await expect(service.archiveStaffUser('target-1', 'reason', actor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('restoreStaffUser', () => {
+    it('transitions a DISABLED account back to ACTIVE without touching sessions', async () => {
+      const { service, update, revokeSessions, auditLogCreate } = buildHarness(
+        buildTarget({ status: AccountStatus.DISABLED }),
+      );
+
+      await service.restoreStaffUser('target-1', actor);
+
+      expect(update).toHaveBeenCalledWith(
+        'target-1',
+        expect.objectContaining({ status: AccountStatus.ACTIVE, statusReason: null, isActive: true }),
+      );
+      expect(revokeSessions).not.toHaveBeenCalled();
+      expect(auditLogCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'staff_restored', metadata: expect.objectContaining({ toStatus: AccountStatus.ACTIVE }) }),
+      );
+    });
+
+    it('transitions an ARCHIVED account back to ACTIVE', async () => {
+      const { service, update } = buildHarness(buildTarget({ status: AccountStatus.ARCHIVED }));
+
+      await service.restoreStaffUser('target-1', actor);
+
+      expect(update).toHaveBeenCalledWith('target-1', expect.objectContaining({ status: AccountStatus.ACTIVE }));
+    });
+
+    it('rejects restoring an already-active account', async () => {
+      const { service, update } = buildHarness(buildTarget({ status: AccountStatus.ACTIVE }));
+
+      await expect(service.restoreStaffUser('target-1', actor)).rejects.toBeInstanceOf(ConflictException);
+      expect(update).not.toHaveBeenCalled();
+    });
   });
 });

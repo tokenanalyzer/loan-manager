@@ -22,6 +22,12 @@ describe('ROLE_PERMISSIONS', () => {
     expect(roleHasPermission(UserRole.ORG_ADMIN, Permission.ROLE_ASSIGN)).toBe(false);
   });
 
+  it('lets ORG_ADMIN disable, archive, and restore staff accounts', () => {
+    expect(roleHasPermission(UserRole.ORG_ADMIN, Permission.STAFF_DISABLE)).toBe(true);
+    expect(roleHasPermission(UserRole.ORG_ADMIN, Permission.STAFF_ARCHIVE)).toBe(true);
+    expect(roleHasPermission(UserRole.ORG_ADMIN, Permission.STAFF_RESTORE)).toBe(true);
+  });
+
   it('grants MANAGER, EMPLOYEE, and CUSTOMER no staff-management permissions', () => {
     for (const role of [UserRole.MANAGER, UserRole.EMPLOYEE, UserRole.CUSTOMER]) {
       expect(ROLE_PERMISSIONS[role]).toEqual([]);

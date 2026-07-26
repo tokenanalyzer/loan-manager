@@ -92,6 +92,30 @@ export class FirebaseAdminService {
     }
   }
 
+  /**
+   * Best-effort immediate session kill (`revokeRefreshTokens`), used
+   * by Disable/Archive across every staff role (Phase 3) and by Work
+   * Status's Force Logout/Disable Employee (`WorkStatusService`,
+   * which used to duplicate this logic locally — now delegates here).
+   * Never throws: the account's `isActive`/`status` flip is the
+   * authoritative enforcement (`SyncUserGuard` checks it on every
+   * request), so a transient Firebase error here must never roll back
+   * the DB-side effect that already happened. If Firebase Admin isn't
+   * configured in this environment, this is a silent no-op (consistent
+   * with `FirebaseAuthGuard`'s and the old inline implementation's
+   * behavior).
+   */
+  async revokeSessions(firebaseUid: string): Promise<void> {
+    if (!this.firebaseApp) {
+      return;
+    }
+    try {
+      await getAuth(this.firebaseApp).revokeRefreshTokens(firebaseUid);
+    } catch (error) {
+      this.logger.warn({ err: error, firebaseUid }, 'Failed to revoke Firebase sessions — proceeding anyway.');
+    }
+  }
+
   private requireApp(): App {
     if (!this.firebaseApp) {
       throw new ServiceUnavailableException(

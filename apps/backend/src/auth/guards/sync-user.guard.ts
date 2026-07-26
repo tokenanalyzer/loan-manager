@@ -43,6 +43,12 @@ export class SyncUserGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<RequestWithAppUser>();
     const appUser = await this.authService.syncFromFirebaseToken(request.firebaseUser);
     if (!appUser.isActive) {
+      // Best-effort: a still-valid Firebase token being used against a
+      // disabled/archived account is the one failed-login case we can
+      // attribute to a specific user (see AuthService.recordFailedLogin's
+      // doc comment) — but recording it must never block or mask the
+      // 401 below.
+      await this.authService.recordFailedLogin(appUser).catch(() => undefined);
       throw new UnauthorizedException('This account has been disabled.');
     }
     request.appUser = appUser;

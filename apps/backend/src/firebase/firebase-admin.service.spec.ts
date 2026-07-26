@@ -73,4 +73,29 @@ describe('FirebaseAdminService', () => {
 
     await expect(service.deleteUser('some-uid')).resolves.toBeUndefined();
   });
+
+  describe('revokeSessions', () => {
+    it('calls revokeRefreshTokens for the given uid', async () => {
+      const auth = mockAuth({ revokeRefreshTokens: jest.fn().mockResolvedValue(undefined) });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await service.revokeSessions('some-uid');
+
+      expect(auth.revokeRefreshTokens).toHaveBeenCalledWith('some-uid');
+    });
+
+    it('is a silent no-op when Firebase Admin is not configured', async () => {
+      const service = new FirebaseAdminService(null, buildLogger());
+
+      await expect(service.revokeSessions('some-uid')).resolves.toBeUndefined();
+      expect(getAuth).not.toHaveBeenCalled();
+    });
+
+    it('swallows its own errors rather than throwing', async () => {
+      mockAuth({ revokeRefreshTokens: jest.fn().mockRejectedValue(new Error('revoke failed')) });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await expect(service.revokeSessions('some-uid')).resolves.toBeUndefined();
+    });
+  });
 });

@@ -188,4 +188,39 @@ export class AuthService {
       return updated ?? existing;
     }
   }
+
+  /**
+   * Stamps the Phase 3 login-metadata fields — called exactly once per
+   * fresh session, from `AuthController.createSession`
+   * (`POST /v1/auth/session`), not from `SyncUserGuard`'s per-request
+   * sync (which stamps `lastActiveAt` on *every* authenticated
+   * request — a different, much noisier signal). `ip`/`userAgent` are
+   * best-effort — always overwritten with the latest value, unlike the
+   * backfill-only identity fields above, since "last" means "most
+   * recent," not "first known."
+   */
+  async recordSuccessfulLogin(
+    user: UserEntity,
+    ip: string | null,
+    userAgent: string | null,
+  ): Promise<void> {
+    await this.userRepository.update(user.id, {
+      lastLoginAt: new Date(),
+      lastLoginIp: ip,
+      lastDevice: userAgent,
+    });
+  }
+
+  /**
+   * Called by `SyncUserGuard` when a still-valid Firebase token
+   * belongs to a disabled/archived account — the one case where a
+   * blocked sign-in is attributable to a specific known user (a bad
+   * password never reaches our backend at all; Firebase owns that
+   * failure). Best-effort by design (see the guard's call site): never
+   * allowed to interfere with the `UnauthorizedException` it's
+   * recorded alongside.
+   */
+  async recordFailedLogin(user: UserEntity): Promise<void> {
+    await this.userRepository.update(user.id, { lastFailedLoginAt: new Date() });
+  }
 }

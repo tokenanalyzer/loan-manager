@@ -1,9 +1,9 @@
-import { Column, Entity, Index, OneToOne, Unique } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToOne, Unique } from 'typeorm';
 
 import { AbstractEntity } from './abstract.entity';
 import type { CustomerProfileEntity } from './customer-profile.entity';
 import type { EmployeeProfileEntity } from './employee-profile.entity';
-import { UserRole } from './enums';
+import { AccountStatus, UserRole } from './enums';
 
 /**
  * UserEntity — shared identity record for every person in the system
@@ -80,6 +80,44 @@ export class UserEntity extends AbstractEntity {
    */
   @Column({ type: 'timestamptz', nullable: true })
   activatedAt?: Date | null;
+
+  /**
+   * Team Management lifecycle state (Phase 3) — see `AccountStatus`'s
+   * doc comment for why this coexists with `isActive` rather than
+   * replacing it. Written only by `UsersService`'s
+   * disable/archive/restore methods.
+   */
+  @Column({ type: 'enum', enum: AccountStatus, default: AccountStatus.ACTIVE })
+  status!: AccountStatus;
+
+  /** Mandatory reason captured on Disable/Archive; cleared back to null on Restore. History of every past reason lives in `audit_logs`, not here — this is "why is the account *currently* in this state." */
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  statusReason?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  statusChangedAt?: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  statusChangedById?: string | null;
+
+  @ManyToOne(() => UserEntity, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'status_changed_by_id', foreignKeyConstraintName: 'fk_users_status_changed_by' })
+  statusChangedBy?: UserEntity | null;
+
+  /** Stamped by `AuthService.recordSuccessfulLogin`, called once per fresh session (`POST /v1/auth/session`) — distinct from `lastActiveAt`, which is stamped on every authenticated request for presence tracking. */
+  @Column({ type: 'timestamptz', nullable: true })
+  lastLoginAt?: Date | null;
+
+  /** Stamped by `SyncUserGuard` when a still-valid Firebase token belongs to a disabled/archived account — a login attempt blocked by account status, not a bad password (Firebase owns password verification; we never see that failure). */
+  @Column({ type: 'timestamptz', nullable: true })
+  lastFailedLoginAt?: Date | null;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  lastLoginIp?: string | null;
+
+  /** Raw `User-Agent` header from the most recent successful login — "future-ready" placeholder for real device identification, not parsed/normalized yet. */
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  lastDevice?: string | null;
 
   @OneToOne('CustomerProfileEntity', (profile: CustomerProfileEntity) => profile.user)
   customerProfile?: CustomerProfileEntity;

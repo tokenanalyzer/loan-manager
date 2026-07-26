@@ -1,8 +1,10 @@
-import { Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { Request } from 'express';
 
 import { UserEntity } from '../database/entities';
 
+import { AuthService } from './auth.service';
 import { Auth } from './decorators/auth.decorator';
 import { CurrentAppUser } from './decorators/current-app-user.decorator';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto';
@@ -22,16 +24,29 @@ import { UserProfileResponseDto } from './dto/user-profile-response.dto';
  */
 @Controller({ path: 'auth', version: '1' })
 export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
   /**
    * Called by each client right after a successful Firebase sign-in.
    * `@Auth()`'s SyncUserGuard does the find-or-create; this handler
-   * just returns the result.
+   * additionally stamps the Phase 3 login-metadata fields (this is the
+   * one endpoint that represents an actual fresh login, as opposed to
+   * every other authenticated request) and returns the result.
    */
   @Post('session')
   @HttpCode(HttpStatus.OK)
   @Auth()
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  createSession(@CurrentAppUser() user: UserEntity): UserProfileResponseDto {
+  async createSession(
+    @CurrentAppUser() user: UserEntity,
+    @Req() request: Request,
+  ): Promise<UserProfileResponseDto> {
+    const userAgent = request.headers['user-agent'];
+    await this.authService.recordSuccessfulLogin(
+      user,
+      request.ip ?? null,
+      typeof userAgent === 'string' ? userAgent : null,
+    );
     return UserProfileResponseDto.fromEntity(user);
   }
 

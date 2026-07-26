@@ -1,8 +1,5 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { App } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { PinoLogger } from 'nestjs-pino';
 import { DataSource, Repository } from 'typeorm';
 
 import {
@@ -14,7 +11,7 @@ import {
   UserRole,
   WorkStatus,
 } from '../database/entities';
-import { FIREBASE_ADMIN_APP } from '../firebase/firebase-admin.provider';
+import { FirebaseAdminService } from '../firebase/firebase-admin.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UserRepository } from '../users/user.repository';
 
@@ -32,12 +29,18 @@ import { EmployeeProfileRepository } from './employee-profile.repository';
  * `LeadAssignmentController`-style, admin-only, always audit-logged.
  *
  * Force Logout / Disable reuse the existing Firebase session system
- * (`revokeRefreshTokens` + `FirebaseAuthGuard`'s `checkRevoked: true`)
- * rather than inventing a parallel session store. Token revocation is
- * best-effort (fast-path immediate kill) — `SyncUserGuard`'s
- * `isActive` check is the authoritative enforcement for Disable, so a
- * transient Firebase error here never leaves a disabled/force-logged-
- * out account still usable.
+ * (`revokeRefreshTokens` via `FirebaseAdminService.revokeSessions` +
+ * `FirebaseAuthGuard`'s `checkRevoked: true`) rather than inventing a
+ * parallel session store. Token revocation is best-effort (fast-path
+ * immediate kill) — `SyncUserGuard`'s `isActive` check is the
+ * authoritative enforcement for Disable, so a transient Firebase error
+ * here never leaves a disabled/force-logged-out account still usable.
+ *
+ * `disableEmployee` here predates and is narrower than Phase 3's
+ * unified Team Management lifecycle (`UsersService.disableStaffUser`,
+ * which covers every staff role, requires a reason, and is fully
+ * audit-logged with Restore support) — this one stays as the Employee
+ * Work Status module's own Admin Override action, unchanged in scope.
  */
 @Injectable()
 export class WorkStatusService {
@@ -49,11 +52,8 @@ export class WorkStatusService {
     @InjectRepository(AuditLogEntity)
     private readonly auditLogRepository: Repository<AuditLogEntity>,
     @InjectDataSource() private readonly dataSource: DataSource,
-    @Inject(FIREBASE_ADMIN_APP) private readonly firebaseApp: App | null,
-    private readonly logger: PinoLogger,
-  ) {
-    this.logger.setContext(WorkStatusService.name);
-  }
+    private readonly firebaseAdminService: FirebaseAdminService,
+  ) {}
 
   async getMyStatus(user: UserEntity): Promise<MyWorkStatusResponseDto> {
     const profile = await this.getOwnProfileOrThrow(user.id);
@@ -158,7 +158,7 @@ export class WorkStatusService {
 
   async forceLogout(employeeId: string, admin: UserEntity): Promise<void> {
     const employee = await this.getEmployeeOrThrow(employeeId);
-    await this.revokeSessions(employee.firebaseUid);
+    await this.firebaseAdminService.revokeSessions(employee.firebaseUid);
 
     await this.auditLogRepository.save(
       this.auditLogRepository.create({
@@ -173,7 +173,7 @@ export class WorkStatusService {
   async disableEmployee(employeeId: string, admin: UserEntity): Promise<void> {
     const employee = await this.getEmployeeOrThrow(employeeId);
     await this.userRepository.update(employeeId, { isActive: false });
-    await this.revokeSessions(employee.firebaseUid);
+    await this.firebaseAdminService.revokeSessions(employee.firebaseUid);
 
     await this.auditLogRepository.save(
       this.auditLogRepository.create({
@@ -228,23 +228,5 @@ export class WorkStatusService {
       throw new NotFoundException('Employee not found.');
     }
     return employee;
-  }
-
-  /**
-   * Best-effort — swallows failures (e.g. the Firebase user doesn't
-   * exist, network error) so Force Logout/Disable's DB-side effect
-   * (audit log, `isActive`) never gets rolled back by a session-kill
-   * side-channel failing. `SyncUserGuard` enforces `isActive` on every
-   * request regardless of whether this succeeds.
-   */
-  private async revokeSessions(firebaseUid: string): Promise<void> {
-    if (!this.firebaseApp) {
-      return; // Firebase not configured in this environment — consistent no-op with FirebaseAuthGuard.
-    }
-    try {
-      await getAuth(this.firebaseApp).revokeRefreshTokens(firebaseUid);
-    } catch (error) {
-      this.logger.warn({ err: error }, 'Failed to revoke Firebase sessions — proceeding anyway.');
-    }
   }
 }

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 
 import { BaseRepository } from '../common/repository/base.repository';
-import { UserEntity, UserRole } from '../database/entities';
+import { AccountStatus, UserEntity, UserRole } from '../database/entities';
 
 /**
  * UserRepository — the first concrete repository extending the
@@ -62,5 +62,22 @@ export class UserRepository extends BaseRepository<UserEntity> {
 
   async findOneWithEmployeeProfile(id: string): Promise<UserEntity | null> {
     return this.repository.findOne({ where: { id }, relations: ['employeeProfile'] });
+  }
+
+  /**
+   * Used by the last-Super-Admin guard (`UsersService`'s
+   * Disable/Archive lifecycle) — counts *other* active accounts of a
+   * role, excluding `excludingUserId`, so the caller can check "would
+   * this action leave zero active Super Admins?" without an
+   * off-by-one from counting the target itself.
+   */
+  async countActiveByRole(role: UserRole, excludingUserId?: string): Promise<number> {
+    return this.repository.count({
+      where: {
+        role,
+        status: AccountStatus.ACTIVE,
+        ...(excludingUserId ? { id: Not(excludingUserId) } : {}),
+      },
+    });
   }
 }

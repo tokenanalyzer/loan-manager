@@ -1,4 +1,4 @@
-import { UserRole } from '../../database/entities';
+import { AccountStatus, UserRole } from '../../database/entities';
 
 export class StaffUserResponseDto {
   id!: string;
@@ -6,9 +6,17 @@ export class StaffUserResponseDto {
   fullName!: string | null;
   role!: UserRole;
   isActive!: boolean;
+  status!: AccountStatus;
+  /** Non-null only while status is DISABLED/ARCHIVED — the reason captured at that transition. Cleared on Restore. */
+  statusReason!: string | null;
+  statusChangedAt!: Date | null;
   /** Null means the invite hasn't been accepted yet (no first sign-in). */
   activatedAt!: Date | null;
   invitedAt!: Date | null;
+  lastLoginAt!: Date | null;
+  lastFailedLoginAt!: Date | null;
+  lastLoginIp!: string | null;
+  lastDevice!: string | null;
   employeeCode!: string | null;
   department!: string | null;
   branch!: string | null;
@@ -19,8 +27,15 @@ export class StaffUserResponseDto {
     fullName?: string | null;
     role: UserRole;
     isActive: boolean;
+    status: AccountStatus;
+    statusReason?: string | null;
+    statusChangedAt?: Date | null;
     activatedAt?: Date | null;
     invitedAt?: Date | null;
+    lastLoginAt?: Date | null;
+    lastFailedLoginAt?: Date | null;
+    lastLoginIp?: string | null;
+    lastDevice?: string | null;
     employeeProfile?: { employeeCode: string; department?: string | null; branch?: string | null } | null;
   }): StaffUserResponseDto {
     const dto = new StaffUserResponseDto();
@@ -29,8 +44,15 @@ export class StaffUserResponseDto {
     dto.fullName = entity.fullName ?? null;
     dto.role = entity.role;
     dto.isActive = entity.isActive;
+    dto.status = entity.status;
+    dto.statusReason = entity.statusReason ?? null;
+    dto.statusChangedAt = entity.statusChangedAt ?? null;
     dto.activatedAt = entity.activatedAt ?? null;
     dto.invitedAt = entity.invitedAt ?? null;
+    dto.lastLoginAt = entity.lastLoginAt ?? null;
+    dto.lastFailedLoginAt = entity.lastFailedLoginAt ?? null;
+    dto.lastLoginIp = entity.lastLoginIp ?? null;
+    dto.lastDevice = entity.lastDevice ?? null;
     dto.employeeCode = entity.employeeProfile?.employeeCode ?? null;
     dto.department = entity.employeeProfile?.department ?? null;
     dto.branch = entity.employeeProfile?.branch ?? null;

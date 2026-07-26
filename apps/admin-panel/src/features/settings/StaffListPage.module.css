@@ -1,5 +1,7 @@
 .statusActive,
-.statusPending {
+.statusPending,
+.statusDisabled,
+.statusArchived {
   display: inline-flex;
   align-items: center;
   padding: 2px var(--space-3);
@@ -16,4 +18,36 @@
 .statusPending {
   color: var(--color-text-secondary);
   background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+}
+
+/** Reversible suspension — a caution color, distinct from Archived's more final-reading treatment. */
+.statusDisabled {
+  color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 12%, transparent);
+}
+
+/** Someone who has actually left — still not a delete, but visually the most muted/final of the four. */
+.statusArchived {
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+}
+
+.statusReason {
+  margin-top: 2px;
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-secondary);
+  max-width: 220px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.selfNote {
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-secondary);
+  font-style: italic;
 }
