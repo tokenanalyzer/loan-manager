@@ -39,6 +39,28 @@ export class StaffUserResponseDto {
 }
 
 /**
+ * Only returned from `POST /v1/users` — the invite/password-setup
+ * link is generated fresh by Firebase for that one response and
+ * deliberately never persisted (see `UsersService.createStaffUser`),
+ * so there is no way to re-fetch it later; the Admin Panel's "Copy
+ * Invite Link" action is the only chance to grab it.
+ */
+export class CreateStaffUserResponseDto extends StaffUserResponseDto {
+  inviteLink!: string;
+
+  static fromCreated(
+    entity: Parameters<typeof StaffUserResponseDto.fromEntity>[0],
+    inviteLink: string,
+  ): CreateStaffUserResponseDto {
+    const base = StaffUserResponseDto.fromEntity(entity);
+    const dto = new CreateStaffUserResponseDto();
+    Object.assign(dto, base);
+    dto.inviteLink = inviteLink;
+    return dto;
+  }
+}
+
+/**
  * Mirrors `PaginatedResult<T>`/`PaginationMeta` in
  * `packages/shared-types/src/api-response.ts` field-for-field (same
  * convention as every other backend response DTO vs. its shared-types

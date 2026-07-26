@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { EmployeeProfileEntity, UserEntity } from '../database/entities';
+import { AuditLogEntity, EmployeeProfileEntity, UserEntity } from '../database/entities';
 import { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
 
 import { UserRepository } from './user.repository';
@@ -20,9 +20,14 @@ import { UsersService } from './users.service';
  * and importing it back would be circular. TypeORM repositories are
  * stateless wrappers; providing the same repository class in two
  * modules is a normal, safe pattern.
+ *
+ * `AuditLogEntity` is registered here too (`UsersService` writes
+ * `staff_invited` rows directly via its repository — same pattern as
+ * `CustomersModule`). `FirebaseAdminService` is not listed as a
+ * provider here: it comes from the `@Global()` `FirebaseAdminModule`.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity, EmployeeProfileEntity])],
+  imports: [TypeOrmModule.forFeature([UserEntity, EmployeeProfileEntity, AuditLogEntity])],
   controllers: [UsersController],
   providers: [UserRepository, EmployeeProfileRepository, UsersService],
   exports: [UserRepository],

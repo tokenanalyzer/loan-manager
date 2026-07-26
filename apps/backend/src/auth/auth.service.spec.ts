@@ -117,3 +117,81 @@ describe('AuthService — staff invite linking', () => {
     expect(create).toHaveBeenCalledWith(expect.objectContaining({ role: UserRole.CUSTOMER }));
   });
 });
+
+/**
+ * Phase 2 (Firebase-orchestrated provisioning): a staff row created by
+ * `UsersService.createStaffUser` already has its real Firebase UID at
+ * creation time, so its first sign-in is found directly by
+ * `findByFirebaseUid` — the `syncExisting` branch, not the
+ * `activateStaffInvite` sentinel-swap path exercised above.
+ * `activatedAt` must still get stamped exactly once there, or the
+ * Admin Panel's "Invited — not signed in yet" status would never
+ * clear for these accounts.
+ */
+describe('AuthService — activatedAt stamping on direct-match first sign-in', () => {
+  function buildProvisionedRow(overrides: Partial<UserEntity> = {}): UserEntity {
+    return {
+      id: 'user-1',
+      firebaseUid: 'firebase-uid-real',
+      email: 'staff@example.com',
+      role: UserRole.EMPLOYEE,
+      isActive: true,
+      invitedAt: new Date('2026-01-01'),
+      activatedAt: null,
+      lastActiveAt: null,
+      ...overrides,
+    } as UserEntity;
+  }
+
+  function buildService(existingRow: UserEntity | null) {
+    const findByFirebaseUid = jest.fn().mockResolvedValue(existingRow);
+    const findByEmail = jest.fn().mockResolvedValue(null);
+    const create = jest.fn().mockImplementation((data) => Promise.resolve({ id: 'new-user', ...data }));
+    const update = jest
+      .fn()
+      .mockImplementation((id, patch) => Promise.resolve({ ...existingRow, id, ...patch }));
+
+    const userRepository = { findByFirebaseUid, findByEmail, create, update } as unknown as UserRepository;
+    const logger = { setContext: jest.fn(), info: jest.fn(), warn: jest.fn() } as unknown as PinoLogger;
+
+    return { service: new AuthService(userRepository, logger), update };
+  }
+
+  function buildToken(overrides: Partial<DecodedIdToken> = {}): DecodedIdToken {
+    return {
+      uid: 'firebase-uid-real',
+      email: 'staff@example.com',
+      ...overrides,
+    } as DecodedIdToken;
+  }
+
+  it('stamps activatedAt on a provisioned staff row found directly by firebaseUid', async () => {
+    const { service, update } = buildService(buildProvisionedRow());
+
+    await service.syncFromFirebaseToken(buildToken());
+
+    expect(update).toHaveBeenCalledWith('user-1', expect.objectContaining({ activatedAt: expect.any(Date) }));
+  });
+
+  it('does not re-stamp activatedAt once already set', async () => {
+    const { service, update } = buildService(
+      buildProvisionedRow({ activatedAt: new Date('2026-02-01') }),
+    );
+
+    await service.syncFromFirebaseToken(buildToken());
+
+    const patch = update.mock.calls[0][1];
+    expect(patch.activatedAt).toBeUndefined();
+  });
+
+  it('never stamps activatedAt for a CUSTOMER row', async () => {
+    const { service, update } = buildService(
+      buildProvisionedRow({ role: UserRole.CUSTOMER, invitedAt: null }),
+    );
+
+    await service.syncFromFirebaseToken(buildToken());
+
+    const patch = update.mock.calls[0][1];
+    expect(patch.activatedAt).toBeUndefined();
+  });
+});

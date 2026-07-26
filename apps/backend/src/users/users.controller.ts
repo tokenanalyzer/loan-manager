@@ -1,11 +1,15 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 
 import { Auth } from '../auth/decorators/auth.decorator';
-import { UserRole } from '../database/entities';
+import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
+import { UserEntity, UserRole } from '../database/entities';
 
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import { ListStaffQueryDto } from './dto/list-staff-query.dto';
-import { PaginatedStaffUserResponseDto, StaffUserResponseDto } from './dto/staff-user-response.dto';
+import {
+  CreateStaffUserResponseDto,
+  PaginatedStaffUserResponseDto,
+} from './dto/staff-user-response.dto';
 import { UsersService } from './users.service';
 
 /**
@@ -22,8 +26,12 @@ export class UsersController {
 
   @Post()
   @Auth(UserRole.ADMIN)
-  async create(@Body() dto: CreateStaffUserDto): Promise<StaffUserResponseDto> {
-    return this.usersService.createStaffUser(dto);
+  async create(
+    @Body() dto: CreateStaffUserDto,
+    @CurrentAppUser() actor: UserEntity,
+  ): Promise<CreateStaffUserResponseDto> {
+    const { user, inviteLink } = await this.usersService.createStaffUser(dto, actor);
+    return CreateStaffUserResponseDto.fromCreated(user, inviteLink);
   }
 
   @Get()

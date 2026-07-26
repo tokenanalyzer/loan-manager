@@ -131,11 +131,28 @@ export class AuthService {
     existing: UserEntity,
     decoded: DecodedIdToken,
   ): Promise<UserEntity> {
+    const now = new Date();
     const patch: Partial<UserEntity> = {
       // Stamped on every synced authenticated request — powers the Lead
       // Assignment module's Online/Offline presence indicator.
-      lastActiveAt: new Date(),
+      lastActiveAt: now,
     };
+
+    // Staff provisioning (`UsersService.createStaffUser`) now creates
+    // the real Firebase user up front, so a provisioned account's
+    // *first* sign-in always finds its row here (by firebaseUid)
+    // rather than through `activateStaffInvite`'s legacy sentinel-swap
+    // path. `activatedAt` still needs stamping exactly once, on that
+    // first sign-in, for the Admin Panel's Active/"Invited — not
+    // signed in yet" status to mean anything for these rows.
+    if (existing.role !== UserRole.CUSTOMER && existing.invitedAt !== null && existing.activatedAt === null) {
+      patch.activatedAt = now;
+      this.logger.info(
+        { userId: existing.id, role: existing.role },
+        'Staff invite activated (first sign-in with a Firebase-provisioned identity).',
+      );
+    }
+
     if (!existing.email && decoded.email) {
       patch.email = decoded.email;
     }
@@ -166,6 +183,7 @@ export class AuthService {
       );
       const updated = await this.userRepository.update(existing.id, {
         lastActiveAt: patch.lastActiveAt,
+        activatedAt: patch.activatedAt,
       });
       return updated ?? existing;
     }

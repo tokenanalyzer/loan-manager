@@ -1,4 +1,9 @@
-import type { CreateStaffUserPayload, PaginatedResult, StaffUser } from '@loan-manager/shared-types';
+import type {
+  CreatedStaffUser,
+  CreateStaffUserPayload,
+  PaginatedResult,
+  StaffUser,
+} from '@loan-manager/shared-types';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -14,7 +19,7 @@ export async function fetchStaff(page = 1, pageSize = 20): Promise<PaginatedResu
   return data;
 }
 
-export async function createStaffUser(payload: CreateStaffUserPayload): Promise<StaffUser> {
-  const { data } = await apiClient.post<StaffUser>('/v1/users', payload);
+export async function createStaffUser(payload: CreateStaffUserPayload): Promise<CreatedStaffUser> {
+  const { data } = await apiClient.post<CreatedStaffUser>('/v1/users', payload);
   return data;
 }

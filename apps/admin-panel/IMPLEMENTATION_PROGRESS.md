@@ -81,6 +81,65 @@ using it are byte-for-byte unchanged — this phase adds a parallel
 mechanism, it doesn't touch the one Module 1 (or the Customer App's
 session sync) already depends on.
 
+### Phase 2 — Backend-orchestrated Firebase provisioning + invite dispatch ✅ 2026-07-26
+
+**What:** `UsersService.createStaffUser` now creates the real Firebase
+Authentication user itself (via a new `FirebaseAdminService`, Admin
+SDK `createUser` + `generatePasswordResetLink`) instead of writing a
+`pending-staff:` sentinel UID for `AuthService` to lazily link on
+first sign-in. The new `users` row gets its real `firebaseUid`
+immediately — provisioning and linking are now the same step, not two.
+
+- `FirebaseAdminService` (`src/firebase/`) — `provisionStaffAccount`
+  creates the user with no password field at all (the backend never
+  generates, sees, or stores one) and generates its invite/
+  password-setup link; `deleteUser` is the rollback primitive. If link
+  generation fails after the Firebase user was created, it deletes
+  that user before rethrowing. Exported from the existing `@Global()`
+  `FirebaseAdminModule`.
+- `UsersService.createStaffUser` orchestrates: dup-email check → create
+  Firebase user → create the DB row (+ employee profile) → audit log.
+  If the DB step fails after Firebase succeeded, the Firebase user is
+  rolled back (best effort) so a failed attempt never leaves an
+  orphaned Firebase identity with no `users` row. Writes an
+  `audit_logs` row (`staff_invited`) per the same pattern
+  `CustomersService` already uses — metadata is `{ email, role,
+  firebaseUid }`, never the invite link.
+- The invite link is returned only in `POST /v1/users`'s response
+  (`CreateStaffUserResponseDto.inviteLink`) — **never persisted**. It
+  can't be re-fetched later; the Admin Panel's Team screen shows it
+  once, with a "Copy invite link" action, so the admin can send it via
+  WhatsApp/email/SMS/whatever. Built this way deliberately so a real
+  email provider (SMTP/SendGrid/SES) can be plugged in later as an
+  alternative dispatch path without changing the provisioning
+  workflow itself.
+- `AuthService.syncExisting` now also stamps `activatedAt` on a
+  provisioned (non-customer) row's first sign-in — needed because that
+  first sign-in now hits the direct `findByFirebaseUid` match (real UID
+  set at creation), not `activateStaffInvite`'s legacy sentinel-swap
+  path, which remains untouched and still handles any pre-Phase-2 rows.
+- `PENDING_STAFF_UID_PREFIX` and the sentinel/lazy-linking path are
+  kept (not removed) — dead-but-safe for any rows already created by
+  the pre-Phase-2 flow.
+
+**Verification:** backend typecheck/lint/build/tests all pass (58/58,
++14 new: `FirebaseAdminService` unit tests, `UsersService` orchestration/
+rollback/audit tests, `AuthService` activation-stamping tests);
+`shared-types` and admin-panel typecheck/build clean. Verified live
+end-to-end against the real `loan-manager-india` Firebase project:
+booted the backend, minted a real ID token for an existing test admin,
+called `POST /v1/users` — got a real Firebase-hosted invite link back
+and a `users` row with a real (non-sentinel) `firebaseUid`; minted a
+token for the new user's real UID to simulate its first sign-in against
+a protected endpoint and confirmed `activatedAt` got stamped; confirmed
+a duplicate email is rejected with 409 before Firebase is ever called.
+Test account and Firebase user deleted afterward.
+
+**Deliberately deferred:** real email/SMTP dispatch (explicit
+instruction — link-only for now, architecture leaves room for it),
+migrating `UsersController`'s `@Auth(ADMIN)` to the new
+`@AuthPermission`/`STAFF_CREATE_*` split (out of this phase's scope).
+
 ---
 
 ## Up next

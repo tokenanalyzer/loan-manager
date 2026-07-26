@@ -26,6 +26,8 @@ export function CreateStaffModal({
   const [employeeCode, setEmployeeCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const isEmployee = role === 'employee';
   const canSubmit = email.trim() !== '' && fullName.trim() !== '' && (!isEmployee || employeeCode.trim() !== '');
@@ -34,13 +36,13 @@ export function CreateStaffModal({
     setSubmitting(true);
     setError(null);
     try {
-      await createStaffUser({
+      const created = await createStaffUser({
         email: email.trim(),
         fullName: fullName.trim(),
         role,
         ...(isEmployee ? { employeeCode: employeeCode.trim() } : {}),
       });
-      onCreated();
+      setInviteLink(created.inviteLink);
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -49,6 +51,35 @@ export function CreateStaffModal({
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleCopyLink(): Promise<void> {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+  }
+
+  // The invite link is only ever in this response — it isn't stored,
+  // so it can't be re-fetched later. Once created, the modal switches
+  // to a copy-only view instead of the form.
+  if (inviteLink) {
+    return (
+      <Modal title="Staff account created" onClose={onCreated}>
+        <p>
+          <strong>{fullName.trim()}</strong> ({email.trim()}) can now sign in once they set a
+          password. Send them this one-time invite link — it won&apos;t be shown again.
+        </p>
+        <FormField label="Invite link" htmlFor="staff-invite-link">
+          <FormInput id="staff-invite-link" value={inviteLink} readOnly onFocus={(e) => e.target.select()} />
+        </FormField>
+        <FormActions>
+          <Button variant="secondary" onClick={() => void handleCopyLink()}>
+            {copied ? 'Copied!' : 'Copy invite link'}
+          </Button>
+          <Button onClick={onCreated}>Done</Button>
+        </FormActions>
+      </Modal>
+    );
   }
 
   return (
