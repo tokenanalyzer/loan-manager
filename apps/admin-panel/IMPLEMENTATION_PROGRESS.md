@@ -421,12 +421,64 @@ follow-up, not done here).
 
 ---
 
+## Module 4 — Document Versioning (immutable upload history) ✅ 2026-07-27
+
+**What:** backend data-model only, no UI this phase (explicitly deferred by
+the user). Every uploaded document now becomes an immutable
+`DocumentVersionEntity` row; `DocumentEntity.currentVersionId` points at
+whichever is latest. Fixes a real, previously-undocumented gap: replacing
+a document in an occupied slot used to delete the old storage file and
+overwrite its row in place, permanently destroying history — this made
+every planned future feature (Version History, Rollback, per-version
+Verification History, AI/OCR reprocessing, Re-upload comparison, bank
+compliance review) impossible to build later without a break in the data.
+
+- `DocumentEntity` keeps its exact existing shape (a live mirror of the
+  current version) so every existing reader — the loan-approval gate
+  (`getBlockingDocumentsForApproval`), `buildOverview`, the streaming/
+  download endpoints, and the already-built Document Management Center
+  UI (`DocumentManagementCenter.tsx`/`VerificationModal.tsx`) — needed
+  **zero changes**. Only the three write paths changed: `upload()`'s
+  replace branch (stopped deleting the old file; now creates a new
+  version and marks the previous one `supersededAt`), `upload()`'s
+  brand-new-slot branch (now transactional, creates version 1),
+  and `updateVerification()` (now updates both the document row and its
+  current version).
+- `delete()` is unchanged in intent (a customer explicitly removing a
+  document type from their application, a different action from
+  replace/re-upload) but now cleans up every version's storage file, not
+  just the current one.
+- New minimal read endpoint, `GET /v1/documents/staff/:id/versions`
+  (staff-only, same access pattern as the existing audit endpoint) —
+  proves the data model works end-to-end without building any Version
+  History/Rollback/Comparison UI.
+- Existing rows backfilled as version 1 of themselves in the same
+  migration set.
+
+**Verification:** backend typecheck/lint/tests all pass (128/128, +6 new
+Document Versioning scenarios: replace never deletes the old file,
+replace creates a new version and marks the old one superseded, a
+brand-new upload creates exactly one version, `updateVerification`
+updates both rows, `delete` removes every version's file); migration
+verified live against the dev database — 42/42 pre-existing documents
+backfilled with a matching version-1 row and identical file data,
+`current_version_id` set on all of them — then a full `migration:run` →
+`revert` → `run` cycle to confirm `down` is symmetric. `shared-types` and
+admin-panel typecheck/lint/build all clean (zero UI behavior change, as
+intended — `DocumentMetadata.currentVersionId` is inert until a future
+Version History UI reads it).
+
+**Deliberately out of scope this module:** the Version History/Rollback/
+Comparison/OCR-reprocessing UI itself — data-model support only, per
+explicit instruction.
+
+---
+
 ## Up next
 
 Per the approved blueprint's build order, and the confirmed post-Phase-5
-roadmap: Document Versioning fix (small, urgent — see the Document
-Management memory note), then the Design System foundation, then ZIP
-export + Case Summary PDF, then the remaining queued modules — Customer
-360 (retires the KYC review screens currently orphaned in the frozen
-legacy Flutter Employee App), the Lead Pipeline/Documents visual pass,
-Banks &amp; Partners, Analytics, and Audit Log.
+roadmap: the Design System foundation, then ZIP export + Case Summary
+PDF, then the remaining queued modules — Customer 360 (retires the KYC
+review screens currently orphaned in the frozen legacy Flutter Employee
+App), the Lead Pipeline/Documents visual pass, Banks &amp; Partners,
+Analytics, and Audit Log.
