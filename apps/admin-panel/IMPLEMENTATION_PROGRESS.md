@@ -361,9 +361,72 @@ established workflow for this module — not yet run in this session.
 
 ---
 
+## Module 3 — Case Number (permanent Business ID) ✅ 2026-07-27
+
+**What:** every Loan Application now gets a permanent `LM-{year}-{6-digit}`
+identifier — the primary business identifier staff use to reference a
+case, distinct from the internal UUID. Locked as an architectural
+requirement before further CRM modules are built, so future screens
+(Customer 360, Reports, Analytics, the Document Center) get it for free
+from the API response rather than needing a retrofit. Confirmed as part
+of this work: the backend was already case-centric (a customer can
+already have multiple independent `LoanApplicationEntity` rows — no
+domain-model redesign was needed, this was purely additive).
+
+- New `case_number_counters` table (one row per calendar year) —
+  incremented via a single atomic `INSERT ... ON CONFLICT ... DO UPDATE
+  ... RETURNING` statement (`CaseNumberService.generate`,
+  `apps/backend/src/loan-applications/case-number.service.ts`). This is
+  a deliberately stronger mechanism than the existing
+  `LoanRepository.generateLoanNumber()` (random + DB-constraint-as-
+  safety-net, which tolerates collisions) — Case Number's "generated
+  atomically"/"never reused" requirements aren't met by that pattern,
+  so a different one was built rather than reusing it; `loanNumber`
+  itself is untouched (different identifier, unrelated scope).
+- `LoanApplicationsService.submit()` now runs inside its own
+  `dataSource.transaction` — the counter increment and the application
+  insert commit or roll back together, so a failed submission never
+  "burns" a case number against a row that doesn't exist. Migration
+  `1783774500000-AddCaseNumberCounters` + `1783774600000-AddCaseNumberToLoanApplications`
+  (the latter also backfills every pre-existing application, sequentially
+  per year in `submitted_at` order, and seeds the counter table from the
+  backfilled counts).
+- Surfaced on `LoanApplicationResponseDto` (the one response DTO both
+  `LoanApplicationsController` and `LeadAssignmentController` already
+  share) and in the three existing customer notification bodies
+  (approve/query/reject/disburse). Admin Panel: new "Case Number" column
+  + search term on both `LeadsPage` and `MyLeadsPage`, shown first in
+  `LeadDetailPage`'s header.
+
+**Verification:** backend typecheck/lint/tests all pass (122/122, +5
+new `CaseNumberService` tests, plus the updated `submit()` gate tests in
+`loan-applications.service.spec.ts`); both migrations verified live
+against the dev database — 15 pre-existing applications backfilled
+correctly to `LM-2026-000001` through `LM-2026-000015` in submission
+order, `case_number_counters` seeded to `{ year: 2026, last_value: 15 }`
+(confirmed by direct query) — then a full `migration:run` → `revert` →
+`revert` → `run` cycle to confirm both `down`s are symmetric.
+`shared-types` and admin-panel typecheck/lint/build all clean. Live
+end-to-end verification (submitting a new application and confirming it
+continues the sequence at `LM-2026-000016`) is the user's own next
+manual pass.
+
+**Deliberately out of scope this module:** every other requested
+surface (Customer 360, Documents, Timeline, Bank Submission, Reports,
+Analytics, Print, Export) — those screens don't exist yet per the
+roadmap below; they inherit `caseNumber` automatically once built, no
+further backend work needed. Also out of scope: aligning `loanNumber`
+to the same atomic-counter pattern (flagged as a low-priority future
+follow-up, not done here).
+
+---
+
 ## Up next
 
-Per the approved blueprint's build order: Customer 360 (retires the
-KYC review screens currently orphaned in the frozen legacy Flutter
-Employee App), then the Lead Pipeline/Documents visual pass, then Banks
-&amp; Partners, then Analytics, then Audit Log.
+Per the approved blueprint's build order, and the confirmed post-Phase-5
+roadmap: Document Versioning fix (small, urgent — see the Document
+Management memory note), then the Design System foundation, then ZIP
+export + Case Summary PDF, then the remaining queued modules — Customer
+360 (retires the KYC review screens currently orphaned in the frozen
+legacy Flutter Employee App), the Lead Pipeline/Documents visual pass,
+Banks &amp; Partners, Analytics, and Audit Log.
