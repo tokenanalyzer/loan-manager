@@ -62,6 +62,49 @@ export interface DocumentAuditEntry {
   createdAt: string;
 }
 
+/** Mirrors the backend's `DocumentVersionResponseDto` — one entry in a document's immutable upload history. */
+export interface DocumentVersion {
+  id: string;
+  versionNumber: number;
+  originalFileName: string;
+  mimeType: string | null;
+  fileSizeBytes: string | null;
+  uploadedAt: string;
+  uploadedById: string | null;
+  uploadedByName: string | null;
+  verificationStatus: DocumentVerificationStatus;
+  verificationNote: string | null;
+  verifiedById: string | null;
+  verifiedByName: string | null;
+  verifiedAt: string | null;
+  /** Null = this is the current version (or was never superseded, e.g. a backfilled row). */
+  supersededAt: string | null;
+}
+
+/**
+ * Mirrors the backend's `DocumentCenterEntryDto` — one row of the
+ * Enterprise Document Center's platform-wide listing
+ * (`GET /v1/documents/staff`). Adds `ownerId`/`ownerName` on top of
+ * what Customer 360's per-customer document view needed, since the
+ * Document Center spans every customer at once.
+ */
+export interface DocumentCenterEntry {
+  id: string;
+  originalFileName: string;
+  mimeType: string | null;
+  category: string | null;
+  typeLabel: string | null;
+  uploadedAt: string;
+  fileSizeBytes: string | null;
+  verificationStatus: DocumentVerificationStatus;
+  verifiedByName: string | null;
+  verifiedAt: string | null;
+  currentVersionNumber: number | null;
+  uploadedByName: string | null;
+  ownerId: string;
+  ownerName: string | null;
+}
+
 /** Why a required document type is blocking loan approval — mirrors the backend's `BlockingDocumentReason`. */
 export type BlockingDocumentReason = 'missing' | 'pending' | 'rejected' | 'reupload_requested';
 

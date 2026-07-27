@@ -1,7 +1,9 @@
 import type {
   DocumentAuditEntry,
+  DocumentCenterEntry,
   DocumentsOverview,
   DocumentVerificationStatus,
+  DocumentVersion,
 } from '@loan-manager/shared-types';
 
 import { apiClient } from '../../lib/api-client';
@@ -18,6 +20,24 @@ export async function fetchCustomerDocuments(customerId: string): Promise<Docume
   const { data } = await apiClient.get<DocumentsOverview>(
     `/v1/documents/staff/customer/${customerId}`,
   );
+  return data;
+}
+
+/** Enterprise Document Center — every document the caller can see, optionally filtered. */
+export async function fetchAllDocuments(filters: {
+  category?: string;
+  verificationStatus?: DocumentVerificationStatus;
+  search?: string;
+}): Promise<DocumentCenterEntry[]> {
+  const { data } = await apiClient.get<DocumentCenterEntry[]>('/v1/documents/staff', {
+    params: filters,
+  });
+  return data;
+}
+
+/** Version History — every immutable upload for a document, newest first. Reuses the existing (previously unused) versions endpoint. */
+export async function fetchDocumentVersions(documentId: string): Promise<DocumentVersion[]> {
+  const { data } = await apiClient.get<DocumentVersion[]>(`/v1/documents/staff/${documentId}/versions`);
   return data;
 }
 

@@ -5,6 +5,7 @@ import { PendingApprovalsPage } from '../features/approvals/PendingApprovalsPage
 import { LoginPage } from '../features/auth/LoginPage';
 import { CustomerDetailPage } from '../features/customers/CustomerDetailPage';
 import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
+import { DocumentCenterPage } from '../features/documents/DocumentCenterPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { StaffListPage } from '../features/settings/StaffListPage';
@@ -122,17 +123,21 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      // Design System Foundation, Phase 1 — "Coming Soon" placeholders for
-      // nav items that ship in the shell for visual completeness but have
-      // no real screen yet. See navigation.config.ts's `comingSoon` flag.
       {
+        // Enterprise Document Center — platform-wide, unlike Customer
+        // 360's embedded per-customer view. Employees see it scoped to
+        // their assigned customers (same backend rule as everywhere
+        // else); Admin sees everything.
         path: 'documents',
         element: (
-          <ProtectedRoute roles={['admin']}>
-            <ComingSoonPage title="Documents" />
+          <ProtectedRoute roles={['admin', 'employee']}>
+            <DocumentCenterPage />
           </ProtectedRoute>
         ),
       },
+      // Design System Foundation, Phase 1 — "Coming Soon" placeholders for
+      // nav items that ship in the shell for visual completeness but have
+      // no real screen yet. See navigation.config.ts's `comingSoon` flag.
       {
         path: 'tasks',
         element: (

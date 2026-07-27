@@ -10,6 +10,7 @@ import {
 import { LoanApplicationsModule } from '../loan-applications/loan-applications.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
+import { DocumentCenterService } from './document-center.service';
 import { DocumentTypeRepository } from './document-type.repository';
 import { DocumentTypesController } from './document-types.controller';
 import { DocumentTypesService } from './document-types.service';
@@ -35,6 +36,7 @@ import { DocumentsService } from './documents.service';
     DocumentVersionRepository,
     DocumentsService,
     DocumentTypesService,
+    DocumentCenterService,
   ],
   exports: [DocumentsService, DocumentTypesService],
 })

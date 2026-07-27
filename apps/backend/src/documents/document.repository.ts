@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { BaseRepository } from '../common/repository/base.repository';
-import { DocumentEntity } from '../database/entities';
+import { DocumentCategory, DocumentEntity } from '../database/entities';
+
+/** Safety cap on the Enterprise Document Center's unpaginated listing — well above real data volumes today, just a defensive ceiling. */
+const DOCUMENT_CENTER_LIMIT = 500;
 
 @Injectable()
 export class DocumentRepository extends BaseRepository<DocumentEntity> {
@@ -70,5 +73,50 @@ export class DocumentRepository extends BaseRepository<DocumentEntity> {
     // Entity property name, not raw column — see the identical note on
     // `LoanApplicationRepository.search`'s own `.orderBy()`.
     return qb.orderBy('document.uploadedAt', 'DESC').take(limit).getMany();
+  }
+
+  /**
+   * The Enterprise Document Center's platform-wide listing — every
+   * document, not one customer's (generalizes `findAllByOwnerWithDetails`
+   * to many/all owners), with the same category/type/owner relations
+   * List/Grid/Folder views and the row actions all need. `allowedOwnerIds`
+   * scopes to an employee's assigned customers; omitted for Admin.
+   */
+  async findAllWithDetails(filters: {
+    allowedOwnerIds?: string[];
+    category?: DocumentCategory;
+    verificationStatus?: 'pending' | 'verified' | 'rejected' | 'reupload_requested';
+    search?: string;
+  }): Promise<DocumentEntity[]> {
+    if (filters.allowedOwnerIds && filters.allowedOwnerIds.length === 0) return [];
+
+    const qb = this.repository
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.documentTypeRef', 'documentTypeRef')
+      .leftJoinAndSelect('document.owner', 'owner')
+      .leftJoinAndSelect('document.verifiedBy', 'verifiedBy')
+      .leftJoinAndSelect('document.currentVersion', 'currentVersion')
+      .leftJoinAndSelect('currentVersion.uploadedBy', 'uploadedBy');
+
+    if (filters.allowedOwnerIds) {
+      qb.andWhere('document.owner_id IN (:...allowedOwnerIds)', { allowedOwnerIds: filters.allowedOwnerIds });
+    }
+    if (filters.category) {
+      qb.andWhere('documentTypeRef.category = :category', { category: filters.category });
+    }
+    if (filters.verificationStatus) {
+      qb.andWhere('document.verification_status = :verificationStatus', {
+        verificationStatus: filters.verificationStatus,
+      });
+    }
+    if (filters.search?.trim()) {
+      const lower = `%${filters.search.trim().toLowerCase()}%`;
+      qb.andWhere(
+        '(LOWER(document.original_file_name) LIKE :lower OR LOWER(documentTypeRef.label) LIKE :lower OR LOWER(owner.full_name) LIKE :lower)',
+        { lower },
+      );
+    }
+
+    return qb.orderBy('document.uploadedAt', 'DESC').take(DOCUMENT_CENTER_LIMIT).getMany();
   }
 }

@@ -43,6 +43,10 @@ const PATHS = {
   barChart: 'M4 20V10M12 20V4M20 20v-7',
   trendUp: 'M3 17l6-6 4 4 8-8M15 7h6v6',
   trendDown: 'M3 7l6 6 4-4 8 8M15 17h6v-6',
+  // Enterprise Document Center — List/Grid/Folder view toggle.
+  list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z',
 } as const;
 
 export type IconName = keyof typeof PATHS;

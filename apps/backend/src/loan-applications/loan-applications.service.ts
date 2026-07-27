@@ -278,6 +278,19 @@ export class LoanApplicationsService {
   }
 
   /**
+   * Same Secure Access rule as `isEmployeeAssignedToCustomer`, but for
+   * "every customer this employee may see" rather than one at a time —
+   * the Enterprise Document Center's employee-scoping needs the full
+   * set up front, not a per-document check. Thin delegate: the actual
+   * query already exists (`LoanApplicationRepository.
+   * findDistinctApplicantIdsAssignedTo`, built for Global Search's own
+   * employee scoping) — not duplicated here, just reused.
+   */
+  async getAssignedApplicantIds(employeeId: string): Promise<string[]> {
+    return this.loanApplicationRepository.findDistinctApplicantIdsAssignedTo(employeeId);
+  }
+
+  /**
    * Employee Workspace — replaces the lead's internal note. Ownership
    * is re-checked here (not just at the controller's `@Auth`) for the
    * same reason as `findOneForUser`: this is the "Lead Locking"

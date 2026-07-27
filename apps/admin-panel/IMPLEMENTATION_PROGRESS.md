@@ -822,16 +822,67 @@ dialog cleanly.
 
 ---
 
+## Module 9 — Enterprise Document Center (remaining Phase 5 scope) ✅ 2026-07-27
+
+**What:** the platform-wide Document Center (`/documents`, previously a
+placeholder) — every document across every customer, in one place.
+List/Grid/Folder views, search, category/verification-status filters,
+bulk actions (Mark Verified, Delete — Admin-only for delete), and every
+per-document action already built for Customer 360
+(Preview/Download/Verify/Request-Reupload/Delete/Audit), **plus one
+genuinely new one**: Version History, wired to the
+`GET /v1/documents/staff/:id/versions` endpoint that had existed since
+the Document Versioning phase but never had a UI — now live via a new
+`VersionHistoryModal`, reused as-is in both the Document Center and
+retrofitted into Customer 360's `DocumentManagementCenter` (built once,
+used in both places, per the explicit "do not duplicate" instruction).
+
+**Backend — one new listing endpoint**, `GET /v1/documents/staff`
+(`DocumentCenterService`, new — kept separate from the 700+-line
+`DocumentsService` rather than growing it further, mirroring
+`CustomerOverviewService`'s "one service per aggregate concern"
+precedent). `DocumentRepository.findAllWithDetails` generalizes the
+existing `findAllByOwnerWithDetails` to many/all owners with
+category/status/search filters. Employee scoping reuses Global
+Search's own `LoanApplicationRepository.findDistinctApplicantIdsAssignedTo`
+via a new one-line delegate on `LoanApplicationsService`
+(`getAssignedApplicantIds`) — the underlying query already existed,
+this just exposes it to a second caller. New `DocumentCenterEntryDto`
+adds `ownerId`/`ownerName` on top of the same field set Customer 360's
+`CustomerOverviewDocumentDto` already established, since the Document
+Center is the one place a document's owner needs to be shown at all.
+
+**A real bug found and fixed during live verification:** the per-row
+"more actions" `DropdownMenu` (Version History/Audit/Delete) opened
+correctly in the DOM but was **visually clipped** — `DataTable`'s own
+`overflow-x: auto` wrapper forces `overflow-y` away from `visible` per
+the CSS spec, clipping any popover that opens inside one of its cells.
+Fixed by switching the table's row actions to plain inline buttons
+(matching `DocumentManagementCenter`'s own already-proven pattern
+exactly, which never used a dropdown) — `DropdownMenu` stays safely in
+the Grid view's cards, which aren't inside a scrolling table. Worth
+remembering for any future "actions menu inside a `DataTable` cell."
+
+**Verified:** backend — 143/143 tests pass (2 new: employee scoping
+applied, admin unrestricted). Frontend — typecheck/lint/build clean.
+Live end-to-end in Chrome against the real seeded account: all 42 real
+documents render correctly in List (paginated, 3 pages), Grid, and
+Folder (grouped by the 7 real `DocumentCategory` values, counts
+matching) views; every row action opens correctly, including the new
+Version History modal showing real version data; search ("Zainul")
+correctly filtered to that customer's documents only.
+
+---
+
 ## Up next
 
-Per the confirmed Phase 3–8 roadmap: **Phase 7 — Reports** next
+Per the confirmed Phase 3–8 roadmap, the entire original scope is now
+complete except Phase 8 (Settings). **Phase 7 — Reports** next
 (real-data subset only: Monthly Applications, Approval/Rejection Rate,
 Application Status, Employee Performance, Document Verification
 Statistics — reusing `dashboard-data.ts`'s aggregation approach), then
-Phase 8 (Settings — Document Types + Profile only). The standalone
-platform-wide Document Center (List/Grid/Folder views over every
-document, not just one customer's — the remainder of the original
-Phase 5 scope) is still open and can be picked up separately.
+Phase 8 (Settings — Document Types + Profile only, since
+`DocumentTypesController` already exists fully built and unused).
 Task Management, Branch Management, Revenue/Finance, Loan Products,
 dynamic RBAC, and Email Templates remain explicitly deferred — no
 backend domain exists for any

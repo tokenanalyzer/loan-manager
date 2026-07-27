@@ -29,7 +29,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: 'home', roles: ['admin'] },
   { label: 'Leads', path: '/leads', icon: 'inbox', roles: ['admin'] },
   { label: 'Applications', path: '/applications', icon: 'document', roles: ['admin'] },
-  { label: 'Documents', path: '/documents', icon: 'upload', roles: ['admin'], comingSoon: true },
+  { label: 'Documents', path: '/documents', icon: 'upload', roles: ['admin', 'employee'] },
   { label: 'Approvals', path: '/settings/approvals', icon: 'shieldCheck', roles: ['admin'] },
   { label: 'Tasks', path: '/tasks', icon: 'checkCircle', roles: ['admin'], comingSoon: true },
   { label: 'Customers', path: '/customers', icon: 'people', roles: ['admin'], comingSoon: true },

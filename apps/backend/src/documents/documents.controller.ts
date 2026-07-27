@@ -18,12 +18,14 @@ import type { Response } from 'express';
 
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
-import { UserEntity, UserRole } from '../database/entities';
+import { DocumentCategory, UserEntity, UserRole } from '../database/entities';
 import { StorageService } from '../storage/storage.service';
 
+import { DocumentCenterService } from './document-center.service';
 import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_FILE_SIZE_BYTES } from './documents.constants';
 import { DocumentsService } from './documents.service';
 import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
+import { DocumentCenterEntryDto } from './dto/document-center-entry.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
 import { DocumentVersionResponseDto } from './dto/document-version-response.dto';
 import { DocumentsOverviewResponseDto } from './dto/documents-overview-response.dto';
@@ -41,8 +43,30 @@ import { UploadDocumentDto } from './dto/upload-document.dto';
 export class DocumentsController {
   constructor(
     private readonly documentsService: DocumentsService,
+    private readonly documentCenterService: DocumentCenterService,
     private readonly storageService: StorageService,
   ) {}
+
+  /**
+   * The Enterprise Document Center's platform-wide listing — every
+   * document the caller can see (Admin: all; Employee: their assigned
+   * customers' only), optionally filtered. Distinct from `staff/
+   * customer/:customerId` below, which is Customer 360's per-customer
+   * view — Nest routes by exact segment count, so `staff` alone never
+   * collides with `staff/customer/:customerId` regardless of
+   * declaration order.
+   */
+  @Get('staff')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async listForDocumentCenter(
+    @CurrentAppUser() requester: UserEntity,
+    @Query('category') category?: DocumentCategory,
+    @Query('verificationStatus')
+    verificationStatus?: 'pending' | 'verified' | 'rejected' | 'reupload_requested',
+    @Query('search') search?: string,
+  ): Promise<DocumentCenterEntryDto[]> {
+    return this.documentCenterService.list(requester, { category, verificationStatus, search });
+  }
 
   @Get()
   @Auth(UserRole.CUSTOMER)

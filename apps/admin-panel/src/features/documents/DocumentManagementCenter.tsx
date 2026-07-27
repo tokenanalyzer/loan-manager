@@ -20,6 +20,7 @@ import {
   updateDocumentVerification,
 } from './documents-api';
 import { VerificationModal } from './VerificationModal';
+import { VersionHistoryModal } from './VersionHistoryModal';
 
 interface FlatDocument {
   id: string;
@@ -94,6 +95,7 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
     null,
   );
   const [viewingAudit, setViewingAudit] = useState<FlatDocument | null>(null);
+  const [viewingVersions, setViewingVersions] = useState<FlatDocument | null>(null);
   const [deleting, setDeleting] = useState<FlatDocument | null>(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -239,6 +241,11 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
                 Audit
               </Button>
             )}
+            {canVerify && (
+              <Button size="sm" variant="secondary" onClick={() => setViewingVersions(doc)}>
+                Versions
+              </Button>
+            )}
             {canDelete && (
               <Button size="sm" variant="danger" onClick={() => setDeleting(doc)}>
                 Delete
@@ -277,6 +284,14 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
           busy={verifyBusy}
           onSubmit={(status, note) => void handleVerifySubmit(status, note)}
           onClose={() => setVerifying(null)}
+        />
+      )}
+
+      {viewingVersions && (
+        <VersionHistoryModal
+          documentId={viewingVersions.id}
+          fileName={viewingVersions.originalFileName}
+          onClose={() => setViewingVersions(null)}
         />
       )}
 
