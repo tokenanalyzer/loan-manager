@@ -6,7 +6,7 @@
 
 .sectionTitle {
   font-size: var(--font-size-title-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-primary);
 }
 
@@ -24,7 +24,7 @@
 
 .label {
   font-size: var(--font-size-label-md);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text-secondary);
 }
 
@@ -36,11 +36,15 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-control);
   padding: var(--space-3) var(--space-4);
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .input:focus {
   outline: none;
-  border-color: var(--color-primary);
+  border-color: var(--color-accent-electric);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
 }
 
 .error {

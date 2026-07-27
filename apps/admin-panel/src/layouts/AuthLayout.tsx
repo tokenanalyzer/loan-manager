@@ -1,7 +1,9 @@
+import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 
 import { Card } from '../components/ui/Card';
 import { APP_NAME } from '../core/constants';
+import { slideUpVariants } from '../theme/motion';
 
 import styles from './AuthLayout.module.css';
 
@@ -15,14 +17,14 @@ export function AuthLayout({
 }): JSX.Element {
   return (
     <div className={styles.page}>
-      <div className={styles.card}>
+      <motion.div className={styles.card} variants={slideUpVariants} initial="initial" animate="animate">
         <div className={styles.brand}>
           <span className={styles.brandMark}>{APP_NAME.charAt(0)}</span>
           <h1 className={styles.title}>{APP_NAME}</h1>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>
         <Card>{children}</Card>
-      </div>
+      </motion.div>
     </div>
   );
 }

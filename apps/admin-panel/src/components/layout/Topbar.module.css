@@ -18,12 +18,54 @@
   align-items: center;
   gap: var(--space-4);
   min-width: 0;
+  flex-shrink: 0;
+}
+
+.search {
+  flex: 1;
+  max-width: 440px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--color-text-tertiary);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body-md);
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-4) var(--space-2) calc(var(--space-4) + 20px);
+  transition:
+    border-color var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.searchInput:focus {
+  outline: none;
+  background: var(--color-surface);
+  border-color: var(--color-accent-electric-light);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
 }
 
 .right {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
+  flex-shrink: 0;
 }
 
 .menuButton {
@@ -40,8 +82,59 @@
   background: var(--color-background);
 }
 
+.iconButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color var(--motion-duration-fast) var(--motion-ease-standard),
+    color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.iconButton:hover {
+  background: var(--color-background);
+  color: var(--color-accent-electric);
+}
+
+.iconButton:disabled {
+  cursor: default;
+}
+
+.iconButton:disabled:hover {
+  background: none;
+  color: var(--color-text-secondary);
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-error);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   .menuButton {
     display: inline-flex;
+  }
+
+  .search {
+    display: none;
   }
 }

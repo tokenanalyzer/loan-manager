@@ -1,4 +1,5 @@
 import { Button } from './Button';
+import { FormActions } from './FormLayout';
 import { Modal } from './Modal';
 
 /** Shared confirm-before-destructive-action dialog, built on the same Modal shell. */
@@ -22,21 +23,14 @@ export function ConfirmDialog({
   return (
     <Modal title={title} onClose={onCancel}>
       <p>{message}</p>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 'var(--space-3)',
-          marginTop: 'var(--space-4)',
-        }}
-      >
+      <FormActions>
         <Button variant="secondary" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
         <Button variant={variant} onClick={onConfirm} disabled={busy}>
           {busy ? 'Working…' : confirmLabel}
         </Button>
-      </div>
+      </FormActions>
     </Modal>
   );
 }

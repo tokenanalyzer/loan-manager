@@ -1,7 +1,9 @@
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 
 import { getNavItemsForRole } from '../app/navigation.config';
+import { useNavCounts } from '../app/useNavCounts';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Topbar } from '../components/layout/Topbar';
 import { useAuth } from '../core/auth-context';
@@ -9,6 +11,7 @@ import { BreakModeOverlay } from '../features/work-status/BreakModeOverlay';
 import { ForceResumeBanner } from '../features/work-status/ForceResumeBanner';
 import { StatusSwitcher } from '../features/work-status/StatusSwitcher';
 import { useWorkStatusGate } from '../features/work-status/useWorkStatusGate';
+import { backdropVariants, fadeVariants, slideUpVariants } from '../theme/motion';
 
 import styles from './AppLayout.module.css';
 
@@ -25,13 +28,20 @@ import styles from './AppLayout.module.css';
  */
 export function AppLayout(): JSX.Element {
   const { profile } = useAuth();
+  const location = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isEmployee = profile?.role === 'employee';
   const workStatus = useWorkStatusGate(isEmployee);
 
-  const items = getNavItemsForRole(profile?.role);
+  const isAdmin = profile?.role === 'admin';
+  const navCounts = useNavCounts(isAdmin);
+  const items = getNavItemsForRole(profile?.role).map((item) => ({
+    ...item,
+    count:
+      item.path === '/leads' ? navCounts.leads : item.path === '/settings/approvals' ? navCounts.approvals : undefined,
+  }));
 
   if (isEmployee && workStatus.status?.isOnBreak) {
     return <BreakModeOverlay status={workStatus.status} onEndBreak={workStatus.end} />;
@@ -47,14 +57,20 @@ export function AppLayout(): JSX.Element {
         onToggleCollapse={() => setIsCollapsed((value) => !value)}
       />
 
-      {isMobileOpen && (
-        <button
-          type="button"
-          aria-label="Close navigation"
-          className={`${styles.scrim} ${styles.scrimVisible}`}
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.button
+            type="button"
+            aria-label="Close navigation"
+            className={`${styles.scrim} ${styles.scrimVisible}`}
+            onClick={() => setIsMobileOpen(false)}
+            variants={backdropVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+          />
+        )}
+      </AnimatePresence>
 
       <div className={styles.main}>
         <Topbar
@@ -70,13 +86,27 @@ export function AppLayout(): JSX.Element {
           }
         />
         <div className={styles.content}>
-          {workStatus.forceResumeMessage && (
-            <ForceResumeBanner
-              message={workStatus.forceResumeMessage}
-              onDismiss={workStatus.dismissForceResumeMessage}
-            />
-          )}
-          <Outlet />
+          <AnimatePresence>
+            {workStatus.forceResumeMessage && (
+              <motion.div variants={slideUpVariants} initial="initial" animate="animate" exit="exit">
+                <ForceResumeBanner
+                  message={workStatus.forceResumeMessage}
+                  onDismiss={workStatus.dismissForceResumeMessage}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={location.pathname}
+              variants={fadeVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+            >
+              <Outlet />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

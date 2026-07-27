@@ -5,6 +5,14 @@ import { Icon } from '../ui/Icon';
 
 import styles from './Sidebar.module.css';
 
+export interface SidebarNavItem {
+  label: string;
+  path: string;
+  icon: Parameters<typeof Icon>[0]['name'];
+  /** Optional live count badge (e.g. unassigned leads, pending approvals) — omitted entirely when undefined, never rendered as 0 by default. */
+  count?: number;
+}
+
 /**
  * Responsive sidebar: an off-canvas drawer on mobile (`isOpen`/`onClose`),
  * a collapsible icon-only rail on desktop (`isCollapsed`/`onToggleCollapse`).
@@ -16,7 +24,7 @@ export function Sidebar({
   isCollapsed,
   onToggleCollapse,
 }: {
-  items: { label: string; path: string; icon: Parameters<typeof Icon>[0]['name'] }[];
+  items: SidebarNavItem[];
   isOpen: boolean;
   onClose: () => void;
   isCollapsed: boolean;
@@ -43,8 +51,15 @@ export function Sidebar({
               [styles.link, isActive ? styles.linkActive : ''].filter(Boolean).join(' ')
             }
           >
-            <Icon name={item.icon} size={18} />
-            {!isCollapsed && <span>{item.label}</span>}
+            <span className={styles.linkIcon}>
+              <Icon name={item.icon} size={18} />
+            </span>
+            {!isCollapsed && (
+              <>
+                <span className={styles.linkLabel}>{item.label}</span>
+                {item.count != null && <span className={styles.badge}>{item.count}</span>}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

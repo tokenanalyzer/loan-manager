@@ -21,13 +21,14 @@
   align-items: center;
   color: var(--color-text-secondary);
   text-decoration: none;
+  transition: color var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .crumb:hover {
-  color: var(--color-primary);
+  color: var(--color-accent-electric);
 }
 
 .current {
   color: var(--color-text-primary);
-  font-weight: 500;
+  font-weight: 600;
 }

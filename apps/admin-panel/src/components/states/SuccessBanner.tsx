@@ -1,8 +1,6 @@
-import { Icon } from '../ui/Icon';
+import { Alert } from '../ui/Alert';
 
-import styles from './States.module.css';
-
-/** Dismissible, self-contained confirmation banner for an action that just completed (e.g. "Employee disabled."). Peer to ErrorState/EmptyState/LoadingState. */
+/** Dismissible, self-contained confirmation banner for an action that just completed (e.g. "Employee disabled."). Thin wrapper around the shared `Alert` primitive — kept as its own named export since every call site already imports it this way. */
 export function SuccessBanner({
   message,
   onDismiss,
@@ -10,13 +8,5 @@ export function SuccessBanner({
   message: string;
   onDismiss: () => void;
 }): JSX.Element {
-  return (
-    <div className={styles.success} role="status">
-      <Icon name="checkCircle" size={20} />
-      <span className={styles.successMessage}>{message}</span>
-      <button type="button" className={styles.successDismiss} onClick={onDismiss} aria-label="Dismiss">
-        <Icon name="close" size={16} />
-      </button>
-    </div>
-  );
+  return <Alert variant="success" message={message} onDismiss={onDismiss} />;
 }

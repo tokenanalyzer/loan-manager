@@ -7,6 +7,16 @@ export interface NavItem {
   path: string;
   icon: IconName;
   roles: UserRole[];
+  /**
+   * Marks a nav item whose route is a "Coming Soon" placeholder rather
+   * than a real screen (Design System Foundation, Phase 1) — Customers,
+   * Reports, and a general Settings hub don't exist as built screens
+   * yet, "Applications" has no distinct view from Leads yet, and
+   * "Tasks" has no backend concept at all. Wiring real screens behind
+   * these is Phase 4 (or later) work, tracked in
+   * apps/admin-panel/IMPLEMENTATION_PROGRESS.md.
+   */
+  comingSoon?: boolean;
 }
 
 /**
@@ -18,9 +28,15 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: 'home', roles: ['admin'] },
   { label: 'Leads', path: '/leads', icon: 'inbox', roles: ['admin'] },
-  { label: 'Employee Status', path: '/employee-status', icon: 'clock', roles: ['admin'] },
-  { label: 'Team', path: '/settings/team', icon: 'user', roles: ['admin', 'org_admin'] },
+  { label: 'Applications', path: '/applications', icon: 'document', roles: ['admin'], comingSoon: true },
+  { label: 'Documents', path: '/documents', icon: 'upload', roles: ['admin'], comingSoon: true },
   { label: 'Approvals', path: '/settings/approvals', icon: 'shieldCheck', roles: ['admin'] },
+  { label: 'Tasks', path: '/tasks', icon: 'checkCircle', roles: ['admin'], comingSoon: true },
+  { label: 'Customers', path: '/customers', icon: 'people', roles: ['admin'], comingSoon: true },
+  { label: 'Employees', path: '/settings/team', icon: 'user', roles: ['admin', 'org_admin'] },
+  { label: 'Employee Status', path: '/employee-status', icon: 'clock', roles: ['admin'] },
+  { label: 'Reports', path: '/reports', icon: 'barChart', roles: ['admin'], comingSoon: true },
+  { label: 'Settings', path: '/settings', icon: 'settings', roles: ['admin'], comingSoon: true },
   { label: 'My Leads', path: '/my-leads', icon: 'inbox', roles: ['employee'] },
   { label: 'Notifications', path: '/notifications', icon: 'bell', roles: ['admin', 'employee'] },
 ];

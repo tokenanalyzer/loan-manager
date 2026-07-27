@@ -4,6 +4,18 @@
  * so the Employee Portal/CRM/Super Admin web platform and the Customer
  * App read as one product. Do not invent new colors/radii here —
  * change the Flutter source first, then mirror it here.
+ *
+ * Design System Foundation, Phase 1: the tokens below this point in
+ * each section (accent-electric, glass-*, motion-*) are additive and
+ * admin-panel-only — they are NOT ported from Flutter, since they
+ * have no Customer App equivalent. `--color-accent-electric` is
+ * deliberately derived from the existing indigo `--color-primary`
+ * family (brighter/more saturated, same hue neighborhood), not a
+ * foreign hue — confirmed with the user specifically so the ecosystem
+ * stays visually unified. It is reserved for interaction states only
+ * (active nav, links, interactive icons, chart highlights, focus
+ * rings, selected states, primary hover) — never a large fill or
+ * background, so it reads as an accent, not a second primary.
  */
 :root {
   /* Brand */
@@ -13,6 +25,11 @@
   --color-accent-gold: #c9971f;
   --color-accent-gold-light: #f4e4bc;
   --color-secondary: #0e9f6e;
+
+  /* Accent — interaction states only, see header comment */
+  --color-accent-electric: #4f46e5;
+  --color-accent-electric-light: #6366f1;
+  --color-accent-electric-dark: #4338ca;
 
   /* Surfaces */
   --color-background: #f6f7fb;
@@ -30,6 +47,21 @@
   --color-success: #0e9f6e;
   --color-warning: #f59e0b;
   --color-error: #dc2626;
+  --color-info: #2563eb;
+
+  /* Glassmorphism — used by GlassCard and the App Shell (Sidebar/Topbar) */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.5);
+  --glass-blur: 16px;
+  --glass-shadow: 0 8px 32px rgba(43, 46, 122, 0.12);
+
+  /* Motion — mirrored in theme/motion.ts for Framer Motion; keep both in sync */
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 320ms;
+  --motion-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --motion-ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
 
   /* Typography — Roboto, matching AppTextStyles */
   --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -75,9 +107,31 @@
   --breakpoint-mobile: 768px;
 }
 
+/**
+ * Dark mode — architecture-ready, not shipped as a UI option yet (no
+ * toggle exists; the Topbar's dark-mode icon is a static visual
+ * element for now). Two mechanisms, deliberately layered:
+ *   1. `prefers-color-scheme` — the OS-preference default, applies
+ *      only when nothing has explicitly set `data-theme` on <html>.
+ *   2. `[data-theme="dark"]` — an explicit override a future toggle
+ *      can set with one line (`documentElement.dataset.theme = 'dark'`)
+ *      with zero component changes, since every component already
+ *      reads these same custom properties.
+ * Every color token now has a considered dark value (Phase 1 filled
+ * in the ones that were previously missing: accent-gold, secondary,
+ * the three status colors, and the new electric accent).
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --color-primary: #4a4eb0;
+    --color-accent-gold: #e0b13d;
+    --color-accent-gold-light: rgba(201, 151, 31, 0.18);
+    --color-secondary: #22c58e;
+
+    --color-accent-electric: #6366f1;
+    --color-accent-electric-light: #818cf8;
+    --color-accent-electric-dark: #4f46e5;
+
     --color-background: #0f1123;
     --color-surface: #1a1d3a;
     --color-surface-elevated: #23264a;
@@ -87,7 +141,48 @@
     --color-text-secondary: #c7c9de;
     --color-text-tertiary: #9498ad;
 
+    --color-success: #22c58e;
+    --color-warning: #fbbf24;
+    --color-error: #ef4444;
+    --color-info: #60a5fa;
+
+    --glass-bg: rgba(26, 29, 58, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.35);
     --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
   }
+}
+
+:root[data-theme='dark'] {
+  --color-primary: #4a4eb0;
+  --color-accent-gold: #e0b13d;
+  --color-accent-gold-light: rgba(201, 151, 31, 0.18);
+  --color-secondary: #22c58e;
+
+  --color-accent-electric: #6366f1;
+  --color-accent-electric-light: #818cf8;
+  --color-accent-electric-dark: #4f46e5;
+
+  --color-background: #0f1123;
+  --color-surface: #1a1d3a;
+  --color-surface-elevated: #23264a;
+  --color-border: #32355c;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #c7c9de;
+  --color-text-tertiary: #9498ad;
+
+  --color-success: #22c58e;
+  --color-warning: #fbbf24;
+  --color-error: #ef4444;
+  --color-info: #60a5fa;
+
+  --glass-bg: rgba(26, 29, 58, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
 }

@@ -11,6 +11,7 @@ import { LeadDetailPage } from '../features/workspace/LeadDetailPage';
 import { MyLeadsPage } from '../features/workspace/MyLeadsPage';
 import { AppLayout } from '../layouts/AppLayout';
 import { AccessDeniedPage } from '../pages/AccessDeniedPage';
+import { ComingSoonPage } from '../pages/ComingSoonPage';
 import { DashboardPlaceholderPage } from '../pages/DashboardPlaceholderPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { SessionExpiredPage } from '../pages/SessionExpiredPage';
@@ -87,6 +88,57 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute roles={['admin']}>
             <PendingApprovalsPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Design System Foundation, Phase 1 — "Coming Soon" placeholders for
+      // nav items that ship in the shell for visual completeness but have
+      // no real screen yet. See navigation.config.ts's `comingSoon` flag.
+      {
+        path: 'applications',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ComingSoonPage title="Applications" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'documents',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ComingSoonPage title="Documents" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'tasks',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ComingSoonPage title="Tasks" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'customers',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ComingSoonPage title="Customers" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ComingSoonPage title="Reports" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'settings',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ComingSoonPage title="Settings" />
           </ProtectedRoute>
         ),
       },
