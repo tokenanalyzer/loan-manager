@@ -2,6 +2,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 
 import { AbstractEntity } from './abstract.entity';
 import type { DocumentTypeEntity } from './document-type.entity';
+import type { DocumentVersionEntity } from './document-version.entity';
 import { DocumentType } from './enums';
 import type { LoanApplicationEntity } from './loan-application.entity';
 import type { LoanEntity } from './loan.entity';
@@ -108,4 +109,29 @@ export class DocumentEntity extends AbstractEntity {
 
   @Column({ type: 'timestamptz', nullable: true })
   verifiedAt?: Date | null;
+
+  /**
+   * Document Versioning — points at this slot's latest
+   * `DocumentVersionEntity` row, the actual immutable source of truth
+   * (see that entity's doc comment). Every column above this point
+   * (`storagePath`, `verificationStatus`, etc.) is kept as a live
+   * mirror of `currentVersion`'s own fields, written by
+   * `DocumentsService.upload`/`updateVerification` — kept for
+   * backward-compatible reads (the approval gate, `buildOverview`, the
+   * Document Management Center all read these columns directly and
+   * need no changes), not because this row is itself a second source
+   * of truth.
+   *
+   * Nullable despite being logically "always set after creation": this
+   * row's `id` must exist before a `DocumentVersionEntity` can
+   * reference it via `documentId`, so the write order is insert this
+   * row (no version yet) → insert the version row → update this
+   * column. Do not "fix" this to `NOT NULL`.
+   */
+  @Column({ type: 'uuid', nullable: true })
+  currentVersionId?: string | null;
+
+  @ManyToOne('DocumentVersionEntity', { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'current_version_id', foreignKeyConstraintName: 'fk_documents_current_version' })
+  currentVersion?: DocumentVersionEntity | null;
 }

@@ -25,6 +25,7 @@ import { ALLOWED_DOCUMENT_MIME_TYPES, MAX_DOCUMENT_FILE_SIZE_BYTES } from './doc
 import { DocumentsService } from './documents.service';
 import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
+import { DocumentVersionResponseDto } from './dto/document-version-response.dto';
 import { DocumentsOverviewResponseDto } from './dto/documents-overview-response.dto';
 import { UpdateDocumentVerificationDto } from './dto/update-document-verification.dto';
 import { UploadDocumentDto } from './dto/upload-document.dto';
@@ -166,6 +167,16 @@ export class DocumentsController {
     @CurrentAppUser() staff: UserEntity,
   ): Promise<DocumentAuditEntryDto[]> {
     return this.documentsService.getAuditForDocument(id, staff);
+  }
+
+  /** Document Versioning, surfaced — every immutable upload for this document, newest first. Data-model support only; no Version History UI yet. */
+  @Get('staff/:id/versions')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getVersions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() staff: UserEntity,
+  ): Promise<DocumentVersionResponseDto[]> {
+    return this.documentsService.getVersionsForDocument(id, staff);
   }
 
   private async streamDocument(

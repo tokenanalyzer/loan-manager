@@ -8,8 +8,9 @@ export * from './approval-request.entity';
 export * from './audit-log.entity';
 export * from './case-number-counter.entity';
 export * from './customer-profile.entity';
-export * from './document.entity';
 export * from './document-type.entity';
+export * from './document-version.entity';
+export * from './document.entity';
 export * from './employee-break.entity';
 export * from './employee-profile.entity';
 export * from './enums';
@@ -27,6 +28,7 @@ import { AuditLogEntity } from './audit-log.entity';
 import { CaseNumberCounterEntity } from './case-number-counter.entity';
 import { CustomerProfileEntity } from './customer-profile.entity';
 import { DocumentTypeEntity } from './document-type.entity';
+import { DocumentVersionEntity } from './document-version.entity';
 import { DocumentEntity } from './document.entity';
 import { EmployeeBreakEntity } from './employee-break.entity';
 import { EmployeeProfileEntity } from './employee-profile.entity';
@@ -56,4 +58,5 @@ export const ALL_ENTITIES = [
   RewardConfigEntity,
   RewardEntity,
   CaseNumberCounterEntity,
+  DocumentVersionEntity,
 ];

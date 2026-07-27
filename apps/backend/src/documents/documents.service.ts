@@ -15,6 +15,7 @@ import {
   DocumentEntity,
   DocumentType,
   DocumentTypeEntity,
+  DocumentVersionEntity,
   UserEntity,
   UserRole,
 } from '../database/entities';
@@ -23,6 +24,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { StorageService } from '../storage/storage.service';
 
 import { DocumentTypeRepository } from './document-type.repository';
+import { DocumentVersionRepository } from './document-version.repository';
 import { DocumentRepository } from './document.repository';
 import {
   BlockingDocumentReason,
@@ -30,6 +32,7 @@ import {
 } from './dto/blocking-required-document.dto';
 import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
+import { DocumentVersionResponseDto } from './dto/document-version-response.dto';
 import {
   DocumentCategoryGroupDto,
   DocumentsOverviewResponseDto,
@@ -80,6 +83,7 @@ export class DocumentsService {
   constructor(
     private readonly documentRepository: DocumentRepository,
     private readonly documentTypeRepository: DocumentTypeRepository,
+    private readonly documentVersionRepository: DocumentVersionRepository,
     private readonly storageService: StorageService,
     // Genuinely mutual: LoanApplicationsService now also depends on
     // DocumentsService (the approval validation gate) — see this
@@ -414,14 +418,12 @@ export class DocumentsService {
     });
 
     if (existingAtSlot) {
-      await this.storageService.delete(existingAtSlot.storagePath);
-
-      // Standard verification lifecycle: a replaced document is a fresh
-      // submission and re-enters verification from `pending` — the
-      // prior verification (status/note/reviewer/timestamp) is
-      // preserved in audit history, never silently overwritten. Applies
-      // uniformly to every document type (including the future Passport
-      // Photo/Selfie catalog rows — same upload path, same lifecycle).
+      // Document Versioning: replacing a document never deletes the old
+      // file or overwrites its row — it creates a new, immutable
+      // DocumentVersionEntity and repoints `currentVersionId` at it. See
+      // DocumentVersionEntity's doc comment. `delete()` (a customer
+      // explicitly removing this document type, a different intent) is
+      // the only path that still removes storage files.
       const needsVerificationReset = existingAtSlot.verificationStatus !== 'pending';
       const wasReuploadRequested = existingAtSlot.verificationStatus === 'reupload_requested';
       // Whoever actually set `reupload_requested` — the reviewer
@@ -431,21 +433,47 @@ export class DocumentsService {
       // module. Must be read before the reset below clears it.
       const reviewerToNotifyId = existingAtSlot.verifiedById ?? null;
 
-      let updated: DocumentEntity | null;
-      if (needsVerificationReset) {
-        updated = await this.dataSource.transaction(async (manager) => {
-          await manager.update(DocumentEntity, existingAtSlot.id, {
+      const updated = await this.dataSource.transaction(async (manager) => {
+        const uploadedAt = new Date();
+
+        if (existingAtSlot.currentVersionId) {
+          await manager.update(DocumentVersionEntity, existingAtSlot.currentVersionId, {
+            supersededAt: uploadedAt,
+          });
+        }
+
+        const nextVersionRows: Array<{ next: number }> = await manager.query(
+          `SELECT COALESCE(MAX(version_number), 0) + 1 AS next FROM document_versions WHERE document_id = $1`,
+          [existingAtSlot.id],
+        );
+        const version = await manager.save(
+          manager.create(DocumentVersionEntity, {
+            documentId: existingAtSlot.id,
+            versionNumber: nextVersionRows[0].next,
             storagePath: stored.storagePath,
             originalFileName: file.originalname,
             mimeType: file.mimetype,
             fileSizeBytes: String(file.size),
-            uploadedAt: new Date(),
+            uploadedAt,
+            uploadedById: user.id,
             verificationStatus: 'pending',
-            verificationNote: null,
-            verifiedById: null,
-            verifiedAt: null,
-          });
+          }),
+        );
 
+        await manager.update(DocumentEntity, existingAtSlot.id, {
+          currentVersionId: version.id,
+          storagePath: stored.storagePath,
+          originalFileName: file.originalname,
+          mimeType: file.mimetype,
+          fileSizeBytes: String(file.size),
+          uploadedAt,
+          verificationStatus: 'pending',
+          verificationNote: null,
+          verifiedById: null,
+          verifiedAt: null,
+        });
+
+        if (needsVerificationReset) {
           await manager.save(
             manager.create(AuditLogEntity, {
               actorId: user.id,
@@ -461,20 +489,12 @@ export class DocumentsService {
               },
             }),
           );
+        }
 
-          await this.refreshWaitingForCustomerFlag(user.id, manager);
+        await this.refreshWaitingForCustomerFlag(user.id, manager);
 
-          return manager.findOne(DocumentEntity, { where: { id: existingAtSlot.id } });
-        });
-      } else {
-        updated = await this.documentRepository.update(existingAtSlot.id, {
-          storagePath: stored.storagePath,
-          originalFileName: file.originalname,
-          mimeType: file.mimetype,
-          fileSizeBytes: String(file.size),
-          uploadedAt: new Date(),
-        });
-      }
+        return manager.findOne(DocumentEntity, { where: { id: existingAtSlot.id } });
+      });
 
       if (!updated) {
         throw new NotFoundException('Document not found after update.');
@@ -511,25 +531,58 @@ export class DocumentsService {
       return DocumentResponseDto.fromEntity(updated);
     }
 
-    const created = await this.documentRepository.create({
-      ownerId: user.id,
-      documentType: LEGACY_ENUM_BY_CODE[type.code] ?? DocumentType.OTHER,
-      documentTypeCode: type.code,
-      slotIndex,
-      storagePath: stored.storagePath,
-      originalFileName: file.originalname,
-      mimeType: file.mimetype,
-      fileSizeBytes: String(file.size),
-      uploadedAt: new Date(),
+    const created = await this.dataSource.transaction(async (manager) => {
+      const uploadedAt = new Date();
+
+      const document = await manager.save(
+        manager.create(DocumentEntity, {
+          ownerId: user.id,
+          documentType: LEGACY_ENUM_BY_CODE[type.code] ?? DocumentType.OTHER,
+          documentTypeCode: type.code,
+          slotIndex,
+          storagePath: stored.storagePath,
+          originalFileName: file.originalname,
+          mimeType: file.mimetype,
+          fileSizeBytes: String(file.size),
+          uploadedAt,
+        }),
+      );
+
+      const version = await manager.save(
+        manager.create(DocumentVersionEntity, {
+          documentId: document.id,
+          versionNumber: 1,
+          storagePath: stored.storagePath,
+          originalFileName: file.originalname,
+          mimeType: file.mimetype,
+          fileSizeBytes: String(file.size),
+          uploadedAt,
+          uploadedById: user.id,
+          verificationStatus: 'pending',
+        }),
+      );
+
+      document.currentVersionId = version.id;
+      return manager.save(document);
     });
+
     await this.loanApplicationsService.resolveQueriesForCustomer(user.id);
     return DocumentResponseDto.fromEntity(created);
   }
 
-  /** Deletes a document outright — storage file + row. Ownership-checked. */
+  /**
+   * Deletes a document outright — every version's storage file, then
+   * the row (cascades to `document_versions`). Ownership-checked.
+   * Distinct from a replace/re-upload: this is the customer explicitly
+   * removing a document type from their application entirely, so
+   * unlike `upload()`'s replace path it genuinely destroys history —
+   * there's nothing left to keep a version of.
+   */
   async delete(user: UserEntity, documentId: string): Promise<void> {
     const document = await this.getOwnedDocumentOrThrow(user, documentId);
-    await this.storageService.delete(document.storagePath);
+    const versions = await this.documentVersionRepository.findAllByDocument(document.id);
+    const storagePaths = versions.length > 0 ? versions.map((v) => v.storagePath) : [document.storagePath];
+    await Promise.all(storagePaths.map((path) => this.storageService.delete(path)));
     await this.documentRepository.deleteById(document.id);
   }
 
@@ -598,12 +651,26 @@ export class DocumentsService {
     const document = await this.getDocumentForStaffOrThrow(documentId, staff);
 
     await this.dataSource.transaction(async (manager) => {
+      const verifiedAt = new Date();
+
       await manager.update(DocumentEntity, documentId, {
         verificationStatus: dto.status,
         verificationNote: dto.note ?? null,
         verifiedById: staff.id,
-        verifiedAt: new Date(),
+        verifiedAt,
       });
+
+      // The version's own review outcome must reflect reality too, not
+      // just the parent row's cache — a future Version History view
+      // needs to show what each specific file was actually verdicted.
+      if (document.currentVersionId) {
+        await manager.update(DocumentVersionEntity, document.currentVersionId, {
+          verificationStatus: dto.status,
+          verificationNote: dto.note ?? null,
+          verifiedById: staff.id,
+          verifiedAt,
+        });
+      }
 
       await manager.save(
         manager.create(AuditLogEntity, {
@@ -652,6 +719,22 @@ export class DocumentsService {
       relations: ['actor'],
     });
     return entries.map((entry) => DocumentAuditEntryDto.fromEntity(entry));
+  }
+
+  /**
+   * Document Versioning, surfaced — every immutable upload for this
+   * slot, newest first. Data-model support for the future Version
+   * History/Rollback/Comparison UI (deliberately not built yet); this
+   * is what actually proves the data model works today.
+   */
+  async getVersionsForDocument(
+    documentId: string,
+    staff: UserEntity,
+  ): Promise<DocumentVersionResponseDto[]> {
+    await this.getDocumentForStaffOrThrow(documentId, staff);
+
+    const versions = await this.documentVersionRepository.findAllByDocument(documentId);
+    return versions.map((version) => DocumentVersionResponseDto.fromEntity(version));
   }
 
   /**

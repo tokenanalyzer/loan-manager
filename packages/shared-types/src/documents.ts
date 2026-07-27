@@ -29,6 +29,8 @@ export interface DocumentMetadata {
   verifiedById: string | null;
   verifiedByName: string | null;
   verifiedAt: string | null;
+  /** Points at this document's latest immutable upload (Document Versioning) — inert until a future Version History UI reads it. */
+  currentVersionId: string | null;
 }
 
 export interface DocumentSlot {
