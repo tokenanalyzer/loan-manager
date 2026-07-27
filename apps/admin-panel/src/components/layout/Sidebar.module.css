@@ -21,25 +21,44 @@
   gap: var(--space-3);
   padding: 0 var(--space-5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: var(--font-size-title-md);
-  font-weight: 700;
-  color: var(--color-text-on-primary);
   white-space: nowrap;
   overflow: hidden;
 }
 
+/* Official Loan Manager logo — same asset as the Customer App's app icon/splash (`assets/branding/app_icon.png`), not a redesign. */
 .brandMark {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-control);
-  background: var(--color-text-on-primary);
-  color: var(--color-primary);
   flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
+  object-fit: cover;
+  background: var(--color-text-on-primary);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.brandTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.brandName {
+  font-size: var(--font-size-title-md);
+  font-weight: 700;
+  color: var(--color-text-on-primary);
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.brandSubtitle {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.1;
 }
 
 .nav {

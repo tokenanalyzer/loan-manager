@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 
+import logoMark from '../../assets/branding/app_icon.png';
 import { APP_NAME } from '../../core/constants';
 import { Icon } from '../ui/Icon';
 
@@ -37,8 +38,13 @@ export function Sidebar({
   return (
     <aside className={classes}>
       <div className={styles.brand}>
-        <span className={styles.brandMark}>{APP_NAME.charAt(0)}</span>
-        {!isCollapsed && <span>{APP_NAME}</span>}
+        <img src={logoMark} alt={APP_NAME} className={styles.brandMark} />
+        {!isCollapsed && (
+          <div className={styles.brandTextGroup}>
+            <span className={styles.brandName}>{APP_NAME}</span>
+            <span className={styles.brandSubtitle}>Admin Panel</span>
+          </div>
+        )}
       </div>
 
       <nav className={styles.nav}>
