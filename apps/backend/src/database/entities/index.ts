@@ -4,6 +4,7 @@
  * standalone CLI DataSource (`data-source.ts`), so both stay in sync.
  */
 export * from './abstract.entity';
+export * from './approval-request.entity';
 export * from './audit-log.entity';
 export * from './customer-profile.entity';
 export * from './document.entity';
@@ -20,6 +21,7 @@ export * from './reward-config.entity';
 export * from './reward.entity';
 export * from './user.entity';
 
+import { ApprovalRequestEntity } from './approval-request.entity';
 import { AuditLogEntity } from './audit-log.entity';
 import { CustomerProfileEntity } from './customer-profile.entity';
 import { DocumentTypeEntity } from './document-type.entity';
@@ -37,6 +39,7 @@ import { UserEntity } from './user.entity';
 
 export const ALL_ENTITIES = [
   UserEntity,
+  ApprovalRequestEntity,
   CustomerProfileEntity,
   EmployeeProfileEntity,
   LoanApplicationEntity,

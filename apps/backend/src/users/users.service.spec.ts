@@ -1,10 +1,24 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
+import type { ApprovalsService } from '../approvals/approvals.service';
+import type { MakerCheckerPolicyService } from '../approvals/maker-checker-policy';
 import { AccountStatus, AuditLogEntity, UserRole } from '../database/entities';
 import type { FirebaseAdminService } from '../firebase/firebase-admin.service';
 import type { LoanApplicationRepository } from '../loan-applications/loan-application.repository';
 import type { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
+
+/** Shared across every `buildHarness` below — every existing test's "immediate execution" assumption stays valid since `requiresApproval` defaults to false; individual tests override it to exercise the Phase 5 fork. */
+function buildApprovalMocks(overrides: { requiresApproval?: boolean } = {}) {
+  const requiresApproval = jest.fn().mockReturnValue(overrides.requiresApproval ?? false);
+  const makerCheckerPolicy = { requiresApproval } as unknown as MakerCheckerPolicyService;
+
+  const createRequest = jest.fn().mockResolvedValue({ id: 'request-1', status: 'pending' });
+  const findPendingByTargetIds = jest.fn().mockResolvedValue(new Map());
+  const approvalsService = { createRequest, findPendingByTargetIds } as unknown as ApprovalsService;
+
+  return { makerCheckerPolicy, requiresApproval, approvalsService, createRequest, findPendingByTargetIds };
+}
 
 import type { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import type { UserRepository } from './user.repository';
@@ -91,12 +105,16 @@ describe('UsersService — createStaffUser (Firebase-orchestrated provisioning)'
       save: auditLogSave,
     } as unknown as Repository<AuditLogEntity>;
 
+    const { makerCheckerPolicy, approvalsService } = buildApprovalMocks();
+
     const service = new UsersService(
       userRepository,
       employeeProfileRepository,
       firebaseAdminService,
       loanApplicationRepository,
       auditLogRepository,
+      approvalsService,
+      makerCheckerPolicy,
     );
 
     return {
@@ -201,7 +219,10 @@ describe('UsersService — Disable / Archive / Restore lifecycle', () => {
     };
   }
 
-  function buildHarness(target: ReturnType<typeof buildTarget>) {
+  function buildHarness(
+    target: ReturnType<typeof buildTarget>,
+    options: { requiresApproval?: boolean } = {},
+  ) {
     const findOneById = jest.fn().mockResolvedValue(target);
     const update = jest.fn().mockImplementation((id, patch) => Promise.resolve({ ...target, id, ...patch }));
     const countActiveByRole = jest.fn().mockResolvedValue(1);
@@ -230,12 +251,18 @@ describe('UsersService — Disable / Archive / Restore lifecycle', () => {
       save: auditLogSave,
     } as unknown as Repository<AuditLogEntity>;
 
+    const { makerCheckerPolicy, approvalsService, createRequest } = buildApprovalMocks({
+      requiresApproval: options.requiresApproval,
+    });
+
     const service = new UsersService(
       userRepository,
       employeeProfileRepository,
       firebaseAdminService,
       loanApplicationRepository,
       auditLogRepository,
+      approvalsService,
+      makerCheckerPolicy,
     );
 
     return {
@@ -247,6 +274,7 @@ describe('UsersService — Disable / Archive / Restore lifecycle', () => {
       findActiveAssignedTo,
       auditLogCreate,
       auditLogSave,
+      createRequest,
     };
   }
 
@@ -425,6 +453,93 @@ describe('UsersService — Disable / Archive / Restore lifecycle', () => {
       expect(update).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * Phase 5 — the maker-checker fork. `requiresApproval` is mocked
+   * directly rather than routed through the real
+   * `MakerCheckerPolicyService`'s role/action table, so these prove the
+   * fork itself (route to a request vs. execute immediately) works
+   * independent of which roles the policy currently gates — that
+   * table has its own dedicated spec (`maker-checker-policy.spec.ts`).
+   */
+  describe('maker-checker fork', () => {
+    const orgAdminActor = { id: 'org-admin-1', role: UserRole.ORG_ADMIN } as never;
+
+    it('disableStaffUser creates a pending request instead of executing when the policy requires approval', async () => {
+      const { service, update, createRequest, revokeSessions } = buildHarness(buildTarget(), {
+        requiresApproval: true,
+      });
+
+      const result = await service.disableStaffUser('target-1', 'reason', orgAdminActor);
+
+      expect(createRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'staff_disable', targetUserId: 'target-1', payload: { reason: 'reason' } }),
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(revokeSessions).not.toHaveBeenCalled();
+      expect(result).toEqual({ outcome: 'pending_approval', request: { id: 'request-1', status: 'pending' } });
+    });
+
+    it('archiveStaffUser creates a pending request instead of executing when the policy requires approval', async () => {
+      const { service, update, createRequest } = buildHarness(buildTarget(), { requiresApproval: true });
+
+      const result = await service.archiveStaffUser('target-1', 'reason', orgAdminActor);
+
+      expect(createRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'staff_archive', targetUserId: 'target-1' }),
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(result.outcome).toBe('pending_approval');
+    });
+
+    it('restoreStaffUser creates a pending request (empty payload) instead of executing when the policy requires approval', async () => {
+      const { service, update, createRequest } = buildHarness(buildTarget({ status: AccountStatus.DISABLED }), {
+        requiresApproval: true,
+      });
+
+      const result = await service.restoreStaffUser('target-1', orgAdminActor);
+
+      expect(createRequest).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'staff_restore', targetUserId: 'target-1', payload: {} }),
+      );
+      expect(update).not.toHaveBeenCalled();
+      expect(result.outcome).toBe('pending_approval');
+    });
+
+    it('executes immediately and returns outcome "executed" when the policy does not require approval', async () => {
+      const { service, update, createRequest } = buildHarness(buildTarget(), { requiresApproval: false });
+
+      const result = await service.disableStaffUser('target-1', 'reason', actor);
+
+      expect(createRequest).not.toHaveBeenCalled();
+      expect(update).toHaveBeenCalled();
+      expect(result.outcome).toBe('executed');
+    });
+
+    it('still rejects a self-action before ever creating a request, even when the policy requires approval', async () => {
+      const { service, createRequest } = buildHarness(buildTarget({ id: 'org-admin-1' }), {
+        requiresApproval: true,
+      });
+
+      await expect(service.disableStaffUser('org-admin-1', 'reason', orgAdminActor)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(createRequest).not.toHaveBeenCalled();
+    });
+
+    it('still rejects disabling the last active Super Admin before ever creating a request', async () => {
+      const { service, createRequest, countActiveByRole } = buildHarness(
+        buildTarget({ id: 'target-admin', role: UserRole.ADMIN }),
+        { requiresApproval: true },
+      );
+      countActiveByRole.mockResolvedValue(0);
+
+      await expect(service.disableStaffUser('target-admin', 'reason', orgAdminActor)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(createRequest).not.toHaveBeenCalled();
+    });
+  });
 });
 
 /**
@@ -469,12 +584,16 @@ describe('UsersService — resendInviteOrResetPassword', () => {
       save: auditLogSave,
     } as unknown as Repository<AuditLogEntity>;
 
+    const { makerCheckerPolicy, approvalsService } = buildApprovalMocks();
+
     const service = new UsersService(
       userRepository,
       employeeProfileRepository,
       firebaseAdminService,
       loanApplicationRepository,
       auditLogRepository,
+      approvalsService,
+      makerCheckerPolicy,
     );
 
     return { service, generatePasswordSetupLink, auditLogCreate };
@@ -543,16 +662,41 @@ describe('UsersService — listStaff (search/filter/sort)', () => {
     const loanApplicationRepository = {} as unknown as LoanApplicationRepository;
     const auditLogRepository = {} as unknown as Repository<AuditLogEntity>;
 
+    const { makerCheckerPolicy, approvalsService, findPendingByTargetIds } = buildApprovalMocks();
+
     const service = new UsersService(
       userRepository,
       employeeProfileRepository,
       firebaseAdminService,
       loanApplicationRepository,
       auditLogRepository,
+      approvalsService,
+      makerCheckerPolicy,
     );
 
-    return { service, findStaffPaginated };
+    return { service, findStaffPaginated, findPendingByTargetIds };
   }
+
+  it('decorates each row with pendingApproval (Phase 5) when the approvals service reports one pending', async () => {
+    const { service, findStaffPaginated, findPendingByTargetIds } = buildHarness();
+    findStaffPaginated.mockResolvedValue({
+      items: [
+        { id: 'user-1', role: UserRole.EMPLOYEE, isActive: true, status: AccountStatus.ACTIVE, createdAt: new Date() },
+        { id: 'user-2', role: UserRole.EMPLOYEE, isActive: true, status: AccountStatus.ACTIVE, createdAt: new Date() },
+      ],
+      total: 2,
+    });
+    const requestedAt = new Date('2026-01-01');
+    findPendingByTargetIds.mockResolvedValue(
+      new Map([['user-1', { id: 'request-1', action: 'staff_disable', requestedAt }]]),
+    );
+
+    const result = await service.listStaff({ page: 1, pageSize: 20, sortBy: 'createdAt', sortDir: 'desc' } as never);
+
+    expect(findPendingByTargetIds).toHaveBeenCalledWith(['user-1', 'user-2']);
+    expect(result.items[0].pendingApproval).toEqual({ id: 'request-1', action: 'staff_disable', requestedAt });
+    expect(result.items[1].pendingApproval).toBeNull();
+  });
 
   it('maps query fields through to the repository, uppercasing sortDir', async () => {
     const { service, findStaffPaginated } = buildHarness();

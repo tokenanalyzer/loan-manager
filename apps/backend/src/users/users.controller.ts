@@ -7,12 +7,9 @@ import { UserEntity, UserRole } from '../database/entities';
 
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import { ListStaffQueryDto } from './dto/list-staff-query.dto';
+import { StaffLifecycleOutcome } from './dto/staff-lifecycle-outcome.dto';
 import { StaffLifecycleReasonDto } from './dto/staff-lifecycle-reason.dto';
-import {
-  CreateStaffUserResponseDto,
-  PaginatedStaffUserResponseDto,
-  StaffUserResponseDto,
-} from './dto/staff-user-response.dto';
+import { CreateStaffUserResponseDto, PaginatedStaffUserResponseDto } from './dto/staff-user-response.dto';
 import { UsersService } from './users.service';
 
 /**
@@ -49,13 +46,20 @@ export class UsersController {
     return this.usersService.listStaff(query);
   }
 
+  /**
+   * Phase 5: an `ORG_ADMIN` actor is routed into the maker-checker
+   * workflow — see `MakerCheckerPolicyService`. The response shape is a
+   * discriminated union (`StaffLifecycleOutcome`); the Admin Panel
+   * branches on `outcome` rather than assuming the target's status
+   * always changed immediately.
+   */
   @Patch(':id/disable')
   @AuthPermission(Permission.STAFF_DISABLE)
   async disable(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: StaffLifecycleReasonDto,
     @CurrentAppUser() actor: UserEntity,
-  ): Promise<StaffUserResponseDto> {
+  ): Promise<StaffLifecycleOutcome> {
     return this.usersService.disableStaffUser(id, dto.reason, actor);
   }
 
@@ -65,7 +69,7 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: StaffLifecycleReasonDto,
     @CurrentAppUser() actor: UserEntity,
-  ): Promise<StaffUserResponseDto> {
+  ): Promise<StaffLifecycleOutcome> {
     return this.usersService.archiveStaffUser(id, dto.reason, actor);
   }
 
@@ -74,7 +78,7 @@ export class UsersController {
   async restore(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentAppUser() actor: UserEntity,
-  ): Promise<StaffUserResponseDto> {
+  ): Promise<StaffLifecycleOutcome> {
     return this.usersService.restoreStaffUser(id, actor);
   }
 

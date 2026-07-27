@@ -26,6 +26,10 @@ export enum Permission {
    *  Admin are different-weight actions. Super Admin only. */
   ROLE_ASSIGN = 'role:assign',
   AUDIT_READ = 'audit:read',
+  /** View the maker-checker approval queue. Super Admin only — see MakerCheckerPolicyService for who currently needs a checker at all. */
+  APPROVAL_READ = 'approval:read',
+  /** Approve/reject a pending approval request. Super Admin only. */
+  APPROVAL_DECIDE = 'approval:decide',
 }
 
 const ALL_PERMISSIONS = Object.values(Permission);

@@ -2,6 +2,9 @@ import { BadRequestException, ConflictException, Injectable, NotFoundException }
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
+import { ApprovalActionType } from '../approvals/approval-action-type';
+import { ApprovalsService } from '../approvals/approvals.service';
+import { MakerCheckerPolicyService } from '../approvals/maker-checker-policy';
 import { AccountStatus, AuditLogEntity, UserEntity, UserRole } from '../database/entities';
 import { FirebaseAdminService } from '../firebase/firebase-admin.service';
 import { LoanApplicationRepository } from '../loan-applications/loan-application.repository';
@@ -9,6 +12,7 @@ import { EmployeeProfileRepository } from '../work-status/employee-profile.repos
 
 import { CreateStaffUserDto } from './dto/create-staff-user.dto';
 import { ListStaffQueryDto } from './dto/list-staff-query.dto';
+import { StaffLifecycleOutcome } from './dto/staff-lifecycle-outcome.dto';
 import { PaginatedStaffUserResponseDto, StaffUserResponseDto } from './dto/staff-user-response.dto';
 import { UserRepository } from './user.repository';
 
@@ -37,6 +41,8 @@ export class UsersService {
     private readonly loanApplicationRepository: LoanApplicationRepository,
     @InjectRepository(AuditLogEntity)
     private readonly auditLogRepository: Repository<AuditLogEntity>,
+    private readonly approvalsService: ApprovalsService,
+    private readonly makerCheckerPolicy: MakerCheckerPolicyService,
   ) {}
 
   /**
@@ -113,7 +119,9 @@ export class UsersService {
    * Phase 4 additive: `query.search`/`role`/`status`/`sortBy`/`sortDir`
    * all default to exactly what this endpoint already did (no filter,
    * newest-first) — an existing caller that omits them sees identical
-   * results and pagination shape.
+   * results and pagination shape. Phase 5 additive: each row is
+   * decorated with `pendingApproval` (one extra indexed query, not
+   * folded into `findStaffPaginated`'s query builder).
    */
   async listStaff(query: ListStaffQueryDto): Promise<PaginatedStaffUserResponseDto> {
     const { items, total } = await this.userRepository.findStaffPaginated({
@@ -125,8 +133,15 @@ export class UsersService {
       sortBy: query.sortBy,
       sortDir: query.sortDir.toUpperCase() as 'ASC' | 'DESC',
     });
+
+    const pendingByTarget = await this.approvalsService.findPendingByTargetIds(items.map((item) => item.id));
+
     return {
-      items: items.map((item) => StaffUserResponseDto.fromEntity(item)),
+      items: items.map((item) => {
+        const dto = StaffUserResponseDto.fromEntity(item);
+        dto.pendingApproval = pendingByTarget.get(item.id) ?? null;
+        return dto;
+      }),
       meta: {
         page: query.page,
         pageSize: query.pageSize,
@@ -142,22 +157,57 @@ export class UsersService {
    * blocked for a self-action or if it would leave zero active Super
    * Admins. See `AccountStatus`'s doc comment for how this differs
    * from Archive.
+   *
+   * Phase 5: an `ORG_ADMIN` actor is routed into the maker-checker
+   * workflow instead of executing immediately — see
+   * `MakerCheckerPolicyService`. The guard checks below still run
+   * first either way, so a doomed request (self-action, last active
+   * Super Admin, etc.) is never created.
    */
-  async disableStaffUser(targetId: string, reason: string, actor: UserEntity): Promise<StaffUserResponseDto> {
-    const target = await this.getStaffOrThrow(targetId);
-    this.assertNotSelf(targetId, actor, 'disable');
+  async disableStaffUser(targetId: string, reason: string, actor: UserEntity): Promise<StaffLifecycleOutcome> {
+    await this.preflightDisable(targetId, actor);
 
-    if (target.status !== AccountStatus.ACTIVE) {
-      throw new ConflictException(`This account is already ${target.status}.`);
+    if (this.makerCheckerPolicy.requiresApproval(actor.role, ApprovalActionType.STAFF_DISABLE)) {
+      const request = await this.approvalsService.createRequest({
+        action: ApprovalActionType.STAFF_DISABLE,
+        targetUserId: targetId,
+        maker: actor,
+        payload: { reason },
+      });
+      return { outcome: 'pending_approval', request };
     }
-    await this.assertNotLastActiveSuperAdmin(target, 'disabled');
 
+    return { outcome: 'executed', user: await this.executeDisable(targetId, reason, actor) };
+  }
+
+  /**
+   * Registered in `ApprovalActionExecutorRegistry` (see
+   * `staff-lifecycle-executors.provider.ts`) so an approved request
+   * runs through the exact same guard+mutate+audit body as an
+   * immediate `ADMIN` disable — re-validated from scratch every time,
+   * which is what makes staleness handling (a target that changed
+   * state between request and decision) automatic rather than a
+   * separate code path.
+   */
+  async executeDisable(targetId: string, reason: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+    await this.preflightDisable(targetId, actor);
+
+    const target = await this.getStaffOrThrow(targetId);
     const fromStatus = target.status;
     await this.applyStatusTransition(target, AccountStatus.DISABLED, reason, actor);
     await this.firebaseAdminService.revokeSessions(target.firebaseUid);
     await this.writeLifecycleAudit('staff_disabled', target, actor, reason, fromStatus, AccountStatus.DISABLED);
 
     return this.getResponseDto(targetId);
+  }
+
+  private async preflightDisable(targetId: string, actor: UserEntity): Promise<void> {
+    const target = await this.getStaffOrThrow(targetId);
+    this.assertNotSelf(targetId, actor, 'disable');
+    if (target.status !== AccountStatus.ACTIVE) {
+      throw new ConflictException(`This account is already ${target.status}.`);
+    }
+    await this.assertNotLastActiveSuperAdmin(target, 'disabled');
   }
 
   /**
@@ -168,11 +218,41 @@ export class UsersService {
    * (see `LoanApplicationRepository.findActiveAssignedTo`); reassign
    * those first via Lead Assignment's transfer-all, then archive.
    * Reachable directly from ACTIVE or DISABLED.
+   *
+   * Phase 5: same maker-checker fork as `disableStaffUser` — see there.
    */
-  async archiveStaffUser(targetId: string, reason: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+  async archiveStaffUser(targetId: string, reason: string, actor: UserEntity): Promise<StaffLifecycleOutcome> {
+    await this.preflightArchive(targetId, actor);
+
+    if (this.makerCheckerPolicy.requiresApproval(actor.role, ApprovalActionType.STAFF_ARCHIVE)) {
+      const request = await this.approvalsService.createRequest({
+        action: ApprovalActionType.STAFF_ARCHIVE,
+        targetUserId: targetId,
+        maker: actor,
+        payload: { reason },
+      });
+      return { outcome: 'pending_approval', request };
+    }
+
+    return { outcome: 'executed', user: await this.executeArchive(targetId, reason, actor) };
+  }
+
+  /** Registered in `ApprovalActionExecutorRegistry` — see `executeDisable`'s doc comment for why re-running the full preflight here is deliberate. */
+  async executeArchive(targetId: string, reason: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+    await this.preflightArchive(targetId, actor);
+
+    const target = await this.getStaffOrThrow(targetId);
+    const fromStatus = target.status;
+    await this.applyStatusTransition(target, AccountStatus.ARCHIVED, reason, actor);
+    await this.firebaseAdminService.revokeSessions(target.firebaseUid);
+    await this.writeLifecycleAudit('staff_archived', target, actor, reason, fromStatus, AccountStatus.ARCHIVED);
+
+    return this.getResponseDto(targetId);
+  }
+
+  private async preflightArchive(targetId: string, actor: UserEntity): Promise<void> {
     const target = await this.getStaffOrThrow(targetId);
     this.assertNotSelf(targetId, actor, 'archive');
-
     if (target.status === AccountStatus.ARCHIVED) {
       throw new ConflictException('This account is already archived.');
     }
@@ -187,13 +267,6 @@ export class UsersService {
         );
       }
     }
-
-    const fromStatus = target.status;
-    await this.applyStatusTransition(target, AccountStatus.ARCHIVED, reason, actor);
-    await this.firebaseAdminService.revokeSessions(target.firebaseUid);
-    await this.writeLifecycleAudit('staff_archived', target, actor, reason, fromStatus, AccountStatus.ARCHIVED);
-
-    return this.getResponseDto(targetId);
   }
 
   /**
@@ -202,19 +275,42 @@ export class UsersService {
    * self-action guard (a disabled/archived account has no valid
    * session to call this with anyway), no session revocation (there's
    * nothing to revoke on the way back in).
+   *
+   * Phase 5: same maker-checker fork as `disableStaffUser` — see there.
    */
-  async restoreStaffUser(targetId: string, actor: UserEntity): Promise<StaffUserResponseDto> {
-    const target = await this.getStaffOrThrow(targetId);
+  async restoreStaffUser(targetId: string, actor: UserEntity): Promise<StaffLifecycleOutcome> {
+    await this.preflightRestore(targetId);
 
-    if (target.status === AccountStatus.ACTIVE) {
-      throw new ConflictException('This account is already active.');
+    if (this.makerCheckerPolicy.requiresApproval(actor.role, ApprovalActionType.STAFF_RESTORE)) {
+      const request = await this.approvalsService.createRequest({
+        action: ApprovalActionType.STAFF_RESTORE,
+        targetUserId: targetId,
+        maker: actor,
+        payload: {},
+      });
+      return { outcome: 'pending_approval', request };
     }
 
+    return { outcome: 'executed', user: await this.executeRestore(targetId, actor) };
+  }
+
+  /** Registered in `ApprovalActionExecutorRegistry` — see `executeDisable`'s doc comment for why re-running the full preflight here is deliberate. */
+  async executeRestore(targetId: string, actor: UserEntity): Promise<StaffUserResponseDto> {
+    await this.preflightRestore(targetId);
+
+    const target = await this.getStaffOrThrow(targetId);
     const fromStatus = target.status;
     await this.applyStatusTransition(target, AccountStatus.ACTIVE, null, actor);
     await this.writeLifecycleAudit('staff_restored', target, actor, null, fromStatus, AccountStatus.ACTIVE);
 
     return this.getResponseDto(targetId);
+  }
+
+  private async preflightRestore(targetId: string): Promise<void> {
+    const target = await this.getStaffOrThrow(targetId);
+    if (target.status === AccountStatus.ACTIVE) {
+      throw new ConflictException('This account is already active.');
+    }
   }
 
   /**

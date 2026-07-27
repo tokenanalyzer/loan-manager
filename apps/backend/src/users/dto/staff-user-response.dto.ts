@@ -22,6 +22,8 @@ export class StaffUserResponseDto {
   employeeCode!: string | null;
   department!: string | null;
   branch!: string | null;
+  /** Set only by `UsersService.listStaff` (Phase 5) — a still-open maker-checker request against this account, if any. Never derived from `UserEntity` itself. */
+  pendingApproval!: { id: string; action: string; requestedAt: Date } | null;
 
   static fromEntity(entity: {
     id: string;
@@ -60,6 +62,7 @@ export class StaffUserResponseDto {
     dto.employeeCode = entity.employeeProfile?.employeeCode ?? null;
     dto.department = entity.employeeProfile?.department ?? null;
     dto.branch = entity.employeeProfile?.branch ?? null;
+    dto.pendingApproval = null;
     return dto;
   }
 }

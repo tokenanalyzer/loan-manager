@@ -47,6 +47,22 @@ export enum AccountStatus {
 }
 
 /**
+ * Maker-checker approval request lifecycle (Admin Authentication
+ * Module, Phase 5). `FAILED` is distinct from `REJECTED`: it means a
+ * checker approved the request but the underlying action's precondition
+ * had drifted since the request was created (e.g. the target was
+ * already disabled by someone else in the meantime) — see
+ * `ApprovalsService.decide`. Never left `PENDING` forever either way.
+ */
+export enum ApprovalRequestStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  WITHDRAWN = 'withdrawn',
+  FAILED = 'failed',
+}
+
+/**
  * Employee Work Status / Break Management. `ONLINE`/`BUSY` are
  * manually-settable non-break statuses; the five break types below
  * put the Employee Portal into Break Mode (see `WORK_STATUS_BREAK_TYPES`
