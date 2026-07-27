@@ -117,7 +117,7 @@ export function LeadsPage(): JSX.Element {
     return leads.filter((lead) => {
       if (categoryFilter !== 'all' && lead.categoryId !== categoryFilter) return false;
       if (!normalizedQuery) return true;
-      const haystack = [lead.applicantName, lead.purpose, lead.categoryId]
+      const haystack = [lead.caseNumber, lead.applicantName, lead.purpose, lead.categoryId]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -195,7 +195,7 @@ export function LeadsPage(): JSX.Element {
             <input
               className={styles.search}
               type="search"
-              placeholder="Search by applicant, purpose, or category…"
+              placeholder="Search by case number, applicant, purpose, or category…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -236,6 +236,7 @@ export function LeadsPage(): JSX.Element {
               <thead>
                 <tr>
                   <th />
+                  <th>Case Number</th>
                   <th>Applicant</th>
                   <th>Amount</th>
                   <th>Term</th>
@@ -257,6 +258,7 @@ export function LeadsPage(): JSX.Element {
                         aria-label={`Select ${lead.applicantName ?? lead.applicantId}`}
                       />
                     </td>
+                    <td>{lead.caseNumber}</td>
                     <td>{lead.applicantName ?? lead.applicantId.slice(0, 8)}</td>
                     <td>{lead.requestedAmount}</td>
                     <td>{lead.requestedTermMonths} mo</td>

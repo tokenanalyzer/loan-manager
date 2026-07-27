@@ -42,6 +42,8 @@ export type LoanRequestType = 'FRESH_LOAN' | 'TOP_UP' | 'BALANCE_TRANSFER' | 'BT
 /** A loan application as shown in the Unassigned/Assigned Leads screens. `assignedToId` is null = Unassigned. */
 export interface LeadSummary {
   id: string;
+  /** Permanent Business ID (`LM-{year}-{6-digit}`) — the primary identifier staff use to reference this case. */
+  caseNumber: string;
   applicantId: string;
   applicantName: string | null;
   requestedAmount: string;

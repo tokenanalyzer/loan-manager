@@ -258,7 +258,7 @@ export function LeadDetailPage(): JSX.Element {
   return (
     <PageContainer
       title={lead.applicantName ?? 'Lead'}
-      description={`${lead.requestedAmount} · ${lead.requestedTermMonths} months`}
+      description={`${lead.caseNumber} · ${lead.requestedAmount} · ${lead.requestedTermMonths} months`}
       actions={
         <Button variant="secondary" onClick={() => navigate(backPath)}>
           {backLabel}

@@ -52,7 +52,7 @@ export function MyLeadsPage(): JSX.Element {
     return leads.filter((lead) => {
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (!normalizedQuery) return true;
-      const haystack = [lead.applicantName, lead.purpose, lead.categoryId]
+      const haystack = [lead.caseNumber, lead.applicantName, lead.purpose, lead.categoryId]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
@@ -86,7 +86,7 @@ export function MyLeadsPage(): JSX.Element {
             <input
               className={styles.search}
               type="search"
-              placeholder="Search by customer, purpose, or category…"
+              placeholder="Search by case number, customer, purpose, or category…"
               value={query}
               onChange={(event) => handleQueryChange(event.target.value)}
             />
@@ -117,6 +117,7 @@ export function MyLeadsPage(): JSX.Element {
               <TableContainer>
                 <thead>
                   <tr>
+                    <th>Case Number</th>
                     <th>Customer</th>
                     <th>Amount</th>
                     <th>Term</th>
@@ -132,6 +133,7 @@ export function MyLeadsPage(): JSX.Element {
                       className={styles.row}
                       onClick={() => navigate(`/my-leads/${lead.id}`)}
                     >
+                      <td>{lead.caseNumber}</td>
                       <td>{lead.applicantName ?? lead.applicantId.slice(0, 8)}</td>
                       <td>{lead.requestedAmount}</td>
                       <td>{lead.requestedTermMonths} mo</td>
