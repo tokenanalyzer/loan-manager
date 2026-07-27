@@ -474,11 +474,102 @@ explicit instruction.
 
 ---
 
+## Module 5 — Design System Foundation, Phase 1 (App Shell) ✅ 2026-07-27
+
+**What:** presentation-layer-only pass (backend/API/business logic
+frozen for this initiative) toward a premium fintech CRM look, using a
+user-supplied dashboard reference image as the primary visual target.
+Phase 1 of 4 (Migration order: tokens/shell → Dashboard → forms/dialogs
+→ remaining screens) — this is the shell + primitives pass only.
+
+- **Tokens** (`theme/tokens.css`, additive, existing values untouched):
+  `--color-accent-electric` (a new token deliberately *derived from* the
+  existing frozen indigo `--color-primary` family, not a foreign hue —
+  confirmed with the user specifically so Customer App + Admin Panel
+  stay visually unified; reserved for interaction states only — active
+  nav, links, interactive icons, chart highlights, focus rings, selected
+  states, primary hover — never a fill/background), glassmorphism
+  tokens (`--glass-bg/border/blur/shadow`), motion tokens
+  (`--motion-duration-*`/`--motion-ease-*`, mirrored into a new
+  `theme/motion.ts` for Framer Motion). Dark-mode token coverage
+  completed (previously-missing status-color/accent-gold/secondary dark
+  variants filled in) and a `[data-theme="dark"]` attribute-selector
+  layer added alongside the existing OS-preference media query — **no
+  toggle ships**; the Topbar's moon icon is a static visual element,
+  per explicit "No dark theme" instruction. The architecture is ready
+  for a future toggle with zero component changes.
+- `framer-motion` added (previously no animation library existed —
+  confirmed via audit, only a handful of 150–200ms CSS hover
+  transitions and one spinner `@keyframes`). Wired into `Modal` (entrance
+  only — most call sites don't wrap it in `AnimatePresence`, so exit
+  wouldn't play anyway), the new `DropdownMenu` (full enter/exit),
+  `Alert`, and `AppLayout` (mobile scrim, `ForceResumeBanner`, and
+  route-level page transitions via `AnimatePresence mode="wait"` keyed
+  on pathname).
+- **App Shell restyle**: `Sidebar` (deep-indigo/purple gradient per the
+  reference, active-item pill highlight, live count badges on
+  Leads/Approvals — sourced from `fetchUnassignedLeads`/
+  `fetchPendingApprovals`, already-existing endpoints, via a new
+  `useNavCounts` hook, no backend change), `Topbar` (styled global
+  search input, a real notification-bell unread-count badge sourced
+  from `fetchMyNotifications`, static dark-mode icon), `Breadcrumbs`
+  (restyle only).
+- **New shared primitives**: `DropdownMenu` (generic, extracted from
+  `UserMenu`'s hand-rolled implementation — `UserMenu` is now a
+  consumer of it) and `Alert` (variant info/success/warning/error —
+  `SuccessBanner` is now a thin wrapper around it, same external API,
+  zero call-site changes needed). `Icon.tsx`'s hand-rolled set expanded
+  (document, hourglass, money, people, calendar, upload, plus,
+  moreVertical, filter, sun, moon, infoCircle, settings, barChart) —
+  same no-icon-library-dependency convention the file already
+  documented.
+- **Full mockup nav list ships now** (Dashboard, Leads, Applications,
+  Documents, Approvals, Tasks, Customers, Employees [renamed from
+  "Team" — same route/screen, label only], Employee Status, Reports,
+  Settings) for visual completeness, but **items with no real screen
+  yet route to an honest `ComingSoonPage`**, not fake data — flagged via
+  a new `comingSoon` field on `NavItem`. `Tasks` is flagged separately
+  in code comments: unlike the others, there's no Task concept
+  anywhere in the backend at all.
+- The reference image's global search ("Search by Case Number, Customer
+  Name, Phone, Email…") is **not wired to a live search** — no
+  cross-entity backend search endpoint exists, and adding one is
+  backend work, out of scope for this presentation-only pass. The input
+  is real/focusable/styled; it just doesn't search anything yet.
+
+**Verification:** admin-panel typecheck/lint/build all clean throughout
+(checked after each component group, not just at the end). Every
+existing feature screen's data logic is untouched — only the shell
+around them changed, so Team/Leads/Approvals/Documents-verification
+flows keep working exactly as before. Dev server boots and serves the
+app shell correctly (confirmed via direct HTTP check). **Live visual
+comparison against the reference image was not completed this
+session** — the browser automation tool wasn't connected — the dev
+server was left running at `localhost:5173` for the user's own visual
+check; flagged explicitly rather than claiming a visual match that
+wasn't actually verified.
+
+**Deliberately out of scope this phase** (per the approved Phase 1
+file list): `GlassCard`, `StatCard`, `Badge`/`StatusPill`,
+`Select`/`Checkbox`/`Radio`, `Tabs`, `Drawer`, `SearchInput` (as a
+reusable component — Topbar's search is inline for now),
+`Pagination`, `Avatar`, `Skeleton`, `LineChart`, `DonutChart`,
+`DataTable` — all Phase 2+ per the migration order. Also deferred:
+wiring the still-orphaned `DocumentManagementCenter` into nav/routes
+(Phase 4), and `DatePicker`/`Accordion`/`ActivityFeed` (no current
+consumer — build on demand, not speculatively).
+
+---
+
 ## Up next
 
 Per the approved blueprint's build order, and the confirmed post-Phase-5
-roadmap: the Design System foundation, then ZIP export + Case Summary
-PDF, then the remaining queued modules — Customer 360 (retires the KYC
-review screens currently orphaned in the frozen legacy Flutter Employee
-App), the Lead Pipeline/Documents visual pass, Banks &amp; Partners,
+roadmap: Design System Foundation Phase 2 (Dashboard rebuild against the
+reference image — `StatCard`, hand-rolled `LineChart`/`DonutChart` per
+the confirmed no-dependency decision, `DataTable`), then Phase 3
+(forms/dialogs polish), then Phase 4 (remaining screens + wiring
+`DocumentManagementCenter`), then ZIP export + Case Summary PDF, then
+the remaining queued modules — Customer 360 (retires the KYC review
+screens currently orphaned in the frozen legacy Flutter Employee App),
+the Lead Pipeline/Documents visual pass, Banks &amp; Partners,
 Analytics, and Audit Log.
