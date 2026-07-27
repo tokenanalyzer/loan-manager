@@ -1,6 +1,13 @@
-import type { DataSource } from 'typeorm';
+import type { DataSource, Repository } from 'typeorm';
 
-import { LoanApplicationStatus, LoanStatus, UserRole, type UserEntity } from '../database/entities';
+import {
+  LoanApplicationStatus,
+  LoanStatus,
+  UserRole,
+  type AuditLogEntity,
+  type LeadAssignmentEntity,
+  type UserEntity,
+} from '../database/entities';
 import type { DocumentsService } from '../documents/documents.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { RewardsService } from '../rewards/rewards.service';
@@ -45,6 +52,8 @@ describe('LoanApplicationsService.submit — required document validation gate',
     } as unknown as LoanJourneyDetectionService;
     const rewardsService = {} as RewardsService;
     const caseNumberService = {} as CaseNumberService;
+    const auditLogRepository = {} as Repository<AuditLogEntity>;
+    const leadAssignmentRepository = {} as Repository<LeadAssignmentEntity>;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -55,6 +64,8 @@ describe('LoanApplicationsService.submit — required document validation gate',
       loanJourneyDetectionService,
       rewardsService,
       caseNumberService,
+      auditLogRepository,
+      leadAssignmentRepository,
     );
 
     return { service, dataSource, documentsService, loanApplicationRepository };
@@ -132,6 +143,8 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
     const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
     const rewardsService = {} as RewardsService;
     const caseNumberService = {} as CaseNumberService;
+    const auditLogRepository = {} as Repository<AuditLogEntity>;
+    const leadAssignmentRepository = {} as Repository<LeadAssignmentEntity>;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -142,6 +155,8 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
       loanJourneyDetectionService,
       rewardsService,
       caseNumberService,
+      auditLogRepository,
+      leadAssignmentRepository,
     );
 
     return { service, dataSource, documentsService, loanApplicationRepository };
@@ -195,6 +210,121 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
 });
 
 /**
+ * Audit Trail — merges two already-real, already-populated sources
+ * (`AuditLogEntity` decision rows, `LeadAssignmentEntity` ownership-
+ * change rows) into one chronological list, rather than writing to a
+ * third table. Covers: both sources are queried and merged/sorted
+ * correctly, disbursement rows are found via the loan id (not the
+ * application id), and employee ownership is still enforced.
+ */
+describe('LoanApplicationsService.getAuditTrail', () => {
+  function buildService(application: Record<string, unknown> | null) {
+    const loanApplicationRepository = {
+      findOneWithLoan: jest.fn().mockResolvedValue(application),
+    } as unknown as LoanApplicationRepository;
+    const loanRepository = {} as LoanRepository;
+    const notificationsService = {} as NotificationsService;
+    const documentsService = {} as DocumentsService;
+    const dataSource = {} as DataSource;
+    const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
+    const rewardsService = {} as RewardsService;
+    const caseNumberService = {} as CaseNumberService;
+    const auditLogRepository = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'log-2',
+          action: 'loan_application_approved',
+          actorId: 'reviewer-1',
+          actor: { fullName: 'Reviewer One' },
+          metadata: null,
+          entityName: 'loan_applications',
+          entityId: 'app-1',
+          createdAt: new Date('2026-07-20T10:00:00Z'),
+        },
+        {
+          id: 'log-3',
+          action: 'loan_disbursed',
+          actorId: 'reviewer-1',
+          actor: { fullName: 'Reviewer One' },
+          metadata: { disbursementReference: 'UTR1' },
+          entityName: 'loans',
+          entityId: 'loan-1',
+          createdAt: new Date('2026-07-21T10:00:00Z'),
+        },
+      ]),
+    } as unknown as Repository<AuditLogEntity>;
+    const leadAssignmentRepository = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'assign-1',
+          action: 'assign',
+          assignedById: 'admin-1',
+          assignedBy: { fullName: 'Admin One' },
+          previousAssignee: null,
+          newAssignee: { fullName: 'Employee One' },
+          createdAt: new Date('2026-07-19T10:00:00Z'),
+        },
+      ]),
+    } as unknown as Repository<LeadAssignmentEntity>;
+
+    const service = new LoanApplicationsService(
+      loanApplicationRepository,
+      loanRepository,
+      notificationsService,
+      documentsService,
+      dataSource,
+      loanJourneyDetectionService,
+      rewardsService,
+      caseNumberService,
+      auditLogRepository,
+      leadAssignmentRepository,
+    );
+
+    return { service, auditLogRepository, leadAssignmentRepository };
+  }
+
+  const application = {
+    id: 'app-1',
+    assignedToId: 'employee-1',
+    loan: { id: 'loan-1' },
+  };
+
+  it('merges decision and assignment events, newest first, and queries decisions by both the application and loan id', async () => {
+    const { service, auditLogRepository } = buildService(application);
+    const admin = { id: 'admin-1', role: UserRole.ADMIN } as UserEntity;
+
+    const entries = await service.getAuditTrail('app-1', admin);
+
+    expect(auditLogRepository.find).toHaveBeenCalledWith({
+      where: [
+        { entityName: 'loan_applications', entityId: 'app-1' },
+        { entityName: 'loans', entityId: 'loan-1' },
+      ],
+      relations: ['actor'],
+    });
+    expect(entries.map((e) => e.id)).toEqual(['log-3', 'log-2', 'assign-1']);
+    expect(entries[0]).toMatchObject({ source: 'decision', actorName: 'Reviewer One' });
+    expect(entries[2]).toMatchObject({ source: 'assignment', actorName: 'Admin One' });
+  });
+
+  it('throws NotFound when the application does not exist', async () => {
+    const { service } = buildService(null);
+    const admin = { id: 'admin-1', role: UserRole.ADMIN } as UserEntity;
+
+    await expect(service.getAuditTrail('missing', admin)).rejects.toThrow('Loan application not found.');
+  });
+
+  it('forbids an employee the lead is not assigned to', async () => {
+    const { service } = buildService(application);
+    const otherEmployee = { id: 'employee-2', role: UserRole.EMPLOYEE } as UserEntity;
+
+    await expect(service.getAuditTrail('app-1', otherEmployee)).rejects.toThrow(
+      'This lead is not assigned to you.',
+    );
+  });
+});
+
+/**
  * Disbursement gate — Apply → Review → Approve → Disburse. `disburse()`
  * must refuse to run its transactional write path unless the
  * application is APPROVED, has a loan record, that loan is still
@@ -219,6 +349,8 @@ describe('LoanApplicationsService.disburse — disbursement gate', () => {
     const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
     const rewardsService = {} as RewardsService;
     const caseNumberService = {} as CaseNumberService;
+    const auditLogRepository = {} as Repository<AuditLogEntity>;
+    const leadAssignmentRepository = {} as Repository<LeadAssignmentEntity>;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -229,6 +361,8 @@ describe('LoanApplicationsService.disburse — disbursement gate', () => {
       loanJourneyDetectionService,
       rewardsService,
       caseNumberService,
+      auditLogRepository,
+      leadAssignmentRepository,
     );
 
     return { service, dataSource, loanApplicationRepository };

@@ -19,6 +19,7 @@ import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { Icon } from '../../components/ui/Icon';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { StatCard } from '../../components/ui/StatCard';
+import { formatInr } from '../../lib/currency';
 import { fetchPendingApprovals } from '../approvals/approvals-api';
 import { describeAction } from '../approvals/approvals-meta';
 import { fetchCustomers } from '../customers/customers-api';
@@ -36,12 +37,6 @@ import {
   computeStatusDistribution,
   computeThisVsLastMonth,
 } from './dashboard-data';
-
-const CURRENCY_FORMATTER = new Intl.NumberFormat('en-IN', {
-  style: 'currency',
-  currency: 'INR',
-  maximumFractionDigits: 0,
-});
 
 const RECENT_APPLICATIONS_LIMIT = 8;
 const RECENT_APPROVALS_LIMIT = 5;
@@ -156,7 +151,7 @@ export function AdminDashboardPage(): JSX.Element {
   const applicationColumns: DataTableColumn<LeadSummary>[] = [
     { key: 'caseNumber', header: 'Case Number', render: (row) => row.caseNumber },
     { key: 'applicant', header: 'Customer', render: (row) => row.applicantName ?? 'Unknown' },
-    { key: 'amount', header: 'Amount', align: 'right', render: (row) => CURRENCY_FORMATTER.format(Number(row.requestedAmount)) },
+    { key: 'amount', header: 'Amount', align: 'right', render: (row) => formatInr(row.requestedAmount) },
     {
       key: 'status',
       header: 'Status',
@@ -192,6 +187,7 @@ export function AdminDashboardPage(): JSX.Element {
           tint="indigo"
           loading={leads === null && !leadsError}
           trend={applicationsTrend ?? undefined}
+          onClick={() => navigate('/applications')}
         />
         <StatCard
           label="Pending Approvals"
@@ -200,10 +196,11 @@ export function AdminDashboardPage(): JSX.Element {
           tint="amber"
           loading={approvals === null && !approvalsError}
           footerNote="Awaiting decision"
+          onClick={() => navigate('/settings/approvals')}
         />
         <StatCard
           label="Disbursed Amount"
-          value={CURRENCY_FORMATTER.format(disbursedAmount)}
+          value={formatInr(disbursedAmount)}
           icon="money"
           tint="green"
           loading={leads === null && !leadsError}
@@ -277,7 +274,7 @@ export function AdminDashboardPage(): JSX.Element {
             error={leadsError}
             onRetry={() => void loadLeads()}
             emptyMessage="No applications yet."
-            onRowClick={(row) => navigate(`/leads/${row.id}`)}
+            onRowClick={(row) => navigate(`/applications/${row.id}`, { state: { from: '/applications' } })}
           />
         </Card>
 

@@ -605,12 +605,67 @@ badge; Employee Workload Summary and Recent Activity render unchanged.
 
 ---
 
+## Module 6 — Enterprise CRM Modules, Phase 3 (Applications) ✅ 2026-07-27
+
+**What:** replaced the `/applications` placeholder with a production
+Applications module — the master case list across every status (unlike
+`LeadsPage`'s unassigned/assigned assignment-queue tabs). Search,
+status/category/assignment/date filters, sortable+paginated `DataTable`,
+localStorage-backed Saved Views (`features/applications/saved-views.ts`
+— deliberately client-only, not a new backend domain), bulk reassign
+(reuses `transferSelectedLeads`), and a real client-generated CSV
+export. Every row opens the **existing** `LeadDetailPage` at
+`/applications/:id` — no second detail page was built. That page's
+back-button target, previously hardcoded to the caller's role, now
+reads an optional `location.state.from` so it returns to whichever list
+linked in (`/leads`, `/my-leads`, or `/applications`).
+
+**Audit Trail (new):** `GET /v1/loan-applications/:id/audit-trail`
+merges two already-real, already-populated sources into one
+chronological log — `AuditLogEntity` decision rows (review/disburse,
+already written by `LoanApplicationsService`, previously just never
+surfaced) and `LeadAssignmentEntity` ownership-change rows (already
+written by `LeadAssignmentService`). No new write path was needed for
+either; this endpoint is read-only. Rendered as a new "Audit trail"
+section on the detail page, distinct from the existing human-readable
+Timeline — same activity-feed-vs-raw-log split real enterprise CRMs
+make.
+
+**Dashboard wiring:** `StatCard` gained an optional `onClick` (with
+proper keyboard/`role="button"` a11y) — a standing capability every
+future KPI card will use, not a one-off. Total Applications → 
+`/applications`; Pending Approvals → `/settings/approvals`; Recent
+Applications rows → `/applications/:id`. Disbursed Amount and Active
+Customers stay non-interactive until Reports (Phase 7) and Customer 360
+(Phase 4) exist — no link to a page that isn't real yet.
+
+**Verified:** backend — 131/131 tests pass (3 new `getAuditTrail`
+tests: merge+sort correctness including the loan-vs-application
+`entityName` split for disbursement rows, NotFound, and employee
+ownership enforcement). Frontend — typecheck/lint/build clean.
+Live-checked against the real seeded account: Applications list shows
+all 15 real applications with working filters; a detail page opened
+from it shows "Back to Applications" (proving the `from`-state fix);
+its new Audit Trail section shows real merged entries ("Application
+approved · By Test Employee", "Transferred · By System Administrator")
+distinct from, and consistent with, the existing Timeline.
+
+---
+
 ## Up next
 
-Per the approved blueprint's build order, and the confirmed post-Phase-5
-roadmap: Design System Foundation Phase 3 (forms/dialogs polish), then
-Phase 4 (remaining screens + wiring `DocumentManagementCenter`), then
-ZIP export + Case Summary PDF, then the remaining queued modules —
-Customer 360 (retires the KYC review screens currently orphaned in the
-frozen legacy Flutter Employee App), the Lead Pipeline/Documents visual
-pass, Banks &amp; Partners, Analytics, and Audit Log.
+Per the confirmed Phase 3–8 roadmap: **Phase 4 — Customer 360** next
+(one new aggregate endpoint, `GET /v1/customers/:id/overview`, plus a
+new `CustomerDetailPage` — Personal Details, All Applications, Assigned
+Employee, Timeline, Documents, Activity Feed, Risk Information), then
+Phase 5 (Document Center + the mandatory one-click ZIP/PDF export —
+`archiver` + `pdfkit`, folders from the already-real
+`DocumentTypeEntity.category`), then Phase 6 (Global Search, frontend-
+only for now), Phase 7 (Reports — real-data subset only), Phase 8
+(Settings — Document Types + Profile only). Task Management, Branch
+Management, Revenue/Finance, Loan Products, dynamic RBAC, and Email
+Templates remain explicitly deferred — no backend domain exists for any
+of them yet, and none should be fabricated. Design System Phase 3
+(forms/dialogs polish) and Phase 4 (remaining screens) stay queued
+behind this work, per the user's explicit re-prioritization toward real
+modules over further visual polish.

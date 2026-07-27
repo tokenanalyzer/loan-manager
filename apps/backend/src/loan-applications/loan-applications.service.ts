@@ -7,12 +7,13 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, EntityManager } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { formatInr } from '../common/utils/currency.util';
 import {
   AuditLogEntity,
+  LeadAssignmentEntity,
   LoanApplicationEntity,
   LoanApplicationStatus,
   LoanEntity,
@@ -25,6 +26,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { RewardsService } from '../rewards/rewards.service';
 
 import { CaseNumberService } from './case-number.service';
+import { AuditTrailEntryDto } from './dto/audit-trail-entry.dto';
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { DisburseLoanDto } from './dto/disburse-loan.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
@@ -89,6 +91,10 @@ export class LoanApplicationsService {
     private readonly loanJourneyDetectionService: LoanJourneyDetectionService,
     private readonly rewardsService: RewardsService,
     private readonly caseNumberService: CaseNumberService,
+    @InjectRepository(AuditLogEntity)
+    private readonly auditLogRepository: Repository<AuditLogEntity>,
+    @InjectRepository(LeadAssignmentEntity)
+    private readonly leadAssignmentRepository: Repository<LeadAssignmentEntity>,
   ) {}
 
   async submit(
@@ -212,6 +218,50 @@ export class LoanApplicationsService {
     }
 
     return application;
+  }
+
+  /**
+   * Audit Trail — a raw, structured event log for this application,
+   * distinct from the human-readable Timeline the frontend already
+   * builds from the same-ish facts. Merges two already-real, already-
+   * populated sources rather than adding a third write path: decision
+   * events (`AuditLogEntity`, written by `review`/`disburse` above —
+   * disbursement rows are logged under `entityName: 'loans'` against
+   * the loan id, everything else under `'loan_applications'` against
+   * this id) and ownership-change events (`LeadAssignmentEntity`,
+   * written by `LeadAssignmentService`). Employee/admin only — same
+   * ownership rule as `findOneForUser`.
+   */
+  async getAuditTrail(id: string, requester: UserEntity): Promise<AuditTrailEntryDto[]> {
+    const application = await this.loanApplicationRepository.findOneWithLoan(id);
+    if (!application) {
+      throw new NotFoundException('Loan application not found.');
+    }
+    if (requester.role === UserRole.EMPLOYEE && application.assignedToId !== requester.id) {
+      throw new ForbiddenException('This lead is not assigned to you.');
+    }
+
+    const auditLogWhere = application.loan
+      ? [
+          { entityName: 'loan_applications', entityId: application.id },
+          { entityName: 'loans', entityId: application.loan.id },
+        ]
+      : [{ entityName: 'loan_applications', entityId: application.id }];
+
+    const [decisionLogs, assignmentLogs] = await Promise.all([
+      this.auditLogRepository.find({ where: auditLogWhere, relations: ['actor'] }),
+      this.leadAssignmentRepository.find({
+        where: { loanApplicationId: application.id },
+        relations: ['previousAssignee', 'newAssignee', 'assignedBy'],
+      }),
+    ]);
+
+    const entries = [
+      ...decisionLogs.map((log) => AuditTrailEntryDto.fromAuditLog(log)),
+      ...assignmentLogs.map((log) => AuditTrailEntryDto.fromAssignment(log)),
+    ];
+    entries.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return entries;
   }
 
   /**

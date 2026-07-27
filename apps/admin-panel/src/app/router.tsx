@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
+import { ApplicationsPage } from '../features/applications/ApplicationsPage';
 import { PendingApprovalsPage } from '../features/approvals/PendingApprovalsPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
@@ -91,17 +92,25 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      // Design System Foundation, Phase 1 — "Coming Soon" placeholders for
-      // nav items that ship in the shell for visual completeness but have
-      // no real screen yet. See navigation.config.ts's `comingSoon` flag.
       {
         path: 'applications',
         element: (
           <ProtectedRoute roles={['admin']}>
-            <ComingSoonPage title="Applications" />
+            <ApplicationsPage />
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'applications/:id',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <LeadDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Design System Foundation, Phase 1 — "Coming Soon" placeholders for
+      // nav items that ship in the shell for visual completeness but have
+      // no real screen yet. See navigation.config.ts's `comingSoon` flag.
       {
         path: 'documents',
         element: (

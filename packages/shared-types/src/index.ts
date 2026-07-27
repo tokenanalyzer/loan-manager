@@ -9,6 +9,7 @@
  */
 export * from './api-response';
 export * from './approvals';
+export * from './audit-trail';
 export * from './auth';
 export * from './customers';
 export * from './documents';

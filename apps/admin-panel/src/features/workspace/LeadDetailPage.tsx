@@ -1,10 +1,11 @@
 import type {
+  AuditTrailEntry,
   BlockingRequiredDocument,
   LeadAssignmentHistoryEntry,
   LeadSummary,
 } from '@loan-manager/shared-types';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
@@ -22,6 +23,7 @@ import { ReviewModal } from './ReviewModal';
 import { useAutosaveNotes } from './useAutosaveNotes';
 import {
   disburseLoan,
+  fetchAuditTrail,
   fetchCustomerProfile,
   fetchCustomerSummary,
   fetchLead,
@@ -40,6 +42,22 @@ const BLOCKING_REASON_LABEL: Record<BlockingRequiredDocument['reason'], string> 
   rejected: 'Rejected',
   reupload_requested: 'Re-upload requested',
 };
+
+/** Human label for a raw Audit Trail action code — the backend keeps these as stable, greppable strings; this is presentation-only. */
+const AUDIT_ACTION_LABEL: Record<string, string> = {
+  loan_application_approved: 'Application approved',
+  loan_application_rejected: 'Application rejected',
+  loan_application_query_raised: 'Query raised',
+  loan_application_query_responded: 'Customer responded to query',
+  loan_disbursed: 'Loan disbursed',
+  assign: 'Assigned',
+  reassign: 'Reassigned',
+  transfer: 'Transferred',
+};
+
+function describeAuditAction(action: string): string {
+  return AUDIT_ACTION_LABEL[action] ?? action.replace(/_/g, ' ');
+}
 
 interface TimelineEntry {
   key: string;
@@ -124,17 +142,31 @@ function buildTimeline(lead: LeadSummary, history: LeadAssignmentHistoryEntry[])
  * otherwise, admin is never restricted this way) — this page surfaces
  * that as a clear locked state instead of a raw error.
  */
+const BACK_LABELS: Record<string, string> = {
+  '/leads': 'Back to Leads',
+  '/my-leads': 'Back to My Leads',
+  '/applications': 'Back to Applications',
+};
+
 export function LeadDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile: authProfile } = useAuth();
-  const backPath = authProfile?.role === 'admin' ? '/leads' : '/my-leads';
-  const backLabel = authProfile?.role === 'admin' ? 'Back to Leads' : 'Back to My Leads';
+  // Reachable from more than one list now (`/leads`, `/my-leads`,
+  // `/applications`) — the linking page passes `state: { from }` so
+  // "back" returns where the admin actually came from, falling back to
+  // the original role-based default when a route links in directly
+  // (e.g. a bookmark) without that state.
+  const backPath = (location.state as { from?: string } | null)?.from
+    ?? (authProfile?.role === 'admin' ? '/leads' : '/my-leads');
+  const backLabel = BACK_LABELS[backPath] ?? 'Back';
 
   const [lead, setLead] = useState<LeadSummary | null>(null);
   const [customer, setCustomer] = useState<CustomerSummary | null>(null);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [history, setHistory] = useState<LeadAssignmentHistoryEntry[]>([]);
+  const [auditTrail, setAuditTrail] = useState<AuditTrailEntry[]>([]);
   const [locked, setLocked] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,14 +187,16 @@ export function LeadDetailPage(): JSX.Element {
       const leadData = await fetchLead(id);
       setLead(leadData);
 
-      const [customerData, profileData, historyData] = await Promise.all([
+      const [customerData, profileData, historyData, auditTrailData] = await Promise.all([
         fetchCustomerSummary(leadData.applicantId),
         fetchCustomerProfile(leadData.applicantId).catch(() => null),
         fetchLeadHistory(id).catch(() => []),
+        fetchAuditTrail(id).catch(() => []),
       ]);
       setCustomer(customerData);
       setProfile(profileData);
       setHistory(historyData);
+      setAuditTrail(auditTrailData);
     } catch (err) {
       if (isForbidden(err)) {
         setLocked(true);
@@ -444,6 +478,27 @@ export function LeadDetailPage(): JSX.Element {
                 </div>
               ))}
             </div>
+          </Card>
+
+          <Card>
+            <h2 className={styles.sectionTitle}>Audit trail</h2>
+            {auditTrail.length === 0 ? (
+              <EmptyState message="No audit events recorded yet." />
+            ) : (
+              <div className={styles.timeline}>
+                {auditTrail.map((entry) => (
+                  <div key={entry.id} className={styles.timelineItem}>
+                    <span className={styles.timelineDot} />
+                    <div className={styles.timelineBody}>
+                      <span className={styles.timelineTitle}>{describeAuditAction(entry.action)}</span>
+                      <span className={styles.timelineMeta}>
+                        By {entry.actorName ?? 'System'} · {new Date(entry.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import type { LeadAssignmentHistoryEntry, LeadSummary } from '@loan-manager/shared-types';
+import type { AuditTrailEntry, LeadAssignmentHistoryEntry, LeadSummary } from '@loan-manager/shared-types';
 
 import { apiClient } from '../../lib/api-client';
 
@@ -65,6 +65,12 @@ export async function fetchLeadHistory(id: string): Promise<LeadAssignmentHistor
   const { data } = await apiClient.get<LeadAssignmentHistoryEntry[]>(
     `/v1/lead-assignment/leads/${id}/history`,
   );
+  return data;
+}
+
+/** Audit Trail — raw decision + assignment event log, distinct from the Timeline above. */
+export async function fetchAuditTrail(id: string): Promise<AuditTrailEntry[]> {
+  const { data } = await apiClient.get<AuditTrailEntry[]>(`/v1/loan-applications/${id}/audit-trail`);
   return data;
 }
 

@@ -4,6 +4,7 @@ import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
 import { UserEntity, UserRole } from '../database/entities';
 
+import { AuditTrailEntryDto } from './dto/audit-trail-entry.dto';
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { DisburseLoanDto } from './dto/disburse-loan.dto';
 import { LoanApplicationResponseDto } from './dto/loan-application-response.dto';
@@ -46,6 +47,16 @@ export class LoanApplicationsController {
   ): Promise<LoanApplicationResponseDto> {
     const application = await this.loanApplicationsService.findOneForUser(id, user);
     return LoanApplicationResponseDto.fromEntity(application);
+  }
+
+  /** Audit Trail — raw decision + assignment event log, distinct from the Timeline (see LoanApplicationsService.getAuditTrail). */
+  @Get(':id/audit-trail')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getAuditTrail(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() user: UserEntity,
+  ): Promise<AuditTrailEntryDto[]> {
+    return this.loanApplicationsService.getAuditTrail(id, user);
   }
 
   @Patch(':id/review')

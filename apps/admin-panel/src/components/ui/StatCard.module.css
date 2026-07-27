@@ -4,6 +4,23 @@
   gap: var(--space-3);
 }
 
+.clickable {
+  cursor: pointer;
+  transition: transform var(--motion-duration-fast) var(--motion-ease-standard),
+    border-color var(--motion-duration-fast) var(--motion-ease-standard);
+}
+
+.clickable:hover,
+.clickable:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--color-accent-electric);
+}
+
+.clickable:focus-visible {
+  outline: 2px solid var(--color-accent-electric);
+  outline-offset: 2px;
+}
+
 .top {
   display: flex;
   align-items: flex-start;

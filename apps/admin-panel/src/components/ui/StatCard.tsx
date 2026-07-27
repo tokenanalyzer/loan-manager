@@ -23,6 +23,10 @@ const TINT_CLASS: Record<StatCardTint, string> = {
  * no historical basis for a percentage. Never fabricate `trend`.
  * Pass `loading` while the source data hasn't resolved yet — renders
  * skeleton blocks in place of the value/trend rather than a stale "0".
+ * Pass `onClick` to navigate to the metric's filtered/detail screen —
+ * "no decorative UI, every KPI card is clickable" is a standing
+ * requirement, not a one-off; every dashboard StatCard should carry one
+ * once its destination screen exists.
  */
 export function StatCard({
   label,
@@ -32,6 +36,7 @@ export function StatCard({
   trend,
   footerNote,
   loading = false,
+  onClick,
 }: {
   label: string;
   value: string;
@@ -40,10 +45,26 @@ export function StatCard({
   trend?: { direction: 'up' | 'down'; percent: number };
   footerNote?: string;
   loading?: boolean;
+  onClick?: () => void;
 }): JSX.Element {
   return (
     <motion.div variants={slideUpVariants} initial="initial" animate="animate">
-      <Card>
+      <Card
+        className={onClick ? styles.clickable : undefined}
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        tabIndex={onClick ? 0 : undefined}
+        onKeyDown={
+          onClick
+            ? (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onClick();
+                }
+              }
+            : undefined
+        }
+      >
         <div className={styles.top}>
           <span className={styles.label}>{label}</span>
           <span className={`${styles.iconBadge} ${styles[TINT_CLASS[tint]]}`}>
