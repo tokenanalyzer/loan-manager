@@ -43,7 +43,7 @@ the full `DataTable` primitive (this screen's table doesn't need it yet).
 
 ---
 
-## Module 2 — Admin Authentication (in progress, phase 1 of 7) 🚧 2026-07-25
+## Module 2 — Admin Authentication (in progress, phase 5 of 7) 🚧 2026-07-25
 
 Full design review approved (three revisions — architecture, backend
 orchestration + four-tier RBAC + comprehensive audit, then soft-delete
@@ -280,6 +280,84 @@ Test employees and their Firebase users deleted afterward.
 
 **Deliberately out of scope this phase:** Phase 5 (not started, per
 instruction).
+
+### Phase 5 — Maker-checker (dual-approval) for staff lifecycle ✅ 2026-07-27
+
+**What:** the maker-checker workflow explicitly deferred at Phase 3.
+Scope locked by the user during design review: only Disable/Archive/
+Restore are gated (Create/Resend-Invite/Reset-Password stay immediate);
+only `ORG_ADMIN`-initiated actions require a second approver — `ADMIN`
+(Super Admin) actions stay immediate, exactly as before. Built to be
+extensible: a data-driven policy lookup decides who's gated (not a
+hardcoded role check), and an executor registry decides what runs on
+approval (not a growing if/else) — so a future high-risk action (Role
+Change, Delete User, Permission Change) or extending the policy to
+`ADMIN` itself is a data change, not an architecture change.
+
+- New `approval_requests` table (`ApprovalRequestEntity`, migration
+  `AddApprovalRequests`) — action-agnostic (`action` is free-text
+  varchar, same convention as `AuditLogEntity.action`, not a Postgres
+  enum), with a `pending/approved/rejected/withdrawn/failed` status
+  enum. A partial unique index (`target_user_id, action WHERE status =
+  'pending'`) backstops "at most one pending request per (target,
+  action)" at the DB level.
+- New sibling `ApprovalsModule` (not folded into `UsersModule`, which
+  already covers a lot) — `MakerCheckerPolicyService.requiresApproval(role,
+  action)` (static map, currently `ORG_ADMIN` × the three staff actions
+  → `true`, default `false`), `ApprovalActionExecutorRegistry`
+  (`action string → executor`, so `ApprovalsService.decide` never
+  branches on action name), `ApprovalsService` (create/decide/withdraw
+  + the notification/audit plumbing), `ApprovalsController`
+  (`GET /v1/approvals`, `GET /v1/approvals/mine`,
+  `POST /v1/approvals/:id/decision`, `PATCH /v1/approvals/:id/withdraw`),
+  gated by two new permissions (`APPROVAL_READ`/`APPROVAL_DECIDE`,
+  `ADMIN`-only via `ALL_PERMISSIONS`).
+- `UsersService.disableStaffUser`/`archiveStaffUser`/`restoreStaffUser`
+  refactored into `preflight*`/`execute*` pairs: the guard checks run
+  once up front (fail-fast — a doomed request, e.g. self-action or last
+  active Super Admin, is never created), then either
+  `approvalsService.createRequest(...)` (returns `{ outcome:
+  'pending_approval', request }`) or the now-public `execute*` (returns
+  `{ outcome: 'executed', user }`) depending on the policy. `execute*`
+  is what the executor registry calls on approval too — re-running the
+  full preflight from scratch every time is what makes staleness
+  handling (state drifted between request and decision) automatic
+  instead of a separate code path; a drifted precondition surfaces as a
+  normal exception, caught and recorded as `status: 'failed'` with
+  `failureReason`, never left silently `pending`.
+- Self-approval is guarded in `ApprovalsService.decide` even though
+  it's unreachable under today's policy (only `ADMIN` can currently
+  hold `APPROVAL_DECIDE`, and `ADMIN` can't currently be a maker) —
+  written and tested now as the safety net for the day the policy is
+  extended to gate `ADMIN` too.
+- **Real gap found and fixed as part of this phase:** `ORG_ADMIN` had
+  zero UI access to the Team page at all — `navigation.config.ts` and
+  `router.tsx` both gated it to `roles: ['admin']` only, despite
+  `ORG_ADMIN` holding `STAFF_DISABLE`/`STAFF_ARCHIVE`/`STAFF_RESTORE`
+  permission since Phase 3. Fixed by adding `'org_admin'` to both.
+- Admin Panel: new `Settings → Approvals` page (`ADMIN`-only nav item +
+  route) — the checker's queue, with an Approve/Reject decision modal
+  (`decisionNote` required to reject, optional to approve, mirroring
+  `StaffLifecycleModal`'s structure). `StaffLifecycleModal` branches on
+  the new `StaffLifecycleOutcome` union: an `ORG_ADMIN`'s submit shows
+  "submitted for Super Admin approval" instead of assuming the account
+  changed. `StaffListPage` shows a "Pending X approval" badge and
+  disables the lifecycle buttons for a row with an open request
+  (server already blocks the duplicate; this just preempts a
+  guaranteed-to-fail click).
+
+**Verification:** backend typecheck/lint/tests all pass (117/117, +33
+new: `MakerCheckerPolicyService`, `ApprovalActionExecutorRegistry`,
+`ApprovalsService` — including duplicate-request blocking,
+self-approval, stale-precondition-at-approval-time, and reject-never-
+executes — plus the updated `UsersService` maker-checker-fork suite);
+migration verified with a real `migration:run` → `migration:revert` →
+`migration:run` cycle against the dev database, confirming `down` is
+symmetric. `shared-types`, and admin-panel typecheck/lint/build all
+clean. Live end-to-end verification (an `ORG_ADMIN` submitting a
+request, a Super Admin approving/rejecting from the real UI, and the
+notification/audit trail) is the user's own next manual pass, per the
+established workflow for this module — not yet run in this session.
 
 ---
 

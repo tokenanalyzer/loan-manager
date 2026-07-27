@@ -1,4 +1,4 @@
-import type { StaffUser } from '@loan-manager/shared-types';
+import type { StaffLifecycleOutcome, StaffUser, UserRole } from '@loan-manager/shared-types';
 import { useState } from 'react';
 
 import { Button } from '../../components/ui/Button';
@@ -8,6 +8,14 @@ import { Modal } from '../../components/ui/Modal';
 import { archiveStaffUser, disableStaffUser, resetStaffPassword, restoreStaffUser } from './staff-api';
 
 export type LifecycleAction = 'disable' | 'archive' | 'restore' | 'reset-password';
+
+/** Phase 5: an `ORG_ADMIN` actor's Disable/Archive/Restore goes through Super Admin approval instead of applying immediately — reflected in the confirmation copy before submit, not just the result. */
+function requiresApprovalCopy(action: LifecycleAction, actorRole: UserRole | undefined): string | null {
+  if (actorRole !== 'org_admin' || (action !== 'disable' && action !== 'archive' && action !== 'restore')) {
+    return null;
+  }
+  return 'This will be submitted for Super Admin approval — the account will not change until it is reviewed.';
+}
 
 function copyFor(action: LifecycleAction, user: StaffUser): { title: string; description: string; cta: string } {
   switch (action) {
@@ -61,36 +69,46 @@ function copyFor(action: LifecycleAction, user: StaffUser): { title: string; des
 export function StaffLifecycleModal({
   action,
   user,
+  actorRole,
   onClose,
   onDone,
 }: {
   action: LifecycleAction;
   user: StaffUser;
+  /** The signed-in staff member performing this action — determines whether Disable/Archive/Restore go through Super Admin approval (Phase 5). */
+  actorRole: UserRole | undefined;
   onClose: () => void;
-  onDone: () => void;
+  onDone: (outcome: 'executed' | 'pending_approval') => void;
 }): JSX.Element {
   const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultLink, setResultLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [pendingSubmitted, setPendingSubmitted] = useState(false);
   const copy = copyFor(action, user);
+  const approvalNote = requiresApprovalCopy(action, actorRole);
   const requiresReason = action === 'disable' || action === 'archive';
   const canSubmit = !requiresReason || reason.trim() !== '';
+
+  function handleLifecycleResult(result: StaffLifecycleOutcome): void {
+    if (result.outcome === 'pending_approval') {
+      setPendingSubmitted(true);
+    } else {
+      onDone('executed');
+    }
+  }
 
   async function handleConfirm(): Promise<void> {
     setSubmitting(true);
     setError(null);
     try {
       if (action === 'disable') {
-        await disableStaffUser(user.id, reason.trim());
-        onDone();
+        handleLifecycleResult(await disableStaffUser(user.id, reason.trim()));
       } else if (action === 'archive') {
-        await archiveStaffUser(user.id, reason.trim());
-        onDone();
+        handleLifecycleResult(await archiveStaffUser(user.id, reason.trim()));
       } else if (action === 'restore') {
-        await restoreStaffUser(user.id);
-        onDone();
+        handleLifecycleResult(await restoreStaffUser(user.id));
       } else {
         const result = await resetStaffPassword(user.id);
         setResultLink(result.inviteLink);
@@ -111,9 +129,23 @@ export function StaffLifecycleModal({
     setCopied(true);
   }
 
+  if (pendingSubmitted) {
+    return (
+      <Modal title={copy.title} onClose={() => onDone('pending_approval')}>
+        <p>
+          Your request to {copy.title.toLowerCase()} for <strong>{user.fullName ?? user.email}</strong> was
+          submitted for Super Admin approval. The account will not change until it is reviewed.
+        </p>
+        <FormActions>
+          <Button onClick={() => onDone('pending_approval')}>Done</Button>
+        </FormActions>
+      </Modal>
+    );
+  }
+
   if (resultLink) {
     return (
-      <Modal title={copy.title} onClose={onDone}>
+      <Modal title={copy.title} onClose={() => onDone('executed')}>
         <p>
           A new one-time link was generated for <strong>{user.fullName ?? user.email}</strong>. Send it to them
           — it won&apos;t be shown again.
@@ -125,7 +157,7 @@ export function StaffLifecycleModal({
           <Button variant="secondary" onClick={() => void handleCopyLink()}>
             {copied ? 'Copied!' : 'Copy link'}
           </Button>
-          <Button onClick={onDone}>Done</Button>
+          <Button onClick={() => onDone('executed')}>Done</Button>
         </FormActions>
       </Modal>
     );
@@ -136,6 +168,10 @@ export function StaffLifecycleModal({
       <p>
         <strong>{user.fullName ?? user.email}</strong> — {copy.description}
       </p>
+
+      {approvalNote && (
+        <p style={{ color: 'var(--color-text-secondary)', fontStyle: 'italic' }}>{approvalNote}</p>
+      )}
 
       {requiresReason && (
         <FormField label="Reason (required)" htmlFor="lifecycle-reason">

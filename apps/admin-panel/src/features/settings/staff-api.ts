@@ -3,6 +3,7 @@ import type {
   CreateStaffUserPayload,
   ListStaffQueryParams,
   PaginatedResult,
+  StaffLifecycleOutcome,
   StaffLifecycleReasonPayload,
   StaffUser,
 } from '@loan-manager/shared-types';
@@ -26,22 +27,23 @@ export async function createStaffUser(payload: CreateStaffUserPayload): Promise<
   return data;
 }
 
-export async function disableStaffUser(id: string, reason: string): Promise<StaffUser> {
-  const { data } = await apiClient.patch<StaffUser>(`/v1/users/${id}/disable`, {
+/** Phase 5: an ORG_ADMIN caller gets back `{ outcome: 'pending_approval', ... }` instead of the account transitioning immediately — see `StaffLifecycleModal`. */
+export async function disableStaffUser(id: string, reason: string): Promise<StaffLifecycleOutcome> {
+  const { data } = await apiClient.patch<StaffLifecycleOutcome>(`/v1/users/${id}/disable`, {
     reason,
   } satisfies StaffLifecycleReasonPayload);
   return data;
 }
 
-export async function archiveStaffUser(id: string, reason: string): Promise<StaffUser> {
-  const { data } = await apiClient.patch<StaffUser>(`/v1/users/${id}/archive`, {
+export async function archiveStaffUser(id: string, reason: string): Promise<StaffLifecycleOutcome> {
+  const { data } = await apiClient.patch<StaffLifecycleOutcome>(`/v1/users/${id}/archive`, {
     reason,
   } satisfies StaffLifecycleReasonPayload);
   return data;
 }
 
-export async function restoreStaffUser(id: string): Promise<StaffUser> {
-  const { data } = await apiClient.patch<StaffUser>(`/v1/users/${id}/restore`);
+export async function restoreStaffUser(id: string): Promise<StaffLifecycleOutcome> {
+  const { data } = await apiClient.patch<StaffLifecycleOutcome>(`/v1/users/${id}/restore`);
   return data;
 }
 

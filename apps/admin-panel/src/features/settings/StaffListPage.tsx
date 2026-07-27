@@ -17,6 +17,13 @@ import { fetchStaff } from './staff-api';
 import { StaffLifecycleModal, type LifecycleAction } from './StaffLifecycleModal';
 import styles from './StaffListPage.module.css';
 
+/** Human-readable label for a pending action, for the Team screen's "pending" badge — same set as `apps/admin-panel/src/features/approvals/approvals-meta.ts`, kept separate since Team's badge phrasing ("Pending X approval") differs from the Approvals queue's. */
+const PENDING_ACTION_LABEL: Record<string, string> = {
+  staff_disable: 'Pending disable approval',
+  staff_archive: 'Pending archive approval',
+  staff_restore: 'Pending restore approval',
+};
+
 /** Active / Invited / Disabled / Archived — the four states the Team screen distinguishes (approved Phase 3 design). "Invited" is derived (status is ACTIVE but activatedAt is still null — never signed in yet), not its own backend status. */
 type DisplayStatus = 'active' | 'invited' | 'disabled' | 'archived';
 
@@ -45,6 +52,13 @@ const SUCCESS_MESSAGE: Record<LifecycleAction, (name: string) => string> = {
   archive: (name) => `${name} was archived.`,
   restore: (name) => `${name} was restored to Active.`,
   'reset-password': (name) => `A new password-setup link was generated for ${name}.`,
+};
+
+/** Phase 5: an ORG_ADMIN's Disable/Archive/Restore submits for approval instead of applying — the banner needs to say so, not claim the account already changed. */
+const PENDING_APPROVAL_MESSAGE: Partial<Record<LifecycleAction, (name: string) => string>> = {
+  disable: (name) => `The request to disable ${name} was submitted for Super Admin approval.`,
+  archive: (name) => `The request to archive ${name} was submitted for Super Admin approval.`,
+  restore: (name) => `The request to restore ${name} was submitted for Super Admin approval.`,
 };
 
 const SORT_COLUMNS: { field: StaffSortField; label: string }[] = [
@@ -150,9 +164,16 @@ export function StaffListPage(): JSX.Element {
     }
   }
 
-  function handleActionDone(action: LifecycleAction, user: StaffUser): void {
+  function handleActionDone(
+    action: LifecycleAction,
+    user: StaffUser,
+    outcome: 'executed' | 'pending_approval',
+  ): void {
     setLifecycleTarget(null);
-    setSuccessMessage(SUCCESS_MESSAGE[action](user.fullName ?? user.email ?? 'This account'));
+    const name = user.fullName ?? user.email ?? 'This account';
+    const message =
+      outcome === 'pending_approval' ? PENDING_APPROVAL_MESSAGE[action]?.(name) : SUCCESS_MESSAGE[action](name);
+    setSuccessMessage(message ?? SUCCESS_MESSAGE[action](name));
     void load(true);
   }
 
@@ -275,6 +296,10 @@ export function StaffListPage(): JSX.Element {
               {staff.map((user) => {
                 const status = displayStatus(user);
                 const isSelf = user.id === profile?.id;
+                // Phase 5: a pending maker-checker request against this account — the
+                // backend already blocks a duplicate submit, this just preempts a
+                // guaranteed-to-fail click instead of showing an error after the fact.
+                const lifecycleLocked = user.pendingApproval != null;
                 return (
                   <tr key={user.id}>
                     <td>{user.fullName ?? '—'}</td>
@@ -284,6 +309,11 @@ export function StaffListPage(): JSX.Element {
                       <span className={STATUS_BADGE_CLASS[status]}>{STATUS_LABEL[status]}</span>
                       {user.statusReason && (status === 'disabled' || status === 'archived') && (
                         <div className={styles.statusReason}>{user.statusReason}</div>
+                      )}
+                      {user.pendingApproval && (
+                        <div className={styles.statusReason}>
+                          {PENDING_ACTION_LABEL[user.pendingApproval.action] ?? 'Pending approval'}
+                        </div>
                       )}
                     </td>
                     <td>{new Date(user.createdAt).toLocaleDateString()}</td>
@@ -295,6 +325,7 @@ export function StaffListPage(): JSX.Element {
                           <Button
                             variant="secondary"
                             size="sm"
+                            disabled={lifecycleLocked}
                             onClick={() =>
                               setLifecycleTarget({
                                 action: status === 'disabled' ? 'restore' : 'disable',
@@ -318,6 +349,7 @@ export function StaffListPage(): JSX.Element {
                           <Button
                             variant="danger"
                             size="sm"
+                            disabled={lifecycleLocked}
                             onClick={() => setLifecycleTarget({ action: 'archive', user })}
                           >
                             Archive
@@ -327,6 +359,7 @@ export function StaffListPage(): JSX.Element {
                           <Button
                             variant="secondary"
                             size="sm"
+                            disabled={lifecycleLocked}
                             onClick={() => setLifecycleTarget({ action: 'restore', user })}
                           >
                             Restore
@@ -382,8 +415,9 @@ export function StaffListPage(): JSX.Element {
         <StaffLifecycleModal
           action={lifecycleTarget.action}
           user={lifecycleTarget.user}
+          actorRole={profile?.role}
           onClose={() => setLifecycleTarget(null)}
-          onDone={() => handleActionDone(lifecycleTarget.action, lifecycleTarget.user)}
+          onDone={(outcome) => handleActionDone(lifecycleTarget.action, lifecycleTarget.user, outcome)}
         />
       )}
     </PageContainer>

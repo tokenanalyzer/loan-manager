@@ -1,3 +1,4 @@
+import type { ApprovalAction } from './approvals';
 import type { UserRole } from './auth';
 
 /** Mirrors the backend's `AccountStatus` enum (apps/backend/src/database/entities/enums.ts) — Team Management lifecycle state, Phase 3. */
@@ -23,6 +24,8 @@ export interface StaffUser {
   employeeCode: string | null;
   department: string | null;
   branch: string | null;
+  /** A still-open maker-checker request against this account, if any (Phase 5) — mirrors the backend's `StaffUserResponseDto.pendingApproval`. */
+  pendingApproval: { id: string; action: ApprovalAction; requestedAt: string } | null;
 }
 
 /** The list endpoint's response — use the shared `PaginatedResult<StaffUser>` from `./api-response`, not redefined here. */

@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
+import { PendingApprovalsPage } from '../features/approvals/PendingApprovalsPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
@@ -76,8 +77,16 @@ const router = createBrowserRouter([
       {
         path: 'settings/team',
         element: (
-          <ProtectedRoute roles={['admin']}>
+          <ProtectedRoute roles={['admin', 'org_admin']}>
             <StaffListPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'settings/approvals',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <PendingApprovalsPage />
           </ProtectedRoute>
         ),
       },
