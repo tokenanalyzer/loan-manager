@@ -19,6 +19,15 @@ export class DocumentRepository extends BaseRepository<DocumentEntity> {
     });
   }
 
+  /** Customer 360's Documents section — adds the catalog type (for category/label) and the current version's uploader, on top of `findAllByOwner`. */
+  async findAllByOwnerWithDetails(ownerId: string): Promise<DocumentEntity[]> {
+    return this.repository.find({
+      where: { ownerId },
+      order: { uploadedAt: 'DESC' },
+      relations: ['verifiedBy', 'documentTypeRef', 'currentVersion', 'currentVersion.uploadedBy'],
+    });
+  }
+
   async findOneWithVerifier(id: string): Promise<DocumentEntity | null> {
     return this.repository.findOne({ where: { id }, relations: ['verifiedBy'] });
   }

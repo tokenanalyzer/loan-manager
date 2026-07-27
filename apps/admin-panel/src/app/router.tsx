@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { ApplicationsPage } from '../features/applications/ApplicationsPage';
 import { PendingApprovalsPage } from '../features/approvals/PendingApprovalsPage';
 import { LoginPage } from '../features/auth/LoginPage';
+import { CustomerDetailPage } from '../features/customers/CustomerDetailPage';
 import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
@@ -105,6 +106,19 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute roles={['admin']}>
             <LeadDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        // Customer 360. Reachable by employees too (same document/audit
+        // access the backend already grants them) even though the
+        // customers *list* at `/customers` is still a placeholder below —
+        // this route is reached via links from Applications/Dashboard/
+        // notifications, not by browsing a list yet.
+        path: 'customers/:id',
+        element: (
+          <ProtectedRoute roles={['admin', 'employee']}>
+            <CustomerDetailPage />
           </ProtectedRoute>
         ),
       },

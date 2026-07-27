@@ -179,7 +179,18 @@ export function ApplicationsPage(): JSX.Element {
       key: 'applicant',
       header: 'Applicant',
       sortValue: (row) => row.applicantName ?? '',
-      render: (row) => row.applicantName ?? row.applicantId.slice(0, 8),
+      render: (row) => (
+        <button
+          type="button"
+          className={styles.linkButton}
+          onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/customers/${row.applicantId}`);
+          }}
+        >
+          {row.applicantName ?? row.applicantId.slice(0, 8)}
+        </button>
+      ),
     },
     { key: 'category', header: 'Category', render: (row) => row.categoryId ?? '—' },
     {

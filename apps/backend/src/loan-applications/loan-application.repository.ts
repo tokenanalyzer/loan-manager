@@ -27,6 +27,15 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
     });
   }
 
+  /** Customer 360 — same rows as `findAllByApplicant`, fully relation-loaded so `LoanApplicationResponseDto.fromEntity` can be reused as-is (no second response shape). */
+  async findAllByApplicantWithRelations(applicantId: string): Promise<LoanApplicationEntity[]> {
+    return this.repository.find({
+      where: { applicantId },
+      order: { submittedAt: 'DESC' },
+      relations: ['loan', 'loan.disbursedBy', 'assignedTo', 'reviewedBy', 'queryRaisedBy'],
+    });
+  }
+
   /** Used by the Customer↔Employee query workflow to find what a document re-upload should resolve. */
   async findAllByApplicantAndStatus(
     applicantId: string,

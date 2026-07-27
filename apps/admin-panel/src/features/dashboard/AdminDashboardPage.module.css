@@ -92,6 +92,21 @@
   flex-shrink: 0;
 }
 
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--color-accent-electric);
+  cursor: pointer;
+  text-align: left;
+}
+
+.linkButton:hover {
+  text-decoration: underline;
+}
+
 .approvalList {
   display: flex;
   flex-direction: column;

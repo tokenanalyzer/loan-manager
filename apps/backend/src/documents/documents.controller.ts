@@ -108,6 +108,17 @@ export class DocumentsController {
     return { deleted: true };
   }
 
+  /** Staff equivalent of `delete` — Customer 360's permission-controlled Delete action. Admin-only, see DocumentsService.deleteForStaff. */
+  @Delete('staff/:id')
+  @Auth(UserRole.ADMIN)
+  async deleteForStaff(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() staff: UserEntity,
+  ): Promise<{ deleted: true }> {
+    await this.documentsService.deleteForStaff(id, staff);
+    return { deleted: true };
+  }
+
   @Get(':id/content')
   @Auth(UserRole.CUSTOMER)
   async getContent(

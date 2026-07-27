@@ -586,6 +586,32 @@ export class DocumentsService {
     await this.documentRepository.deleteById(document.id);
   }
 
+  /**
+   * Staff equivalent of `delete` — Customer 360's "Delete" document
+   * action. Admin-only (unlike verification/re-upload-request, which
+   * employees also do): permanently destroying a customer's document
+   * on their behalf is more consequential than reviewing one, so it's
+   * held to the same higher bar as disbursement/maker-checker actions
+   * elsewhere in this app, not just "any assigned employee."
+   */
+  async deleteForStaff(documentId: string, staff: UserEntity): Promise<void> {
+    const document = await this.getDocumentForStaffOrThrow(documentId, staff);
+    const versions = await this.documentVersionRepository.findAllByDocument(document.id);
+    const storagePaths = versions.length > 0 ? versions.map((v) => v.storagePath) : [document.storagePath];
+    await Promise.all(storagePaths.map((path) => this.storageService.delete(path)));
+    await this.documentRepository.deleteById(document.id);
+
+    await this.auditLogRepository.save(
+      this.auditLogRepository.create({
+        actorId: staff.id,
+        action: 'document_deleted_by_staff',
+        entityName: 'documents',
+        entityId: documentId,
+        metadata: { ownerId: document.ownerId, originalFileName: document.originalFileName },
+      }),
+    );
+  }
+
   /** Returns the entity (with storagePath) for streaming — ownership-checked. */
   async getOwnedDocumentOrThrow(user: UserEntity, documentId: string): Promise<DocumentEntity> {
     const document = await this.documentRepository.findOneById(documentId);

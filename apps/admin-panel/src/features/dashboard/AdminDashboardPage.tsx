@@ -150,7 +150,22 @@ export function AdminDashboardPage(): JSX.Element {
 
   const applicationColumns: DataTableColumn<LeadSummary>[] = [
     { key: 'caseNumber', header: 'Case Number', render: (row) => row.caseNumber },
-    { key: 'applicant', header: 'Customer', render: (row) => row.applicantName ?? 'Unknown' },
+    {
+      key: 'applicant',
+      header: 'Customer',
+      render: (row) => (
+        <button
+          type="button"
+          className={styles.linkButton}
+          onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/customers/${row.applicantId}`);
+          }}
+        >
+          {row.applicantName ?? 'Unknown'}
+        </button>
+      ),
+    },
     { key: 'amount', header: 'Amount', align: 'right', render: (row) => formatInr(row.requestedAmount) },
     {
       key: 'status',

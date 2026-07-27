@@ -14,6 +14,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { useAuth } from '../../core/auth-context';
+import { describeAuditAction } from '../../lib/audit-trail-meta';
 import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
 
 import { DisburseModal } from './DisburseModal';
@@ -42,22 +43,6 @@ const BLOCKING_REASON_LABEL: Record<BlockingRequiredDocument['reason'], string> 
   rejected: 'Rejected',
   reupload_requested: 'Re-upload requested',
 };
-
-/** Human label for a raw Audit Trail action code — the backend keeps these as stable, greppable strings; this is presentation-only. */
-const AUDIT_ACTION_LABEL: Record<string, string> = {
-  loan_application_approved: 'Application approved',
-  loan_application_rejected: 'Application rejected',
-  loan_application_query_raised: 'Query raised',
-  loan_application_query_responded: 'Customer responded to query',
-  loan_disbursed: 'Loan disbursed',
-  assign: 'Assigned',
-  reassign: 'Reassigned',
-  transfer: 'Transferred',
-};
-
-function describeAuditAction(action: string): string {
-  return AUDIT_ACTION_LABEL[action] ?? action.replace(/_/g, ' ');
-}
 
 interface TimelineEntry {
   key: string;
@@ -410,7 +395,16 @@ export function LeadDetailPage(): JSX.Element {
           </Card>
 
           <Card>
-            <h2 className={styles.sectionTitle}>Customer information</h2>
+            <div className={styles.customerInfoHeader}>
+              <h2 className={styles.sectionTitle}>Customer information</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/customers/${lead.applicantId}`)}
+              >
+                View Customer 360
+              </Button>
+            </div>
             <div className={styles.fieldGrid}>
               <Field label="Name">{customer?.fullName ?? '—'}</Field>
               <Field label="Email">{customer?.email ?? '—'}</Field>

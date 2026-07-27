@@ -8,13 +8,20 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Req,
+  Res,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 
 import { Auth } from '../auth/decorators/auth.decorator';
 import { CurrentAppUser } from '../auth/decorators/current-app-user.decorator';
 import { UserEntity, UserRole } from '../database/entities';
+import { AuditTrailEntryDto } from '../loan-applications/dto/audit-trail-entry.dto';
 
+import { CustomerDocumentExportService } from './customer-document-export.service';
+import { CustomerOverviewService } from './customer-overview.service';
 import { CustomersService } from './customers.service';
+import { CustomerOverviewResponseDto } from './dto/customer-overview-response.dto';
 import { CustomerProfileResponseDto } from './dto/customer-profile-response.dto';
 import { CustomerSummaryResponseDto } from './dto/customer-summary-response.dto';
 import { KycReviewDto } from './dto/kyc-review.dto';
@@ -28,7 +35,11 @@ import { UpdateCustomerProfileDto } from './dto/update-customer-profile.dto';
  */
 @Controller({ path: 'customers', version: '1' })
 export class CustomersController {
-  constructor(private readonly customersService: CustomersService) {}
+  constructor(
+    private readonly customersService: CustomersService,
+    private readonly customerOverviewService: CustomerOverviewService,
+    private readonly customerDocumentExportService: CustomerDocumentExportService,
+  ) {}
 
   @Get('me')
   @Auth(UserRole.CUSTOMER)
@@ -84,6 +95,41 @@ export class CustomersController {
   ): Promise<CustomerProfileResponseDto | null> {
     const profile = await this.customersService.getCustomerProfileById(id);
     return profile ? CustomerProfileResponseDto.fromEntity(profile) : null;
+  }
+
+  /** Customer 360 — identity + full profile + every application + every document, one round trip. See CustomerOverviewService. */
+  @Get(':id/overview')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getCustomerOverview(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<CustomerOverviewResponseDto> {
+    return this.customerOverviewService.getOverview(id);
+  }
+
+  /** Customer 360's Audit Trail — merges decision/assignment events across every one of this customer's applications, plus their own KYC/deletion audit rows. */
+  @Get(':id/audit-trail')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async getCustomerAuditTrail(
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<AuditTrailEntryDto[]> {
+    return this.customerOverviewService.getAuditTrail(id);
+  }
+
+  /**
+   * The mandatory "Download All Documents" feature — streams
+   * `LM-<CASE_NUMBER>-Documents.zip` (real documents grouped by their
+   * real category, plus a generated `Case_Summary.pdf`) directly to the
+   * response. See CustomerDocumentExportService.
+   */
+  @Get(':id/documents/download-all')
+  @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
+  async downloadAllDocuments(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() actor: UserEntity,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    await this.customerDocumentExportService.streamDownloadAll(id, actor, req, res);
   }
 
   /**

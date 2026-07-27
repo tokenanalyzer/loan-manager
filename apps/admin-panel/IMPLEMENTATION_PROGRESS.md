@@ -652,19 +652,108 @@ distinct from, and consistent with, the existing Timeline.
 
 ---
 
+## Module 7 — Enterprise CRM Modules, Phase 4 (Customer 360) ✅ 2026-07-27
+
+**What:** Customer 360 (`/customers/:id`) — one screen with everything
+about a customer: profile header (avatar/initials — reuses `UserEntity.
+photoUrl`, real, not invented — with contact/PAN/masked-Aadhaar/address/
+KYC status), 8 summary `StatCard`s (Active/Approved/Rejected/Pending
+applications, Uploaded/Missing documents, Last Activity, Assigned
+Officer), a unified Timeline, the customer-scoped Audit Trail, an
+Application History `DataTable`, the embedded `DocumentManagementCenter`
+(unchanged, already customer-scoped), and read-only Internal Notes
+(reusing each application's existing `internalNotes` field — no
+customer-level notes field was invented). Communication history was
+explicitly **omitted** — no messaging/call-log backend exists, per the
+"don't fabricate" rule.
+
+**Backend — one round-trip aggregate**, `CustomerOverviewService`
+(`GET /v1/customers/:id/overview`): reuses `LoanApplicationResponseDto`
+and `CustomerProfileResponseDto` as-is for applications/profile — no
+parallel response shapes invented, since `LeadSummary` on the frontend
+is already the identical wire shape. Only genuinely new: a small
+`CustomerOverviewDocumentDto` for the flat cross-application document
+list. Assembled via direct repository injection (`LoanApplicationRepository`,
+`DocumentRepository` registered a second time in `CustomersModule`)
+rather than depending on `LoanApplicationsService`/`DocumentsService`
+directly — both of those modules already import `CustomersModule`
+(`LoanJourneyDetectionService` needs `CustomersService`), so a service-
+level dependency back would be a module cycle; the repositories are
+stateless TypeORM wrappers, so a second registration is the same
+trade-off Phase 3 already made for `AuditLogEntity`.
+
+**Customer-scoped Audit Trail** (`GET /v1/customers/:id/audit-trail`):
+generalizes Phase 3's per-application merge to every application this
+customer has, plus the customer's own `AuditLogEntity` rows
+(`CustomersService.reviewKyc`/`requestAccountDeletion` already wrote
+these — again, no new write path).
+
+**The mandatory "Download All Documents" feature**
+(`GET /v1/customers/:id/documents/download-all`, new `archiver`+`pdfkit`
+deps): streams `LM-<CASE_NUMBER>-Documents.zip` with zero server-side
+buffering — every document piped straight from `StorageService.
+getReadStream` into the archive, the archive piped straight into the
+response. Folders use the **real** `DocumentCategory` catalog values
+(Identity/Income/Employment/Balance Transfer/Loan Specific/Photo/Other)
+— there is no "Address" category in the schema, so none was invented;
+the brief's example folder list was adapted to what's actually real.
+Includes a generated `Case_Summary.pdf` (case number, customer name,
+every application number, loan amount, assigned employee, status,
+full document inventory with upload dates/verification status).
+Every download is audit-logged (`documents_zip_downloaded`, actor,
+role, IP, case number). Live-verified: `GET .../download-all` → `200`,
+17 real documents + the generated PDF, against the real seeded account.
+
+**Staff document Delete** (new, admin-only — a more consequential action
+than verification, held to a higher bar): `DELETE /v1/documents/staff/:id`
+mirrors the existing customer-facing delete, wired into the shared
+`DocumentManagementCenter` (so it's live everywhere that component is
+embedded, not just Customer 360) behind a `ConfirmDialog`. "Replace" by
+staff was **not** built — it would need a new staff-upload capability
+that doesn't exist anywhere today, unlike Delete which directly reuses
+an existing customer-facing method.
+
+**Navigation wiring:** Applicant-name cells in `ApplicationsPage` and
+the Dashboard's Recent Applications table now link to Customer 360
+(row itself still opens Application Detail — the two targets coexist
+via `stopPropagation`, matching the brief's "Case Number/customer
+clicks → Customer 360" while preserving the already-shipped "row →
+Application Detail" behavior). `LeadDetailPage` gained a "View Customer
+360" link. `NotificationsPage`'s dead-link gap for Admin (a stale
+comment from before Phase 3 built `/applications/:id`) is now fixed —
+loan-application notifications deep-link for both Admin and Employee.
+
+**Verified:** backend — 138/138 tests pass (7 new: `getAuditTrail`'s
+customer-wide query scoping and merge/sort, `getOverview`'s NotFound
+guard, `streamDownloadAll`'s access-control guards for
+employee/admin/missing-customer — the ZIP/PDF streaming path itself
+isn't unit-tested, `archiver`'s ESM build isn't Jest-parseable so it's
+mocked out; covered instead by the live check above). Frontend —
+typecheck/lint/build clean. Live-checked end-to-end against the real
+seeded account: profile/KYC/PAN/Aadhaar/address all real; 8 summary
+cards match the 7 real applications and 17 real documents; Timeline
+merges 20+ real events (submissions, uploads, query raised/responded,
+approval, transfers) newest-first; Audit Trail correctly includes a
+customer-level `kyc_verified` entry alongside application-level events;
+Application History table matches all 7 applications; Download All
+Documents returned `200`.
+
+---
+
 ## Up next
 
-Per the confirmed Phase 3–8 roadmap: **Phase 4 — Customer 360** next
-(one new aggregate endpoint, `GET /v1/customers/:id/overview`, plus a
-new `CustomerDetailPage` — Personal Details, All Applications, Assigned
-Employee, Timeline, Documents, Activity Feed, Risk Information), then
-Phase 5 (Document Center + the mandatory one-click ZIP/PDF export —
-`archiver` + `pdfkit`, folders from the already-real
-`DocumentTypeEntity.category`), then Phase 6 (Global Search, frontend-
-only for now), Phase 7 (Reports — real-data subset only), Phase 8
-(Settings — Document Types + Profile only). Task Management, Branch
-Management, Revenue/Finance, Loan Products, dynamic RBAC, and Email
-Templates remain explicitly deferred — no backend domain exists for any
+Per the confirmed Phase 3–8 roadmap: **Phase 6 — Global Search** next
+(frontend-only, wiring the Topbar's already-styled search input across
+already-loaded applications/customers/employees), then Phase 7
+(Reports — real-data subset only), Phase 8 (Settings — Document Types +
+Profile only). Phase 5's mandatory ZIP/PDF export landed early, folded
+into Phase 4 at the user's request since Customer 360 is its natural
+entry point — the standalone platform-wide Document Center (List/Grid/
+Folder views over every document, not just one customer's) from the
+original Phase 5 scope is still open and can be picked up separately.
+Task Management, Branch Management, Revenue/Finance, Loan Products,
+dynamic RBAC, and Email Templates remain explicitly deferred — no
+backend domain exists for any
 of them yet, and none should be fabricated. Design System Phase 3
 (forms/dialogs polish) and Phase 4 (remaining screens) stay queued
 behind this work, per the user's explicit re-prioritization toward real

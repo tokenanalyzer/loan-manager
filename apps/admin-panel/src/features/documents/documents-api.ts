@@ -44,6 +44,11 @@ export async function fetchDocumentAudit(documentId: string): Promise<DocumentAu
   return data;
 }
 
+/** Customer 360's permission-controlled Delete action — admin-only, see DocumentsController.deleteForStaff. */
+export async function deleteDocumentForStaff(documentId: string): Promise<void> {
+  await apiClient.delete(`/v1/documents/staff/${documentId}`);
+}
+
 /** Triggers a browser download/save from an already-fetched blob (used after preview or standalone). */
 export function triggerDownload(blob: Blob, fileName: string): void {
   const url = URL.createObjectURL(blob);

@@ -5,12 +5,14 @@ import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
 import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useAuth } from '../../core/auth-context';
 
 import { DocumentAuditModal } from './DocumentAuditModal';
 import styles from './DocumentManagementCenter.module.css';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
 import {
+  deleteDocumentForStaff,
   fetchCustomerDocuments,
   fetchDocumentBlob,
   formatFileSize,
@@ -80,6 +82,10 @@ const BADGE_LABEL: Record<DocumentVerificationStatus, string> = {
 export function DocumentManagementCenter({ customerId }: { customerId: string }): JSX.Element {
   const { profile } = useAuth();
   const canVerify = profile?.role === 'employee' || profile?.role === 'admin';
+  // Permanent deletion is more consequential than verification/re-upload
+  // requests, so it's held to a higher bar (admin-only) — see
+  // DocumentsService.deleteForStaff's doc comment.
+  const canDelete = profile?.role === 'admin';
 
   const [documents, setDocuments] = useState<FlatDocument[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +94,9 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
     null,
   );
   const [viewingAudit, setViewingAudit] = useState<FlatDocument | null>(null);
+  const [deleting, setDeleting] = useState<FlatDocument | null>(null);
   const [verifyBusy, setVerifyBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   async function load(): Promise<void> {
@@ -115,6 +123,20 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
       setError('Could not download this document.');
     } finally {
       setDownloadingId(null);
+    }
+  }
+
+  async function handleDeleteConfirm(): Promise<void> {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    try {
+      await deleteDocumentForStaff(deleting.id);
+      setDeleting(null);
+      await load();
+    } catch {
+      setError('Could not delete this document.');
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -217,9 +239,26 @@ export function DocumentManagementCenter({ customerId }: { customerId: string })
                 Audit
               </Button>
             )}
+            {canDelete && (
+              <Button size="sm" variant="danger" onClick={() => setDeleting(doc)}>
+                Delete
+              </Button>
+            )}
           </div>
         </div>
       ))}
+
+      {deleting && (
+        <ConfirmDialog
+          title="Delete this document?"
+          message={`"${deleting.originalFileName}" and every prior version will be permanently deleted. This cannot be undone.`}
+          confirmLabel="Delete"
+          variant="danger"
+          busy={deleteBusy}
+          onConfirm={() => void handleDeleteConfirm()}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
 
       {previewing && (
         <DocumentPreviewModal

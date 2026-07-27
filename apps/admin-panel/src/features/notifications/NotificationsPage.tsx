@@ -16,16 +16,38 @@ import { fetchMyNotifications, markAllAsRead, markNotificationAsRead } from './n
 import styles from './NotificationsPage.module.css';
 
 /**
+ * A loan-application notification's deep link — role-dependent since
+ * Admin and Employee land on different application-detail routes
+ * (`/applications/:id` vs `/my-leads/:id`). `null` means "mark as read
+ * only, nothing to navigate to" (KYC/break notifications, or anything
+ * without a role-appropriate detail screen).
+ */
+function resolveNotificationRoute(
+  notification: AppNotification,
+  role: string | undefined,
+): string | null {
+  if (notification.relatedEntityType !== 'loan_application' || !notification.relatedEntityId) {
+    return null;
+  }
+  if (role === 'admin') {
+    return `/applications/${notification.relatedEntityId}`;
+  }
+  if (role === 'employee') {
+    return `/my-leads/${notification.relatedEntityId}`;
+  }
+  return null;
+}
+
+/**
  * Notification Center — the current user's own in-app notifications
  * (`GET /v1/notifications` is already scoped server-side to the
  * caller). Reused by both Employee and Admin roles since notifications
  * exist for both today (assigned/transferred leads, KYC decisions,
  * break-ended) and nothing here is role-specific.
  *
- * Only a loan-application notification for an Employee is navigable —
- * that's the one detail route that exists (`/my-leads/:id`); Admin has
- * no equivalent lead-detail page yet, and KYC/break notifications have
- * no detail page at all, so those rows mark-as-read only.
+ * Only loan-application notifications are navigable today — KYC/break
+ * notifications have no staff-facing detail screen at all, so those
+ * rows mark-as-read only.
  */
 export function NotificationsPage(): JSX.Element {
   const navigate = useNavigate();
@@ -66,12 +88,9 @@ export function NotificationsPage(): JSX.Element {
       }
     }
 
-    if (
-      notification.relatedEntityType === 'loan_application' &&
-      notification.relatedEntityId &&
-      profile?.role === 'employee'
-    ) {
-      navigate(`/my-leads/${notification.relatedEntityId}`);
+    const route = resolveNotificationRoute(notification, profile?.role);
+    if (route) {
+      navigate(route);
     }
   }
 
@@ -116,10 +135,7 @@ export function NotificationsPage(): JSX.Element {
         <Card noPadding>
           <div className={styles.list}>
             {notifications.map((notification) => {
-              const navigable =
-                notification.relatedEntityType === 'loan_application' &&
-                Boolean(notification.relatedEntityId) &&
-                profile?.role === 'employee';
+              const navigable = resolveNotificationRoute(notification, profile?.role) !== null;
               const typeColor = notificationTypeColor(notification.relatedEntityType);
 
               return (
