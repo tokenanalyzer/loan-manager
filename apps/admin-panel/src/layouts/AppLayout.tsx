@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
 import { getNavItemsForRole } from '../app/navigation.config';
@@ -7,6 +7,7 @@ import { useNavCounts } from '../app/useNavCounts';
 import { Sidebar } from '../components/layout/Sidebar';
 import { Topbar } from '../components/layout/Topbar';
 import { useAuth } from '../core/auth-context';
+import { GlobalSearchDialog } from '../features/search/GlobalSearchDialog';
 import { BreakModeOverlay } from '../features/work-status/BreakModeOverlay';
 import { ForceResumeBanner } from '../features/work-status/ForceResumeBanner';
 import { StatusSwitcher } from '../features/work-status/StatusSwitcher';
@@ -31,9 +32,24 @@ export function AppLayout(): JSX.Element {
   const location = useLocation();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const isEmployee = profile?.role === 'employee';
   const workStatus = useWorkStatusGate(isEmployee);
+
+  // Global Search's Ctrl+K/Cmd+K — mounted once here (not in Topbar) so
+  // it works from anywhere in the app shell, matching a real command
+  // palette rather than only being reachable by clicking the trigger.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setIsSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const isAdmin = profile?.role === 'admin';
   const navCounts = useNavCounts(isAdmin);
@@ -72,9 +88,12 @@ export function AppLayout(): JSX.Element {
         )}
       </AnimatePresence>
 
+      <GlobalSearchDialog open={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
       <div className={styles.main}>
         <Topbar
           onMenuClick={() => setIsMobileOpen(true)}
+          onOpenSearch={() => setIsSearchOpen(true)}
           statusSlot={
             isEmployee && workStatus.status ? (
               <StatusSwitcher

@@ -48,4 +48,27 @@ export class DocumentRepository extends BaseRepository<DocumentEntity> {
   async deleteById(id: string): Promise<void> {
     await this.repository.delete(id);
   }
+
+  /** Global Search's Documents group — file name or catalog type label. `allowedOwnerIds`, when given, scopes results to an employee's assigned customers' documents. */
+  async search(query: string, limit: number, allowedOwnerIds?: string[]): Promise<DocumentEntity[]> {
+    if (allowedOwnerIds && allowedOwnerIds.length === 0) return [];
+
+    const lower = `%${query.toLowerCase()}%`;
+    const qb = this.repository
+      .createQueryBuilder('document')
+      .leftJoinAndSelect('document.documentTypeRef', 'documentTypeRef')
+      .leftJoinAndSelect('document.owner', 'owner')
+      .where(
+        '(LOWER(document.original_file_name) LIKE :lower OR LOWER(documentTypeRef.label) LIKE :lower)',
+        { lower },
+      );
+
+    if (allowedOwnerIds) {
+      qb.andWhere('document.owner_id IN (:...allowedOwnerIds)', { allowedOwnerIds });
+    }
+
+    // Entity property name, not raw column — see the identical note on
+    // `LoanApplicationRepository.search`'s own `.orderBy()`.
+    return qb.orderBy('document.uploadedAt', 'DESC').take(limit).getMany();
+  }
 }

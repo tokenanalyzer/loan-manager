@@ -10,16 +10,16 @@ import styles from './Topbar.module.css';
 import { UserMenu } from './UserMenu';
 
 /**
- * Sticky top bar: mobile sidebar toggle + breadcrumbs on the left, a
- * global search field, then dark-mode icon / notification bell /
+ * Sticky top bar: mobile sidebar toggle + breadcrumbs on the left, the
+ * Global Search trigger, then dark-mode icon / notification bell /
  * optional status control / user menu on the right. `statusSlot` is
  * `undefined` for every role except Employee (see `AppLayout`).
  *
- * The search field is real and focusable but not wired to a live
- * search — there is no cross-entity (Case Number/customer/phone/email)
- * search endpoint in the backend yet, and adding one is out of scope
- * for a presentation-layer-only change. It ships now so the shell
- * matches the reference design; wiring it up is future backend work.
+ * The search field is a button, not a text input — clicking it (or
+ * Ctrl+K/Cmd+K from anywhere) opens the `GlobalSearchDialog` command
+ * palette. `AppLayout` owns that dialog's open state and the global
+ * keyboard shortcut, so search is reachable from every page, not just
+ * this bar.
  *
  * The moon icon is a static visual element, not a working toggle —
  * the token architecture supports dark mode (see `tokens.css`), but
@@ -27,12 +27,15 @@ import { UserMenu } from './UserMenu';
  */
 export function Topbar({
   onMenuClick,
+  onOpenSearch,
   statusSlot,
 }: {
   onMenuClick: () => void;
+  onOpenSearch: () => void;
   statusSlot?: ReactNode;
 }): JSX.Element {
   const [unreadCount, setUnreadCount] = useState(0);
+  const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,15 +65,11 @@ export function Topbar({
         <Breadcrumbs />
       </div>
 
-      <div className={styles.search}>
+      <button type="button" className={styles.search} onClick={onOpenSearch} aria-label="Open global search">
         <Icon name="search" size={16} className={styles.searchIcon} />
-        <input
-          type="search"
-          className={styles.searchInput}
-          placeholder="Search by Case Number, Customer Name, Phone, Email…"
-          aria-label="Search"
-        />
-      </div>
+        <span className={styles.searchPlaceholder}>Search Case Number, Customer, Phone, Email…</span>
+        <kbd className={styles.searchHint}>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+      </button>
 
       <div className={styles.right}>
         <button type="button" className={styles.iconButton} aria-label="Toggle theme" disabled>

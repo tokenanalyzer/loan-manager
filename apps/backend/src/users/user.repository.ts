@@ -116,4 +116,62 @@ export class UserRepository extends BaseRepository<UserEntity> {
       },
     });
   }
+
+  /**
+   * Global Search's Customers group — name/email/phone match directly;
+   * PAN/Aadhaar matching is resolved by the caller (see
+   * `CustomerProfileRepository.findUserIdsByPanOrAadhaar`) and passed
+   * in as `extraMatchIds`, since `customer_profiles` is a separate
+   * table with no ORM relation from `UserEntity`. `allowedIds`, when
+   * given, scopes results to an employee's assigned customers.
+   */
+  async searchCustomers(
+    query: string,
+    limit: number,
+    allowedIds?: string[],
+    extraMatchIds: string[] = [],
+  ): Promise<UserEntity[]> {
+    if (allowedIds && allowedIds.length === 0) return [];
+
+    const qb = this.repository.createQueryBuilder('user').where('user.role = :role', {
+      role: UserRole.CUSTOMER,
+    });
+
+    const lower = `%${query.toLowerCase()}%`;
+    const phoneLike = `%${query}%`;
+    if (extraMatchIds.length > 0) {
+      qb.andWhere(
+        '(LOWER(user.full_name) LIKE :lower OR LOWER(user.email) LIKE :lower OR user.phone LIKE :phoneLike OR user.id IN (:...extraMatchIds))',
+        { lower, phoneLike, extraMatchIds },
+      );
+    } else {
+      qb.andWhere(
+        '(LOWER(user.full_name) LIKE :lower OR LOWER(user.email) LIKE :lower OR user.phone LIKE :phoneLike)',
+        { lower, phoneLike },
+      );
+    }
+
+    if (allowedIds) {
+      qb.andWhere('user.id IN (:...allowedIds)', { allowedIds });
+    }
+
+    return qb.orderBy('user.created_at', 'DESC').take(limit).getMany();
+  }
+
+  /** Global Search's Employees group — a staff directory lookup, unrestricted for any staff caller (Admin and Employee alike look up colleagues the same way). */
+  async searchStaff(query: string, limit: number): Promise<UserEntity[]> {
+    const lower = `%${query.toLowerCase()}%`;
+    return this.repository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.employeeProfile', 'employeeProfile')
+      .where('user.role IN (:...roles)', {
+        roles: [UserRole.EMPLOYEE, UserRole.MANAGER, UserRole.ORG_ADMIN, UserRole.ADMIN],
+      })
+      .andWhere(
+        '(LOWER(user.full_name) LIKE :lower OR LOWER(user.email) LIKE :lower OR LOWER(employeeProfile.employee_code) LIKE :lower)',
+        { lower },
+      )
+      .take(limit)
+      .getMany();
+  }
 }

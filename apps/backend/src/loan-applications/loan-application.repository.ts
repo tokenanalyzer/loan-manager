@@ -121,4 +121,35 @@ export class LoanApplicationRepository extends BaseRepository<LoanApplicationEnt
       .andWhere('application.assigned_at < :dayEnd', { dayEnd })
       .getCount();
   }
+
+  /** Global Search's Applications group — Case Number only (Customer Name matching is the Customers group's job). Employee-scoped when `assignedToId` is given. */
+  async search(query: string, limit: number, assignedToId?: string): Promise<LoanApplicationEntity[]> {
+    const qb = this.repository
+      .createQueryBuilder('application')
+      .leftJoinAndSelect('application.applicant', 'applicant')
+      .where('LOWER(application.case_number) LIKE :lower', { lower: `%${query.toLowerCase()}%` });
+
+    if (assignedToId) {
+      qb.andWhere('application.assigned_to_id = :assignedToId', { assignedToId });
+    }
+
+    // `.orderBy()` needs the entity property name here, not the raw
+    // column — combined with `leftJoinAndSelect`, TypeORM resolves the
+    // ORDER BY expression against entity metadata (confirmed live: a
+    // raw `submitted_at` here throws deep inside TypeORM's query
+    // builder, `Cannot read properties of undefined (reading
+    // 'databaseName')`), unlike the plain WHERE clauses above which
+    // accept either form.
+    return qb.orderBy('application.submittedAt', 'DESC').take(limit).getMany();
+  }
+
+  /** Global Search's employee-scoping — every customer this employee has at least one application for, independent of the search text. */
+  async findDistinctApplicantIdsAssignedTo(employeeId: string): Promise<string[]> {
+    const rows = await this.repository
+      .createQueryBuilder('application')
+      .select('DISTINCT application.applicant_id', 'applicantId')
+      .where('application.assigned_to_id = :employeeId', { employeeId })
+      .getRawMany<{ applicantId: string }>();
+    return rows.map((row) => row.applicantId);
+  }
 }

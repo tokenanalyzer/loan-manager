@@ -740,17 +740,98 @@ Documents returned `200`.
 
 ---
 
+## Module 8 — Enterprise CRM Modules, Phase 6 (Global Search) ✅ 2026-07-27
+
+**What:** a real command-palette style Global Search — Ctrl+K/Cmd+K
+(mounted once in `AppLayout` so it works from any page) or clicking the
+Topbar's search field (converted from an inert text input into a
+trigger button showing a live "Ctrl K" hint) opens `GlobalSearchDialog`:
+a glass-blurred (`--glass-*` tokens), top-anchored overlay with a
+debounced (250ms) input, results grouped exactly as specified
+(Applications/Customers/Employees/Documents), full keyboard nav (↑/↓
+across the flattened result list regardless of group, Enter opens,
+Esc closes), Recent Searches (last 10, localStorage, clearable — same
+client-only convention as Applications' Saved Views), and an honest
+empty state ("No results found.", never an error for zero matches).
+
+**Backend — one new aggregate endpoint** (judged "absolutely
+necessary" per the brief's own conditional: PAN/Aadhaar/document
+search cannot work client-side at all — that data was never loaded
+into the frontend for any existing screen), `GET /v1/search?q=...`
+(new `SearchModule`, `SearchService`, all-duplicated-repository
+pattern — see below). Fans one query across four repositories in
+parallel:
+- **Applications**: Case Number only (Customer Name is the Customers
+  group's job, not duplicated).
+- **Customers**: name/email/phone match directly; PAN substring and
+  Aadhaar match resolve separately via
+  `CustomerProfileRepository.findUserIdsByPanOrAadhaar` (Aadhaar is
+  never stored in full — only `aadhaarLast4` — so a query only matches
+  it when it's exactly 4 digits; this *is* "masked search," not a
+  limitation to fix later).
+- **Employees**: an unrestricted staff-directory lookup (name/email/
+  employee code) — available to Admin and Employee callers alike,
+  unlike the other three groups.
+- **Documents**: file name or catalog type label.
+
+Employee callers are scoped to their own assigned customers for
+Applications/Customers/Documents (mirrors the existing "Lead Locking"
+model everywhere else in this app) via a new
+`LoanApplicationRepository.findDistinctApplicantIdsAssignedTo`; Admin
+is unrestricted. `SearchModule` duplicates `LoanApplicationRepository`/
+`UserRepository`/`CustomerProfileRepository`/`DocumentRepository` as
+lightweight providers rather than importing their owning modules —
+same pattern Phase 3/4 already established, now used a third/fourth/
+fifth time, including `UsersModule`'s own pre-existing use of it for
+the same reason.
+
+**Real bug found and fixed during live verification:** `.orderBy()`
+combined with `leftJoinAndSelect` in TypeORM (this project's v0.3.30)
+requires the **entity property name** (`application.submittedAt`), not
+the raw snake_case column (`application.submitted_at`) — the latter
+throws deep inside TypeORM's query builder
+(`Cannot read properties of undefined (reading 'databaseName')`) even
+though the exact same raw-column style works fine in plain `WHERE`
+clauses (already proven elsewhere in this codebase, e.g.
+`countAssignedToday`). Root-caused with a temporary standalone
+diagnostic script run directly against the dev DB (deleted after use,
+same throwaway-script precedent as the earlier Firebase credential
+work) since the generic client-facing 500 body has no stack trace by
+design. Fixed in both `LoanApplicationRepository.search` and
+`DocumentRepository.search`, documented inline so it isn't
+rediscovered the hard way in a future repository method.
+
+**Deep-link decisions (routes not literally spelled out in the
+brief):** a `document` result has no standalone preview route, so it
+opens its owning customer's Customer 360 page instead (the document
+already appears there, embedded); an `employee` result opens
+`/settings/team` (the staff list — no individual employee-detail page
+exists yet, "if available" honored honestly rather than linking
+somewhere fake).
+
+**Verified:** backend — 141/141 tests pass (3 new: query-length
+short-circuit, employee scoping applied to Applications/Customers/
+Documents but not Employees, admin never scoped). Frontend —
+typecheck/lint/build clean. Live end-to-end in Chrome: Ctrl+K opens
+from any page; typing "zainul" returned a real Customers result
+(correctly highlighted/keyboard-navigable) that opened Customer 360 on
+click; a case-number search ("LM-2026-000001") returned a correctly
+status-colored ("Approved", green) Applications result; Recent
+Searches persisted and displayed after reopening; Esc closed the
+dialog cleanly.
+
+---
+
 ## Up next
 
-Per the confirmed Phase 3–8 roadmap: **Phase 6 — Global Search** next
-(frontend-only, wiring the Topbar's already-styled search input across
-already-loaded applications/customers/employees), then Phase 7
-(Reports — real-data subset only), Phase 8 (Settings — Document Types +
-Profile only). Phase 5's mandatory ZIP/PDF export landed early, folded
-into Phase 4 at the user's request since Customer 360 is its natural
-entry point — the standalone platform-wide Document Center (List/Grid/
-Folder views over every document, not just one customer's) from the
-original Phase 5 scope is still open and can be picked up separately.
+Per the confirmed Phase 3–8 roadmap: **Phase 7 — Reports** next
+(real-data subset only: Monthly Applications, Approval/Rejection Rate,
+Application Status, Employee Performance, Document Verification
+Statistics — reusing `dashboard-data.ts`'s aggregation approach), then
+Phase 8 (Settings — Document Types + Profile only). The standalone
+platform-wide Document Center (List/Grid/Folder views over every
+document, not just one customer's — the remainder of the original
+Phase 5 scope) is still open and can be picked up separately.
 Task Management, Branch Management, Revenue/Finance, Loan Products,
 dynamic RBAC, and Email Templates remain explicitly deferred — no
 backend domain exists for any

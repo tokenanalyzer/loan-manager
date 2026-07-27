@@ -15,5 +15,6 @@ export * from './customers';
 export * from './documents';
 export * from './lead-assignment';
 export * from './notifications';
+export * from './search';
 export * from './users';
 export * from './work-status';
