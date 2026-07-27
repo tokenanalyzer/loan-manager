@@ -6,6 +6,7 @@
 export * from './abstract.entity';
 export * from './approval-request.entity';
 export * from './audit-log.entity';
+export * from './case-number-counter.entity';
 export * from './customer-profile.entity';
 export * from './document.entity';
 export * from './document-type.entity';
@@ -23,6 +24,7 @@ export * from './user.entity';
 
 import { ApprovalRequestEntity } from './approval-request.entity';
 import { AuditLogEntity } from './audit-log.entity';
+import { CaseNumberCounterEntity } from './case-number-counter.entity';
 import { CustomerProfileEntity } from './customer-profile.entity';
 import { DocumentTypeEntity } from './document-type.entity';
 import { DocumentEntity } from './document.entity';
@@ -53,4 +55,5 @@ export const ALL_ENTITIES = [
   EmployeeBreakEntity,
   RewardConfigEntity,
   RewardEntity,
+  CaseNumberCounterEntity,
 ];

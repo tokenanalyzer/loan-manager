@@ -21,6 +21,8 @@ export class LoanResponseDto {
 
 export class LoanApplicationResponseDto {
   id!: string;
+  /** Permanent Business ID (`LM-{year}-{6-digit}`) — the primary identifier staff use to reference this case. See `LoanApplicationEntity.caseNumber`. */
+  caseNumber!: string;
   applicantId!: string;
   applicantName!: string | null;
   reviewedById!: string | null;
@@ -63,6 +65,7 @@ export class LoanApplicationResponseDto {
 
   static fromEntity(entity: {
     id: string;
+    caseNumber: string;
     applicantId: string;
     applicant?: { fullName?: string | null } | null;
     reviewedById?: string | null;
@@ -111,6 +114,7 @@ export class LoanApplicationResponseDto {
   }): LoanApplicationResponseDto {
     const dto = new LoanApplicationResponseDto();
     dto.id = entity.id;
+    dto.caseNumber = entity.caseNumber;
     dto.applicantId = entity.applicantId;
     dto.applicantName = entity.applicant?.fullName ?? null;
     dto.reviewedById = entity.reviewedById ?? null;

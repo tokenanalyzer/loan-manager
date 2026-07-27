@@ -24,6 +24,7 @@ import { DocumentsService } from '../documents/documents.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RewardsService } from '../rewards/rewards.service';
 
+import { CaseNumberService } from './case-number.service';
 import { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import { DisburseLoanDto } from './dto/disburse-loan.dto';
 import { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
@@ -67,6 +68,12 @@ const TERMINAL_LOAN_APPLICATION_STATUSES = [
  * now commit together or not at all. The existing repositories are
  * unchanged — only this orchestration method was wrapped, so the
  * repository-pattern architecture is preserved.
+ *
+ * Case Number: `submit()` now also runs inside its own
+ * `dataSource.transaction` for the same reason — `CaseNumberService`'s
+ * atomic counter increment and the application insert must commit or
+ * roll back together, so a failed submission never "burns" a case
+ * number against a row that doesn't exist.
  */
 @Injectable()
 export class LoanApplicationsService {
@@ -81,6 +88,7 @@ export class LoanApplicationsService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly loanJourneyDetectionService: LoanJourneyDetectionService,
     private readonly rewardsService: RewardsService,
+    private readonly caseNumberService: CaseNumberService,
   ) {}
 
   async submit(
@@ -141,22 +149,35 @@ export class LoanApplicationsService {
         ? await this.loanJourneyDetectionService.detect(applicant.id, dto.categoryId)
         : dto.requestType ?? DEFAULT_LOAN_REQUEST_TYPE;
 
-    return this.loanApplicationRepository.create({
-      applicantId: applicant.id,
-      requestedAmount: dto.requestedAmount.toFixed(2),
-      requestedTermMonths: dto.requestedTermMonths,
-      purpose: dto.purpose ?? null,
-      categoryId: dto.categoryId ?? null,
-      requestType,
-      status: LoanApplicationStatus.SUBMITTED,
-      submittedAt: new Date(),
-      propertyType: dto.propertyType ?? null,
-      propertyOwnership: dto.propertyOwnership ?? null,
-      propertyAddress: dto.propertyAddress ?? null,
-      propertyValue: dto.propertyValue != null ? dto.propertyValue.toFixed(2) : null,
-      hasExistingLoanOnProperty: dto.hasExistingLoanOnProperty ?? null,
-      existingLoanOutstandingAmount:
-        dto.existingLoanOutstandingAmount != null ? dto.existingLoanOutstandingAmount.toFixed(2) : null,
+    // Case Number generation and the application insert must commit or
+    // roll back together — a rollback here must never "issue" a case
+    // number against a row that was never actually created (see
+    // CaseNumberService's doc comment). Matches the same
+    // atomic-writes-together discipline `review()`/`disburse()` already
+    // use below.
+    return this.dataSource.transaction(async (manager) => {
+      const submittedAt = new Date();
+      const caseNumber = await this.caseNumberService.generate(manager, submittedAt);
+
+      const entity = manager.create(LoanApplicationEntity, {
+        applicantId: applicant.id,
+        caseNumber,
+        requestedAmount: dto.requestedAmount.toFixed(2),
+        requestedTermMonths: dto.requestedTermMonths,
+        purpose: dto.purpose ?? null,
+        categoryId: dto.categoryId ?? null,
+        requestType,
+        status: LoanApplicationStatus.SUBMITTED,
+        submittedAt,
+        propertyType: dto.propertyType ?? null,
+        propertyOwnership: dto.propertyOwnership ?? null,
+        propertyAddress: dto.propertyAddress ?? null,
+        propertyValue: dto.propertyValue != null ? dto.propertyValue.toFixed(2) : null,
+        hasExistingLoanOnProperty: dto.hasExistingLoanOnProperty ?? null,
+        existingLoanOutstandingAmount:
+          dto.existingLoanOutstandingAmount != null ? dto.existingLoanOutstandingAmount.toFixed(2) : null,
+      });
+      return manager.save(entity);
     });
   }
 
@@ -339,7 +360,7 @@ export class LoanApplicationsService {
           {
             userId: application.applicantId,
             title: 'Loan application approved',
-            body: `Your application for ${formatInr(application.requestedAmount)} has been approved.`,
+            body: `${application.caseNumber} — your application for ${formatInr(application.requestedAmount)} has been approved.`,
             relatedEntityType: 'loan_application',
             relatedEntityId: application.id,
           },
@@ -371,7 +392,7 @@ export class LoanApplicationsService {
           {
             userId: application.applicantId,
             title: 'Action needed on your application',
-            body: dto.queryMessage!,
+            body: `${application.caseNumber} — ${dto.queryMessage!}`,
             relatedEntityType: 'loan_application',
             relatedEntityId: application.id,
           },
@@ -402,7 +423,7 @@ export class LoanApplicationsService {
           userId: application.applicantId,
           title: 'Loan application update',
           body:
-            `Your application for ${formatInr(application.requestedAmount)} was not approved this time.` +
+            `${application.caseNumber} — your application for ${formatInr(application.requestedAmount)} was not approved this time.` +
             (dto.rejectionReason ? ` ${dto.rejectionReason}` : ''),
           relatedEntityType: 'loan_application',
           relatedEntityId: application.id,
@@ -494,7 +515,7 @@ export class LoanApplicationsService {
         {
           userId: application.applicantId,
           title: 'Loan disbursed',
-          body: `Your loan of ${formatInr(disbursedLoan.principalAmount)} has been disbursed to your registered bank account.`,
+          body: `${application.caseNumber} — your loan of ${formatInr(disbursedLoan.principalAmount)} has been disbursed to your registered bank account.`,
           relatedEntityType: 'loan_application',
           relatedEntityId: application.id,
         },

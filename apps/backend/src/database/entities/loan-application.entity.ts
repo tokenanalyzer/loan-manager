@@ -1,4 +1,4 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, OneToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, OneToOne, Unique } from 'typeorm';
 
 import { AbstractEntity } from './abstract.entity';
 import { LoanApplicationStatus } from './enums';
@@ -13,7 +13,22 @@ import type { UserEntity } from './user.entity';
  * no validation rules on requested amounts, no notifications.
  */
 @Entity('loan_applications')
+@Unique('uq_loan_applications_case_number', ['caseNumber'])
 export class LoanApplicationEntity extends AbstractEntity {
+  /**
+   * Permanent Business ID (`LM-{year}-{6-digit}`) — the primary
+   * identifier staff use to reference this case, distinct from the
+   * UUID `id`. Assigned exactly once, atomically, at submission time
+   * (`CaseNumberService.generate`, called inside
+   * `LoanApplicationsService.submit`'s transaction) — never updated
+   * afterward, never reused even if this row is later withdrawn or
+   * soft-deleted (the counter it's drawn from only ever increments,
+   * independent of row lifecycle).
+   */
+  @Index('idx_loan_applications_case_number')
+  @Column({ type: 'varchar', length: 20 })
+  caseNumber!: string;
+
   @Index('idx_loan_applications_applicant')
   @Column({ type: 'uuid' })
   applicantId!: string;

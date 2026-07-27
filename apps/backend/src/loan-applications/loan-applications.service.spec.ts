@@ -5,6 +5,7 @@ import type { DocumentsService } from '../documents/documents.service';
 import type { NotificationsService } from '../notifications/notifications.service';
 import type { RewardsService } from '../rewards/rewards.service';
 
+import type { CaseNumberService } from './case-number.service';
 import type { CreateLoanApplicationDto } from './dto/create-loan-application.dto';
 import type { ReviewLoanApplicationDto } from './dto/review-loan-application.dto';
 import type { LoanApplicationRepository } from './loan-application.repository';
@@ -32,11 +33,18 @@ describe('LoanApplicationsService.submit — required document validation gate',
     const documentsService = {
       getMissingRequiredDocumentsForSubmission: jest.fn().mockResolvedValue(missingDocuments),
     } as unknown as DocumentsService;
-    const dataSource = {} as DataSource;
+    // `submit()` now runs its write path inside `dataSource.transaction`
+    // (Case Number generation must commit atomically with the insert) —
+    // matching the review/disburse gate tests below, the transactional
+    // body itself is out of scope here; these tests only cover the gate.
+    const dataSource = {
+      transaction: jest.fn().mockResolvedValue(undefined),
+    } as unknown as DataSource;
     const loanJourneyDetectionService = {
       detect: jest.fn().mockResolvedValue('fresh_loan'),
     } as unknown as LoanJourneyDetectionService;
     const rewardsService = {} as RewardsService;
+    const caseNumberService = {} as CaseNumberService;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -46,9 +54,10 @@ describe('LoanApplicationsService.submit — required document validation gate',
       dataSource,
       loanJourneyDetectionService,
       rewardsService,
+      caseNumberService,
     );
 
-    return { service, documentsService, loanApplicationRepository };
+    return { service, dataSource, documentsService, loanApplicationRepository };
   }
 
   const applicant = { id: 'owner-1' } as UserEntity;
@@ -60,7 +69,7 @@ describe('LoanApplicationsService.submit — required document validation gate',
 
   it('rejects submission with the full missing-document list when required documents are not uploaded', async () => {
     const missing = [{ code: 'gst', label: 'GST Certificate', reason: 'missing' }];
-    const { service, documentsService, loanApplicationRepository } = buildService(missing);
+    const { service, dataSource, documentsService } = buildService(missing);
 
     await expect(service.submit(applicant, dto)).rejects.toMatchObject({
       response: {
@@ -73,12 +82,12 @@ describe('LoanApplicationsService.submit — required document validation gate',
       'owner-1',
       'business',
     );
-    // The gate must run BEFORE any write — no application row for a submission that fails it.
-    expect(loanApplicationRepository.create).not.toHaveBeenCalled();
+    // The gate must run BEFORE any write — no application row (and no Case Number issued) for a submission that fails it.
+    expect(dataSource.transaction).not.toHaveBeenCalled();
   });
 
-  it('proceeds to create the application once every required document is present', async () => {
-    const { service, documentsService, loanApplicationRepository } = buildService([]);
+  it('proceeds to the submission transaction once every required document is present', async () => {
+    const { service, dataSource, documentsService } = buildService([]);
 
     await service.submit(applicant, dto);
 
@@ -86,7 +95,7 @@ describe('LoanApplicationsService.submit — required document validation gate',
       'owner-1',
       'business',
     );
-    expect(loanApplicationRepository.create).toHaveBeenCalledTimes(1);
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -122,6 +131,7 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
     } as unknown as DataSource;
     const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
     const rewardsService = {} as RewardsService;
+    const caseNumberService = {} as CaseNumberService;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -131,6 +141,7 @@ describe('LoanApplicationsService.review — approval validation gate', () => {
       dataSource,
       loanJourneyDetectionService,
       rewardsService,
+      caseNumberService,
     );
 
     return { service, dataSource, documentsService, loanApplicationRepository };
@@ -207,6 +218,7 @@ describe('LoanApplicationsService.disburse — disbursement gate', () => {
     } as unknown as DataSource;
     const loanJourneyDetectionService = {} as LoanJourneyDetectionService;
     const rewardsService = {} as RewardsService;
+    const caseNumberService = {} as CaseNumberService;
 
     const service = new LoanApplicationsService(
       loanApplicationRepository,
@@ -216,6 +228,7 @@ describe('LoanApplicationsService.disburse — disbursement gate', () => {
       dataSource,
       loanJourneyDetectionService,
       rewardsService,
+      caseNumberService,
     );
 
     return { service, dataSource, loanApplicationRepository };
