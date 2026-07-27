@@ -561,15 +561,56 @@ consumer — build on demand, not speculatively).
 
 ---
 
+## Module 5 — Design System Foundation, Phase 2 (Dashboard rebuild) ✅ 2026-07-27
+
+**What:** rebuilt `AdminDashboardPage` against the reference mockup,
+bound entirely to real backend data — no placeholder charts, no
+fabricated numbers. New primitives: `StatCard` (icon badge, value,
+optional real `trend` or a neutral `footerNote`, plus a `loading`
+skeleton state), `DataTable` (generic, sortable, optional pagination,
+`Skeleton` rows while `data === null`), `Skeleton`, hand-rolled SVG
+`LineChart` (Catmull-Rom-smoothed, multi-series, animated stroke
+reveal) and `DonutChart` (`stroke-dasharray` arcs, animated fade/scale
+mount) under `components/charts/`. New `features/dashboard/dashboard-data.ts`
+holds all the client-side aggregation math (monthly bucketing,
+status-distribution counts, disbursed-amount sum, month-over-month
+deltas) — same precedent `activity.ts` already set for Recent Activity.
+
+**Data sourcing:** all four widgets group their own load/error state
+independently (`leads`, `employees`, `customers`, `approvals`) so one
+endpoint failing doesn't blank the whole page. `GET /v1/customers` got
+its first frontend wrapper (`features/customers/customers-api.ts` +
+`CustomerSummary` in shared-types) — needed for the Active Customers
+stat, previously unused by the admin panel.
+
+**Honesty constraints kept deliberately:** Pending Approvals and Active
+Customers show a neutral `footerNote` instead of a trend — no real
+timestamp history exists for either (no `createdAt` on customers, no
+approval-queue snapshot history), so a "vs last month %" would be
+fabricated. Total Applications and Disbursed Amount do show a real
+trend, computed from actual `submittedAt`/`disbursedAt` timestamps. The
+status donut uses the real six `LoanApplicationStatus` values plus the
+already-established `getDisplayStatus()` split of `approved` into
+"Awaiting Disbursement"/"Disbursed" — not an invented bucket set. Quick
+Actions were adapted from the mockup's customer-facing actions to real
+admin shortcuts (Assign Leads / Review Approvals / Manage Employees /
+Notifications). Employee Workload Summary and Recent Activity — not in
+the mockup — were kept and restyled rather than dropped.
+
+**Verified:** typecheck/lint/build clean; live-checked against a real
+seeded account — Total Applications (15) matches the Recent
+Applications table and the donut's total; the donut's per-status counts
+sum to the same 15; Pending Approvals (0) matches the sidebar Approvals
+badge; Employee Workload Summary and Recent Activity render unchanged.
+
+---
+
 ## Up next
 
 Per the approved blueprint's build order, and the confirmed post-Phase-5
-roadmap: Design System Foundation Phase 2 (Dashboard rebuild against the
-reference image — `StatCard`, hand-rolled `LineChart`/`DonutChart` per
-the confirmed no-dependency decision, `DataTable`), then Phase 3
-(forms/dialogs polish), then Phase 4 (remaining screens + wiring
-`DocumentManagementCenter`), then ZIP export + Case Summary PDF, then
-the remaining queued modules — Customer 360 (retires the KYC review
-screens currently orphaned in the frozen legacy Flutter Employee App),
-the Lead Pipeline/Documents visual pass, Banks &amp; Partners,
-Analytics, and Audit Log.
+roadmap: Design System Foundation Phase 3 (forms/dialogs polish), then
+Phase 4 (remaining screens + wiring `DocumentManagementCenter`), then
+ZIP export + Case Summary PDF, then the remaining queued modules —
+Customer 360 (retires the KYC review screens currently orphaned in the
+frozen legacy Flutter Employee App), the Lead Pipeline/Documents visual
+pass, Banks &amp; Partners, Analytics, and Audit Log.

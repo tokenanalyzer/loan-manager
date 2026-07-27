@@ -10,6 +10,7 @@
 export * from './api-response';
 export * from './approvals';
 export * from './auth';
+export * from './customers';
 export * from './documents';
 export * from './lead-assignment';
 export * from './notifications';
