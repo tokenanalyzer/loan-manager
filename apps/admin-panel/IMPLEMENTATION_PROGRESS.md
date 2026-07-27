@@ -874,15 +874,71 @@ correctly filtered to that customer's documents only.
 
 ---
 
+## Module 10 — Reports & Analytics (Phase 7) ✅ 2026-07-27
+
+**What:** `/reports` (previously a "Coming Soon" placeholder) — the five
+real-data widgets confirmed with the user, no more and no fewer: Monthly
+Applications (12-month trend), Approval Rate / Rejection Rate, Application
+Status breakdown, Employee Performance, and Document Verification
+Statistics (by status and by category). Branch Performance, Revenue, and
+Customer Growth were deliberately left off rather than stubbed — no real
+data exists for any of them (see [[project_enterprise_crm_modules]]'s
+deferred list).
+
+**Zero new backend endpoints.** A pre-implementation research pass (an
+`Explore` subagent audit) confirmed all five widgets are computable
+client-side from three already-existing endpoints — `fetchAllLeads()`,
+`fetchEmployeesWithWorkload()`, and the Document Center's own
+`fetchAllDocuments()` (built one phase earlier). New pure aggregation
+functions in `features/reports/reports-data.ts`:
+- `computeApprovalRejectionRates` — real counts over every loaded
+  application, no invented sample.
+- `computeEmployeePerformance` — joins the workload roster (source of
+  truth for "who's an active employee") with each application's
+  `assignedToId`, producing Assigned/Approved/Rejected/Disbursed +
+  Approval Rate per employee. Employees with zero assigned leads still
+  appear (rate shown as `—`, never a fabricated `0%` — no rate is a real
+  rate when there's nothing to divide by, same "no trend without a
+  baseline" discipline as `dashboard-data.ts`'s `computeMonthOverMonthDelta`).
+- `computeDocumentStatusDistribution` / `computeDocumentCategoryBreakdown`
+  — reuse the Document Center's own status/category label-color source,
+  now extracted to `features/documents/document-status-meta.ts` (was
+  previously inline consts in `DocumentCenterPage.tsx`) so both features
+  share one definition instead of duplicating it — same "single source of
+  truth" precedent as `workspace/lead-status-meta.ts` for applications.
+
+Monthly Applications and Application Status **reuse `dashboard-data.ts`'s
+`computeMonthlyTrends`/`computeStatusDistribution` directly**, unchanged
+— exactly the "reusing dashboard-data.ts's aggregation approach"
+instruction, not reimplemented for Reports.
+
+**New UI pieces:** `ReportsPage.tsx` (StatCards for the two rates +
+Documents Verified + Active Employees; `LineChart`/`DonutChart` reused
+from the dashboard; a sortable `DataTable` for Employee Performance; a
+plain category list for Documents by Category) and `reports-csv.ts` (a
+generic CSV export helper, one export button per widget, same
+escape/`triggerDownload` pattern as `applications-csv.ts`). Added a
+`download` icon to the hand-rolled `Icon.tsx` set (none existed).
+
+**Verified:** backend — 143/143 tests pass, unchanged (no backend files
+touched). Frontend — typecheck/lint/build clean. Live in Chrome against
+the real seeded account: Approval Rate 6.7% (1 of 15 real applications),
+Rejection Rate 0.0%, Documents Verified 0 of 42, Application Status donut
+(Submitted 80%/12, Under Review 13%/2, Awaiting Disbursement 7%/1 —
+matches the 15-application total), Employee Performance table (Test
+Employee: 3 assigned/1 approved/33.3%; Local Dev Employee: 0
+assigned/`—`), Document Verification Status (42 Pending, 100%), and
+Documents by Category (Identity 11, Income 10, Loan Specific 6, Photo 6,
+Employment 4, Other 4, Balance Transfer 1 — sums to 42) all rendered
+correctly on a fresh reload with zero console errors.
+
+---
+
 ## Up next
 
 Per the confirmed Phase 3–8 roadmap, the entire original scope is now
-complete except Phase 8 (Settings). **Phase 7 — Reports** next
-(real-data subset only: Monthly Applications, Approval/Rejection Rate,
-Application Status, Employee Performance, Document Verification
-Statistics — reusing `dashboard-data.ts`'s aggregation approach), then
-Phase 8 (Settings — Document Types + Profile only, since
-`DocumentTypesController` already exists fully built and unused).
+complete except Phase 8 (Settings) — Document Types + Profile only,
+since `DocumentTypesController` already exists fully built and unused.
 Task Management, Branch Management, Revenue/Finance, Loan Products,
 dynamic RBAC, and Email Templates remain explicitly deferred — no
 backend domain exists for any

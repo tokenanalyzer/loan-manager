@@ -47,6 +47,8 @@ const PATHS = {
   list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   grid: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
   folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z',
+  // Reports — per-widget CSV export buttons.
+  download: 'M12 4v12M7 11l5 5 5-5M4 20h16',
 } as const;
 
 export type IconName = keyof typeof PATHS;

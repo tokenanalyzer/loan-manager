@@ -15,6 +15,7 @@ import { PageContainer } from '../../components/ui/PageContainer';
 import { useAuth } from '../../core/auth-context';
 import { formatDateTime } from '../workspace/lead-status-meta';
 
+import { CATEGORY_LABEL, STATUS_COLOR, STATUS_LABEL } from './document-status-meta';
 import { DocumentAuditModal } from './DocumentAuditModal';
 import styles from './DocumentCenterPage.module.css';
 import { DocumentPreviewModal } from './DocumentPreviewModal';
@@ -32,30 +33,6 @@ import { VersionHistoryModal } from './VersionHistoryModal';
 type ViewMode = 'list' | 'grid' | 'folder';
 type PendingDelete = { kind: 'single'; doc: DocumentCenterEntry } | { kind: 'bulk' };
 type PendingVerify = { doc: DocumentCenterEntry; mode: 'verify' | 'requestReupload' };
-
-const STATUS_LABEL: Record<DocumentVerificationStatus, string> = {
-  pending: 'Pending',
-  verified: 'Verified',
-  rejected: 'Rejected',
-  reupload_requested: 'Re-upload Requested',
-};
-
-const STATUS_COLOR: Record<DocumentVerificationStatus, string> = {
-  pending: 'var(--color-warning)',
-  verified: 'var(--color-success)',
-  rejected: 'var(--color-error)',
-  reupload_requested: 'var(--color-accent-gold)',
-};
-
-const CATEGORY_LABEL: Record<string, string> = {
-  identity: 'Identity',
-  income: 'Income',
-  employment: 'Employment',
-  balance_transfer: 'Balance Transfer',
-  loan_specific: 'Loan Specific',
-  photo: 'Photo',
-  other: 'Other',
-};
 
 const VIEW_MODES: { mode: ViewMode; icon: IconName; label: string }[] = [
   { mode: 'list', icon: 'list', label: 'List' },

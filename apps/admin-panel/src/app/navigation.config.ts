@@ -35,7 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Customers', path: '/customers', icon: 'people', roles: ['admin'], comingSoon: true },
   { label: 'Employees', path: '/settings/team', icon: 'user', roles: ['admin', 'org_admin'] },
   { label: 'Employee Status', path: '/employee-status', icon: 'clock', roles: ['admin'] },
-  { label: 'Reports', path: '/reports', icon: 'barChart', roles: ['admin'], comingSoon: true },
+  { label: 'Reports', path: '/reports', icon: 'barChart', roles: ['admin'] },
   { label: 'Settings', path: '/settings', icon: 'settings', roles: ['admin'], comingSoon: true },
   { label: 'My Leads', path: '/my-leads', icon: 'inbox', roles: ['employee'] },
   { label: 'Notifications', path: '/notifications', icon: 'bell', roles: ['admin', 'employee'] },

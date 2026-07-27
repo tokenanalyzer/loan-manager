@@ -8,6 +8,7 @@ import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
 import { DocumentCenterPage } from '../features/documents/DocumentCenterPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { ReportsPage } from '../features/reports/ReportsPage';
 import { StaffListPage } from '../features/settings/StaffListPage';
 import { EmployeeStatusPage } from '../features/work-status/EmployeeStatusPage';
 import { LeadDetailPage } from '../features/workspace/LeadDetailPage';
@@ -135,6 +136,17 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        // Phase 7 — Reports & Analytics, five real-data widgets
+        // aggregated client-side from already-existing endpoints. See
+        // reports-data.ts.
+        path: 'reports',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ReportsPage />
+          </ProtectedRoute>
+        ),
+      },
       // Design System Foundation, Phase 1 — "Coming Soon" placeholders for
       // nav items that ship in the shell for visual completeness but have
       // no real screen yet. See navigation.config.ts's `comingSoon` flag.
@@ -151,14 +163,6 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute roles={['admin']}>
             <ComingSoonPage title="Customers" />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: 'reports',
-        element: (
-          <ProtectedRoute roles={['admin']}>
-            <ComingSoonPage title="Reports" />
           </ProtectedRoute>
         ),
       },
