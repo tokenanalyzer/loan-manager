@@ -3,9 +3,10 @@ import { DecodedIdToken } from 'firebase-admin/auth';
 import { PinoLogger } from 'nestjs-pino';
 import { QueryFailedError } from 'typeorm';
 
-import { UserEntity, UserRole } from '../database/entities';
+import { EmployeeProfileEntity, UserEntity, UserRole } from '../database/entities';
 import { UserRepository } from '../users/user.repository';
 import { PENDING_STAFF_UID_PREFIX } from '../users/users.service';
+import { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
 
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
@@ -25,6 +26,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
+    private readonly employeeProfileRepository: EmployeeProfileRepository,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(AuthService.name);
@@ -253,5 +255,15 @@ export class AuthService {
    */
   async updateDeviceToken(user: UserEntity, token: string): Promise<void> {
     await this.userRepository.update(user.id, { fcmToken: token, fcmTokenUpdatedAt: new Date() });
+  }
+
+  /**
+   * Settings → Profile (employee) read-only fields, surfaced via
+   * `POST /v1/auth/session`/`GET /v1/auth/me`. Only ever called for an
+   * EMPLOYEE caller (see `AuthController`) — `null` for anyone else by
+   * construction, not by a role check here.
+   */
+  async findEmployeeProfile(userId: string): Promise<EmployeeProfileEntity | null> {
+    return this.employeeProfileRepository.findByUserId(userId);
   }
 }

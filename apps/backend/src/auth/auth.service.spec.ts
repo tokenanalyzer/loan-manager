@@ -4,8 +4,13 @@ import type { PinoLogger } from 'nestjs-pino';
 import { UserEntity, UserRole } from '../database/entities';
 import type { UserRepository } from '../users/user.repository';
 import { PENDING_STAFF_UID_PREFIX } from '../users/users.service';
+import type { EmployeeProfileRepository } from '../work-status/employee-profile.repository';
 
 import { AuthService } from './auth.service';
+
+function stubEmployeeProfileRepository(): EmployeeProfileRepository {
+  return { findByUserId: jest.fn().mockResolvedValue(null) } as unknown as EmployeeProfileRepository;
+}
 
 /**
  * The staff-invite linking gate is the security-critical part of this
@@ -41,7 +46,12 @@ describe('AuthService — staff invite linking', () => {
     const userRepository = { findByFirebaseUid, findByEmail, create, update } as unknown as UserRepository;
     const logger = { setContext: jest.fn(), info: jest.fn(), warn: jest.fn() } as unknown as PinoLogger;
 
-    return { service: new AuthService(userRepository, logger), userRepository, create, update };
+    return {
+      service: new AuthService(userRepository, stubEmployeeProfileRepository(), logger),
+      userRepository,
+      create,
+      update,
+    };
   }
 
   function buildToken(overrides: Partial<DecodedIdToken> = {}): DecodedIdToken {
@@ -154,7 +164,7 @@ describe('AuthService — activatedAt stamping on direct-match first sign-in', (
     const userRepository = { findByFirebaseUid, findByEmail, create, update } as unknown as UserRepository;
     const logger = { setContext: jest.fn(), info: jest.fn(), warn: jest.fn() } as unknown as PinoLogger;
 
-    return { service: new AuthService(userRepository, logger), update };
+    return { service: new AuthService(userRepository, stubEmployeeProfileRepository(), logger), update };
   }
 
   function buildToken(overrides: Partial<DecodedIdToken> = {}): DecodedIdToken {
@@ -206,7 +216,7 @@ describe('AuthService — updateProfile', () => {
     const update = jest.fn().mockImplementation((id, patch) => Promise.resolve({ id, ...patch }));
     const userRepository = { update } as unknown as UserRepository;
     const logger = { setContext: jest.fn(), info: jest.fn(), warn: jest.fn() } as unknown as PinoLogger;
-    return { service: new AuthService(userRepository, logger), update };
+    return { service: new AuthService(userRepository, stubEmployeeProfileRepository(), logger), update };
   }
 
   function buildUser(overrides: Partial<UserEntity> = {}): UserEntity {
@@ -243,5 +253,20 @@ describe('AuthService — updateProfile', () => {
     await service.updateProfile(buildUser(), {});
 
     expect(update).toHaveBeenCalledWith('user-1', {});
+  });
+});
+
+/** Settings → Profile (employee) read-only fields — `AuthController` only ever calls this for an EMPLOYEE caller. */
+describe('AuthService — findEmployeeProfile', () => {
+  it('delegates to the repository by userId', async () => {
+    const findByUserId = jest.fn().mockResolvedValue({ employeeCode: 'EMP-001' });
+    const employeeProfileRepository = { findByUserId } as unknown as EmployeeProfileRepository;
+    const logger = { setContext: jest.fn() } as unknown as PinoLogger;
+    const service = new AuthService({} as UserRepository, employeeProfileRepository, logger);
+
+    const result = await service.findEmployeeProfile('user-1');
+
+    expect(findByUserId).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({ employeeCode: 'EMP-001' });
   });
 });

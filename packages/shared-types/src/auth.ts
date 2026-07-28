@@ -8,6 +8,14 @@
 
 export type UserRole = 'customer' | 'employee' | 'manager' | 'org_admin' | 'admin';
 
+/** Read-only Settings → Profile fields for an EMPLOYEE caller — omitted entirely for every other role. */
+export interface EmployeeProfileFields {
+  employeeCode: string;
+  department: string | null;
+  branch: string | null;
+  hireDate: string | null;
+}
+
 /** The shape returned by `POST /v1/auth/session` and `GET /v1/auth/me`. */
 export interface UserProfile {
   id: string;
@@ -17,6 +25,7 @@ export interface UserProfile {
   fullName: string | null;
   role: UserRole;
   isActive: boolean;
+  employeeProfile?: EmployeeProfileFields;
 }
 
 /** Settings → Profile self-edit payload for `PATCH /v1/auth/me`. */

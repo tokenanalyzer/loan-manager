@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req } from '@
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 
-import { UserEntity } from '../database/entities';
+import { UserEntity, UserRole } from '../database/entities';
 
 import { AuthService } from './auth.service';
 import { Auth } from './decorators/auth.decorator';
@@ -49,14 +49,27 @@ export class AuthController {
       request.ip ?? null,
       typeof userAgent === 'string' ? userAgent : null,
     );
-    return UserProfileResponseDto.fromEntity(user);
+    return this.buildProfileResponse(user);
   }
 
   /** Returns the current user's profile for an already-synced session. */
   @Get('me')
   @Auth()
-  getCurrentUser(@CurrentAppUser() user: UserEntity): UserProfileResponseDto {
-    return UserProfileResponseDto.fromEntity(user);
+  async getCurrentUser(@CurrentAppUser() user: UserEntity): Promise<UserProfileResponseDto> {
+    return this.buildProfileResponse(user);
+  }
+
+  /**
+   * Shared by `session`/`me`: an EMPLOYEE caller's `employeeProfile`
+   * fields (Settings → Profile, sub-phase 5) are looked up once here
+   * rather than duplicated at each call site — `null` for every other
+   * role by construction, since the lookup is only ever attempted for
+   * `UserRole.EMPLOYEE`.
+   */
+  private async buildProfileResponse(user: UserEntity): Promise<UserProfileResponseDto> {
+    const employeeProfile =
+      user.role === UserRole.EMPLOYEE ? await this.authService.findEmployeeProfile(user.id) : null;
+    return UserProfileResponseDto.fromEntity(user, employeeProfile);
   }
 
   /** Settings → Profile: self-service edit of full name / phone. See `AuthService.updateProfile`. */

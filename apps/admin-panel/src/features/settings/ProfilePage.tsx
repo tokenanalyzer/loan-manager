@@ -1,14 +1,25 @@
-import { useEffect, useState } from 'react';
+import type { LeadSummary } from '@loan-manager/shared-types';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
-import { FormActions, FormField, FormInput, FormRow } from '../../components/ui/FormLayout';
+import { FormActions, FormField, FormInput, FormRow, FormSection } from '../../components/ui/FormLayout';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { StatCard } from '../../components/ui/StatCard';
 import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../core/auth-context';
 import { ROLE_LABELS } from '../../core/constants';
+import { computeMyPerformanceSummary } from '../employee/performance-summary';
+import { fetchMyLeads } from '../workspace/workspace-api';
 
 import { updateProfile } from './profile-api';
+import styles from './ProfilePage.module.css';
+
+function formatHireDate(value: string | null): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
 
 /**
  * Settings → Profile. Self-service edit of the current user's own
@@ -26,6 +37,24 @@ export function ProfilePage(): JSX.Element {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullNameError, setFullNameError] = useState<string | null>(null);
+
+  const isEmployee = profile?.role === 'employee';
+  const [myLeads, setMyLeads] = useState<LeadSummary[] | null>(null);
+  const [performanceError, setPerformanceError] = useState<string | null>(null);
+
+  const loadPerformance = useCallback(async () => {
+    if (!isEmployee) return;
+    setPerformanceError(null);
+    try {
+      setMyLeads(await fetchMyLeads());
+    } catch {
+      setPerformanceError('Could not load your performance summary.');
+    }
+  }, [isEmployee]);
+
+  useEffect(() => {
+    void loadPerformance();
+  }, [loadPerformance]);
 
   const isDirty =
     !!profile && (fullName.trim() !== (profile.fullName ?? '') || phone.trim() !== (profile.phone ?? ''));
@@ -116,6 +145,69 @@ export function ProfilePage(): JSX.Element {
           {submitting ? 'Saving…' : 'Save changes'}
         </Button>
       </FormActions>
+
+      {isEmployee && profile.employeeProfile && (
+        <FormSection title="Employee details">
+          <FormRow>
+            <FormField label="Employee code" htmlFor="profile-employee-code">
+              <FormInput id="profile-employee-code" value={profile.employeeProfile.employeeCode} readOnly disabled />
+            </FormField>
+            <FormField label="Department" htmlFor="profile-department">
+              <FormInput
+                id="profile-department"
+                value={profile.employeeProfile.department ?? '—'}
+                readOnly
+                disabled
+              />
+            </FormField>
+          </FormRow>
+          <FormRow>
+            <FormField label="Branch" htmlFor="profile-branch">
+              <FormInput id="profile-branch" value={profile.employeeProfile.branch ?? '—'} readOnly disabled />
+            </FormField>
+            <FormField label="Hire date" htmlFor="profile-hire-date">
+              <FormInput
+                id="profile-hire-date"
+                value={formatHireDate(profile.employeeProfile.hireDate)}
+                readOnly
+                disabled
+              />
+            </FormField>
+          </FormRow>
+        </FormSection>
+      )}
+
+      {isEmployee && (
+        <FormSection title="Performance summary">
+          {performanceError && <Alert variant="error" message={performanceError} />}
+          {!performanceError && myLeads === null && <p>Loading…</p>}
+          {!performanceError && myLeads !== null && (
+            <div className={styles.statGrid}>
+              {(() => {
+                const summary = computeMyPerformanceSummary(myLeads);
+                return (
+                  <>
+                    <StatCard label="Assigned" value={String(summary.assigned)} icon="inbox" tint="indigo" />
+                    <StatCard
+                      label="Approved"
+                      value={String(summary.approved)}
+                      icon="checkCircle"
+                      tint="green"
+                      footerNote={
+                        summary.approvalRate !== null
+                          ? `${summary.approvalRate.toFixed(1)}% approval rate`
+                          : undefined
+                      }
+                    />
+                    <StatCard label="Rejected" value={String(summary.rejected)} icon="close" tint="amber" />
+                    <StatCard label="Disbursed" value={String(summary.disbursed)} icon="document" tint="electric" />
+                  </>
+                );
+              })()}
+            </div>
+          )}
+        </FormSection>
+      )}
     </PageContainer>
   );
 }
