@@ -1,7 +1,7 @@
-import { useState, type CSSProperties, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import { Button } from '../../components/ui/Button';
-import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
+import { FormActions, FormField, FormInput, FormTextarea } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
 
 import type { ReviewLeadPayload } from './workspace-api';
@@ -58,25 +58,23 @@ export function ReviewModal({
 
         {action === 'reject' && (
           <FormField label="Reason (optional — shown to the customer)" htmlFor="reason">
-            <textarea
+            <FormTextarea
               id="reason"
               rows={4}
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              style={textareaStyle}
             />
           </FormField>
         )}
 
         {action === 'query' && (
           <FormField label="What do you need from the customer?" htmlFor="queryMessage">
-            <textarea
+            <FormTextarea
               id="queryMessage"
               rows={4}
               required
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              style={textareaStyle}
             />
           </FormField>
         )}
@@ -97,15 +95,3 @@ export function ReviewModal({
     </Modal>
   );
 }
-
-const textareaStyle: CSSProperties = {
-  width: '100%',
-  fontFamily: 'var(--font-family)',
-  fontSize: 'var(--font-size-body-md)',
-  color: 'var(--color-text-primary)',
-  background: 'var(--color-surface)',
-  border: '1px solid var(--color-border)',
-  borderRadius: 'var(--radius-control)',
-  padding: 'var(--space-3) var(--space-4)',
-  resize: 'vertical',
-};

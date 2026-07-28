@@ -8,7 +8,7 @@ import { useRef, useState } from 'react';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { FormActions, FormField, FormInput, FormRow } from '../../components/ui/FormLayout';
+import { FormActions, FormField, FormInput, FormRow, FormSelect } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
 import { useDirtyClose } from '../../components/ui/useDirtyClose';
 import { CATEGORY_LABEL } from '../documents/document-status-meta';
@@ -172,7 +172,7 @@ export function DocumentTypeFormModal({
 
       <FormRow>
         <FormField label="Category" htmlFor="doc-type-category">
-          <select
+          <FormSelect
             id="doc-type-category"
             value={category}
             onChange={(e) => setCategory(e.target.value as DocumentCategory)}
@@ -182,7 +182,7 @@ export function DocumentTypeFormModal({
                 {CATEGORY_LABEL[value]}
               </option>
             ))}
-          </select>
+          </FormSelect>
         </FormField>
 
         <FormField label="Max uploads" htmlFor="doc-type-max-uploads" error={fieldErrors.maxUploads}>

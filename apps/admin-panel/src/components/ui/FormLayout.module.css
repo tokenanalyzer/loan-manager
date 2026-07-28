@@ -47,6 +47,11 @@
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
 }
 
+.textarea {
+  width: 100%;
+  resize: vertical;
+}
+
 .error {
   font-size: var(--font-size-body-sm);
   color: var(--color-error);

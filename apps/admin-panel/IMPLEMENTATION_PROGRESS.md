@@ -1100,13 +1100,49 @@ so this is a low-risk, code-reviewed gap, not skipped verification.
 
 ---
 
+## Module 15 — Design System Phase 3-4, sub-phase 4 (Dialogs: standardize on shared form controls) ✅ 2026-07-28
+
+**Audit finding: dialog standardization was already largely in place.**
+No `window.confirm`/`window.alert` anywhere; every real confirm/delete
+flow (`EmployeeStatusPage`, `DocumentCenterPage`,
+`DocumentManagementCenter`) already uses the shared `ConfirmDialog`;
+every data-collecting dialog (`StaffLifecycleModal`,
+`ApprovalDecisionModal`, `ReviewModal`, `DisburseModal`,
+`VerificationModal`) already uses the shared `Modal` shell — correctly
+not `ConfirmDialog`, since they need form fields `ConfirmDialog`'s
+plain title/message/confirm shape doesn't support.
+
+**Real gap found instead:** three dialogs (`ReviewModal`,
+`DisburseModal`, `VerificationModal`) each duplicated an identical
+~10-line inline `style={{...}}` object for a `<textarea>` (one also
+for a `<select>`), and two more (`CreateStaffModal`'s Role,
+`DocumentTypeFormModal`'s Category) used a completely **unstyled**
+native `<select>` with zero styling at all — clashing visibly against
+the polished `FormInput` fields next to them. Added `FormTextarea` and
+`FormSelect` to `components/ui/FormLayout.tsx` (same `.input` CSS
+class `FormInput` already uses, `FormTextarea` adds `resize: vertical`)
+and migrated all five call sites onto them, deleting five duplicated
+inline style objects.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: `CreateStaffModal`'s Role select,
+`DocumentTypeFormModal`'s Category select, and `VerificationModal`'s
+status select + note textarea all confirmed rendering with the shared
+control styling (border/radius/padding/chevron) instead of the old
+bare/inline-styled versions, zero console errors. `ReviewModal`/
+`DisburseModal` weren't live-triggered (would touch a real loan
+application's approve/reject/disburse state) — same shared
+`FormTextarea` component already confirmed working in three other live
+instances, code-reviewed rather than re-verified live.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-3 of 12 done, see above. Remaining: 4. Dialogs
-(standardize on `ConfirmDialog`) — 5. Notifications (custom toast
-system) — 6. Loading experience — 7. Micro-interactions — 8.
-Responsiveness — 9. Accessibility (Modal focus trap + Escape,
+sub-phases 1-4 of 12 done, see above. Remaining: 5. Notifications
+(custom toast system) — 6. Loading experience — 7. Micro-interactions
+— 8. Responsiveness — 9. Accessibility (Modal focus trap + Escape,
 DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
 favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan
 at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent

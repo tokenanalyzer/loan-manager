@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
 import styles from './FormLayout.module.css';
 
@@ -53,6 +53,16 @@ export function FormField({
 /** Themed text input matching the portal's control styling. */
 export function FormInput(props: InputHTMLAttributes<HTMLInputElement>): JSX.Element {
   return <input className={styles.input} {...props} />;
+}
+
+/** Themed multi-line text input — same control styling as `FormInput`, vertically resizable. */
+export function FormTextarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>): JSX.Element {
+  return <textarea className={`${styles.input} ${styles.textarea}`} {...props} />;
+}
+
+/** Themed select — same control styling as `FormInput`. */
+export function FormSelect(props: SelectHTMLAttributes<HTMLSelectElement>): JSX.Element {
+  return <select className={styles.input} {...props} />;
 }
 
 /** Right-aligned action row for form submit/cancel buttons. */

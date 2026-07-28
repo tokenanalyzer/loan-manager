@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
-import { FormActions, FormField, FormInput, FormRow } from '../../components/ui/FormLayout';
+import { FormActions, FormField, FormInput, FormRow, FormSelect } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
 import { useDirtyClose } from '../../components/ui/useDirtyClose';
 
@@ -138,14 +138,14 @@ export function CreateStaffModal({
 
         <FormRow>
           <FormField label="Role" htmlFor="staff-role">
-            <select
+            <FormSelect
               id="staff-role"
               value={role}
               onChange={(e) => setRole(e.target.value as CreateStaffUserPayload['role'])}
             >
               <option value="employee">Employee</option>
               <option value="admin">Super Admin</option>
-            </select>
+            </FormSelect>
           </FormField>
 
           {isEmployee && (

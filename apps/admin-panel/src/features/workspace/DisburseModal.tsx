@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
 import { Button } from '../../components/ui/Button';
-import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
+import { FormActions, FormField, FormInput, FormTextarea } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
 
 import type { DisburseLoanPayload } from './workspace-api';
@@ -58,22 +58,11 @@ export function DisburseModal({
         </FormField>
 
         <FormField label="Remarks (optional)" htmlFor="remarks">
-          <textarea
+          <FormTextarea
             id="remarks"
             rows={3}
             value={remarks}
             onChange={(event) => setRemarks(event.target.value)}
-            style={{
-              width: '100%',
-              fontFamily: 'var(--font-family)',
-              fontSize: 'var(--font-size-body-md)',
-              color: 'var(--color-text-primary)',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-control)',
-              padding: 'var(--space-3) var(--space-4)',
-              resize: 'vertical',
-            }}
           />
         </FormField>
 

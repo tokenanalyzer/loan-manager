@@ -2,7 +2,7 @@ import type { DocumentVerificationStatus } from '@loan-manager/shared-types';
 import { useState, type FormEvent } from 'react';
 
 import { Button } from '../../components/ui/Button';
-import { FormActions, FormField } from '../../components/ui/FormLayout';
+import { FormActions, FormField, FormSelect, FormTextarea } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
 
 /**
@@ -47,24 +47,15 @@ export function VerificationModal({
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {!isReuploadMode && (
           <FormField label="Verification status" htmlFor="verificationStatus">
-            <select
+            <FormSelect
               id="verificationStatus"
               value={status}
               onChange={(event) => setStatus(event.target.value as DocumentVerificationStatus)}
-              style={{
-                fontFamily: 'var(--font-family)',
-                fontSize: 'var(--font-size-body-md)',
-                color: 'var(--color-text-primary)',
-                background: 'var(--color-surface)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-control)',
-                padding: 'var(--space-3) var(--space-4)',
-              }}
             >
               <option value="pending">Pending</option>
               <option value="verified">Verified</option>
               <option value="rejected">Rejected</option>
-            </select>
+            </FormSelect>
           </FormField>
         )}
 
@@ -72,23 +63,12 @@ export function VerificationModal({
           label={isReuploadMode ? 'What should the customer redo?' : 'Note (optional)'}
           htmlFor="verificationNote"
         >
-          <textarea
+          <FormTextarea
             id="verificationNote"
             rows={3}
             required={isReuploadMode}
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            style={{
-              width: '100%',
-              fontFamily: 'var(--font-family)',
-              fontSize: 'var(--font-size-body-md)',
-              color: 'var(--color-text-primary)',
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-control)',
-              padding: 'var(--space-3) var(--space-4)',
-              resize: 'vertical',
-            }}
           />
         </FormField>
 
