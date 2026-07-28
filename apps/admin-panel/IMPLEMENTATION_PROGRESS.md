@@ -1457,18 +1457,79 @@ Suspense-fallback flash between navigations.
 
 ---
 
+## Module 23 — Design System Phase 3-4, sub-phase 12 (Final QA) ✅ 2026-07-28
+
+**This closes the 12-sub-phase Design System Phase 3-4 initiative** —
+Enterprise UI Polish & Production Readiness. No code changes this
+sub-phase; final verification only, per the plan's own scope ("Full
+live Chrome walkthrough... Full backend+frontend test suite run.
+Final memory update.").
+
+**Full test suite:** backend — 147/147 tests pass across 17 suites
+(`npx jest`); `npx tsc --noEmit` clean. Frontend — `npx tsc -b
+--noEmit` clean; `npx eslint "src/**/*.{ts,tsx}"` clean (same 3
+pre-existing warnings as every prior sub-phase — Toast.tsx/
+auth-context.tsx react-refresh, main.tsx import style — no new
+issues); `npm run build` clean, confirming sub-phase 11's bundle-split
+result is stable.
+
+**Live Chrome walkthrough** against the real seeded QA Admin session,
+covering every screen named in the original brief: Dashboard,
+Applications (list + a real Customer 360 navigation from an applicant
+name), Customer 360 (full profile/stats/timeline render), Documents
+(Document Center), Global Search (Ctrl+K, live "zainul" query
+returning a real, keyboard-navigable Customers result), Settings hub,
+Settings → Document Types (a full Activate→Deactivate round trip),
+Settings → Profile, Notifications, and Settings → Approvals (the
+maker-checker queue, correct empty state). Every screen rendered its
+real data correctly with zero console errors across the whole
+walkthrough.
+
+**Toast system verified under real multi-toast conditions** — not
+just single-toast in sub-phase 5: activating then immediately
+deactivating the QA test document type fired two `toast.success(...)`
+calls back to back, and the screenshot caught both mid-transition
+simultaneously (the first fading out, the second sliding in above
+it) — real stacking/queue behavior, not just each toast tested in
+isolation.
+
+**One test artifact, not a bug, worth recording:** re-opening the
+Global Search dialog (Ctrl+K) after a prior search preserves the
+input's previous value rather than clearing it — typing into it
+without first clearing appended to the old query (e.g. "zainul" typed
+into an already-"zainul"-filled input became "zainulzainul", which
+correctly returned no results). Confirmed as correct, expected input
+behavior (not a state-reset bug) once the field was cleared first —
+included here only so a future session doesn't misdiagnose the same
+thing as a search regression.
+
+**Environment note, consistent with every prior sub-phase's live
+checks this session:** every full browser `navigate()` (as opposed to
+an in-app client-side link click) briefly shows the app's own
+"Signing in…" Firebase-auth-bootstrap screen before the real page
+renders — this is expected app behavior on a fresh page load, not a
+bug or a regression, and resolves within roughly a second every time.
+
+**With this, all 12 sub-phases of Design System Phase 3-4 are
+complete:** 1. Foundation (tokens/focus-states/dedupe) — 2. Forms — 3.
+Tables — 4. Dialogs — 5. Notifications (toast system) — 6. Loading
+experience — 7. Micro-interactions — 8. Responsiveness — 9.
+Accessibility — 10. Branding — 11. Performance — 12. Final QA. See
+[[project_design_system_phase34]] for the full per-sub-phase record.
+
+---
+
 ## Up next
 
-Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-11 of 12 done, see above. Remaining: 12. Final QA — full
-live Chrome walkthrough of every screen, full backend+frontend test
-suite run, final memory update marking the initiative complete. Full
-plan at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent
-project-memory entry). Executing autonomously, one sub-phase per
-implement→verify→commit→push→document cycle, per the
-user's explicit instruction — no pause for approval except on
-architectural/business-logic/breaking-API/security calls.
+Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
+is **complete** — all 12 sub-phases done, verified, committed, and
+pushed. No active initiative queued; awaiting the user's next
+direction.
 
 Deferred indefinitely (no backend domain exists): Task Management,
 Branch Management, Revenue/Finance, Loan Products, dynamic RBAC, Email
-Templates.
+Templates. Also on record as explicitly deferred (not forgotten): the
+`ReportsPage` cross-page-refetch-duplication finding (needs a caching
+layer/new dependency) and in-app route-navigation blocking via
+`useBlocker` for unsaved changes (bigger app-wide behavioral change,
+deliberately out of scope for this polish pass).
