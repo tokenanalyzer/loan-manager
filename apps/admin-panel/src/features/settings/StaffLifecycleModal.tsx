@@ -3,8 +3,10 @@ import { useState } from 'react';
 
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
+import { useDirtyClose } from '../../components/ui/useDirtyClose';
 
 import { archiveStaffUser, disableStaffUser, resetStaffPassword, restoreStaffUser } from './staff-api';
 
@@ -91,6 +93,8 @@ export function StaffLifecycleModal({
   const approvalNote = requiresApprovalCopy(action, actorRole);
   const requiresReason = action === 'disable' || action === 'archive';
   const canSubmit = !requiresReason || reason.trim() !== '';
+  const isDirty = requiresReason && reason.trim() !== '';
+  const { confirming, requestClose, confirmDiscard, cancelDiscard } = useDirtyClose(isDirty, onClose);
 
   function handleLifecycleResult(result: StaffLifecycleOutcome): void {
     if (result.outcome === 'pending_approval') {
@@ -165,7 +169,8 @@ export function StaffLifecycleModal({
   }
 
   return (
-    <Modal title={copy.title} onClose={onClose}>
+    <>
+    <Modal title={copy.title} onClose={requestClose}>
       <p>
         <strong>{user.fullName ?? user.email}</strong> — {copy.description}
       </p>
@@ -188,7 +193,7 @@ export function StaffLifecycleModal({
       {error && <Alert variant="error" message={error} />}
 
       <FormActions>
-        <Button variant="secondary" onClick={onClose} disabled={submitting}>
+        <Button variant="secondary" onClick={requestClose} disabled={submitting}>
           Cancel
         </Button>
         <Button
@@ -200,5 +205,17 @@ export function StaffLifecycleModal({
         </Button>
       </FormActions>
     </Modal>
+
+    {confirming && (
+      <ConfirmDialog
+        title="Discard this reason?"
+        message="You've entered a reason that hasn't been submitted. Discard it?"
+        confirmLabel="Discard"
+        variant="danger"
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
+    )}
+    </>
   );
 }

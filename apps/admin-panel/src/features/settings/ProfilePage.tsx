@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { SuccessBanner } from '../../components/states/SuccessBanner';
 import { Alert } from '../../components/ui/Alert';
@@ -24,7 +24,24 @@ export function ProfilePage(): JSX.Element {
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fullNameError, setFullNameError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const isDirty =
+    !!profile && (fullName.trim() !== (profile.fullName ?? '') || phone.trim() !== (profile.phone ?? ''));
+
+  // Warns on a tab close/refresh with unsaved edits — in-app navigation
+  // (e.g. clicking another sidebar link) isn't blocked here; see the
+  // Design System Phase 3-4 memory for why that's an explicit, scoped
+  // decision rather than an oversight.
+  useEffect(() => {
+    if (!isDirty) return;
+    function handleBeforeUnload(event: BeforeUnloadEvent): void {
+      event.preventDefault();
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
 
   if (!profile) {
     return (
@@ -34,9 +51,12 @@ export function ProfilePage(): JSX.Element {
     );
   }
 
-  const isDirty = fullName.trim() !== (profile.fullName ?? '') || phone.trim() !== (profile.phone ?? '');
-
   async function handleSubmit(): Promise<void> {
+    if (fullName.trim() === '') {
+      setFullNameError('Full name is required.');
+      return;
+    }
+    setFullNameError(null);
     setSubmitting(true);
     setError(null);
     try {
@@ -65,11 +85,14 @@ export function ProfilePage(): JSX.Element {
       </FormField>
 
       <FormRow>
-        <FormField label="Full name" htmlFor="profile-full-name">
+        <FormField label="Full name" htmlFor="profile-full-name" error={fullNameError ?? undefined}>
           <FormInput
             id="profile-full-name"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              if (fullNameError) setFullNameError(null);
+            }}
             placeholder="Your full name"
           />
         </FormField>
@@ -91,10 +114,7 @@ export function ProfilePage(): JSX.Element {
       {error && <Alert variant="error" message={error} />}
 
       <FormActions>
-        <Button
-          onClick={() => void handleSubmit()}
-          disabled={!isDirty || fullName.trim() === '' || submitting}
-        >
+        <Button onClick={() => void handleSubmit()} disabled={!isDirty || submitting}>
           {submitting ? 'Saving…' : 'Save changes'}
         </Button>
       </FormActions>

@@ -1013,21 +1013,65 @@ modals (`Assign`, `History`) confirmed rendering through the shared
 
 ---
 
+## Module 13 — Design System Phase 3-4, sub-phase 2 (Forms: validation UX, dirty-state, unsaved-changes) ✅ 2026-07-28
+
+New shared primitive: `components/ui/useDirtyClose.ts` — wraps a
+dirty-form modal's close path (backdrop/Cancel/X) so it asks for
+confirmation via the existing `ConfirmDialog` instead of silently
+discarding edits. Applied to the four highest-traffic modals that have
+real user-entered state: `CreateStaffModal`, `DocumentTypeFormModal`,
+`ApprovalDecisionModal`, `StaffLifecycleModal` — each computes its own
+`isDirty` from its fields (for `DocumentTypeFormModal`, a `useRef`
+snapshot of the initial values so edit-then-revert reads as "not
+dirty" again).
+
+**Inline field-level validation** (via `FormField`'s existing `error`
+prop, previously unused) replaces the pre-emptive disabled-submit-button
+pattern in `CreateStaffModal` (full name/email-format/employee-code),
+`DocumentTypeFormModal` (label/code-format/max-uploads-range), and
+`ProfilePage` (full name). Submit buttons are no longer disabled while
+a field is invalid — clicking submits, `validate()` runs, and any
+invalid field shows its own inline error without calling the API;
+errors clear as the user edits that field. `ApprovalDecisionModal`/
+`StaffLifecycleModal` keep their existing disabled-gate (their only
+"invalid" state is an empty required reason with no format to
+validate, so a second parallel error-display path would be pure
+duplication).
+
+**`ProfilePage`** additionally gained a `beforeunload` guard (warns on
+tab close/refresh with unsaved edits) — verified by code review only
+(the actual native browser prompt was deliberately not triggered live,
+per the standing rule against triggering JS dialogs during browser
+automation). In-app route-navigation blocking (`useBlocker`) is a
+deliberate, noted non-goal for this pass — see the Design System Phase
+3-4 memory.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: confirm-on-close dialog triggered and both
+its paths (Cancel → form stays open with data intact; Discard → form
+closes) exercised on `CreateStaffModal`; empty-submit on
+`CreateStaffModal` showed all three inline field errors simultaneously
+without an API call; `ProfilePage`'s empty-name inline error shown,
+then corrected and confirmed to clear automatically with the Save
+button re-disabling once the value matched the original (not dirty);
+zero console errors throughout.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phase 1 of 12 done, see above. Remaining: 2. Forms (validation UX,
-dirty-state, unsaved-changes) — 3. Tables (pagination, shared polish) —
-4. Dialogs (standardize on `ConfirmDialog`) — 5. Notifications (custom
-toast system) — 6. Loading experience — 7. Micro-interactions — 8.
-Responsiveness — 9. Accessibility (Modal focus trap + Escape,
-DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
-favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan at
-`.claude/plans/linear-swinging-squirrel.md` (or the equivalent
-project-memory entry). Executing autonomously, one sub-phase per
-implement→verify→commit→push→document cycle, per the user's explicit
-instruction — no pause for approval except on architectural/business-logic/
-breaking-API/security calls.
+sub-phases 1-2 of 12 done, see above. Remaining: 3. Tables (pagination,
+shared polish) — 4. Dialogs (standardize on `ConfirmDialog`) — 5.
+Notifications (custom toast system) — 6. Loading experience — 7.
+Micro-interactions — 8. Responsiveness — 9. Accessibility (Modal focus
+trap + Escape, DropdownMenu keyboard nav, contrast) — 10. Branding
+(AuthLayout logo, favicon) — 11. Performance (code-splitting) — 12.
+Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md` (or
+the equivalent project-memory entry). Executing autonomously, one
+sub-phase per implement→verify→commit→push→document cycle, per the
+user's explicit instruction — no pause for approval except on
+architectural/business-logic/breaking-API/security calls.
 
 Deferred indefinitely (no backend domain exists): Task Management,
 Branch Management, Revenue/Finance, Loan Products, dynamic RBAC, Email

@@ -3,8 +3,10 @@ import { useState } from 'react';
 
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
+import { useDirtyClose } from '../../components/ui/useDirtyClose';
 import { ROLE_LABELS } from '../../core/constants';
 
 import { decideApproval } from './approvals-api';
@@ -31,6 +33,8 @@ export function ApprovalDecisionModal({
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit = decision === 'approve' || (decision === 'reject' && decisionNote.trim() !== '');
+  const isDirty = decision !== null || decisionNote.trim() !== '';
+  const { confirming, requestClose, confirmDiscard, cancelDiscard } = useDirtyClose(isDirty, onClose);
 
   async function handleConfirm(): Promise<void> {
     if (!decision) return;
@@ -53,7 +57,8 @@ export function ApprovalDecisionModal({
   }
 
   return (
-    <Modal title="Review approval request" onClose={onClose}>
+    <>
+    <Modal title="Review approval request" onClose={requestClose}>
       <p>
         <strong>{request.makerName ?? 'A staff member'}</strong> ({ROLE_LABELS.org_admin}) requested to{' '}
         <strong>{describeAction(request.action).toLowerCase()}</strong> for{' '}
@@ -99,7 +104,7 @@ export function ApprovalDecisionModal({
       {error && <Alert variant="error" message={error} />}
 
       <FormActions>
-        <Button variant="secondary" onClick={onClose} disabled={submitting}>
+        <Button variant="secondary" onClick={requestClose} disabled={submitting}>
           Cancel
         </Button>
         <Button onClick={() => void handleConfirm()} disabled={!decision || !canSubmit || submitting}>
@@ -107,5 +112,17 @@ export function ApprovalDecisionModal({
         </Button>
       </FormActions>
     </Modal>
+
+    {confirming && (
+      <ConfirmDialog
+        title="Discard this decision?"
+        message="You have an in-progress decision that hasn't been submitted. Discard it?"
+        confirmLabel="Discard"
+        variant="danger"
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
+    )}
+    </>
   );
 }
