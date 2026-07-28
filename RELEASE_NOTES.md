@@ -279,3 +279,39 @@ environment to visually confirm the new UI; the change is a
 straightforward, analyzer-clean data/text addition to already-proven
 screens, so this is a real, disclosed verification gap, not a claim
 this was seen rendered.
+
+## Phase 2 — Customer-facing Document Version History ✅ 2026-07-28
+
+**What:** Document Versioning (immutable per-upload history) has
+existed on the backend for a while, but only had a staff-facing
+endpoint (`GET /v1/documents/staff/:id/versions`) — a customer had no
+way to see what happened to their own re-uploaded documents.
+
+- Backend: new `GET /v1/documents/:id/versions` (customer-facing,
+  `@Auth(UserRole.CUSTOMER)`), reusing the exact same data-fetch tail
+  as the staff endpoint (`DocumentVersionRepository.findAllByDocument`
+  → DTO mapping) but swapping the staff access check for the existing
+  `getOwnedDocumentOrThrow` ownership guard. New
+  `DocumentVersionCustomerResponseDto` omits `uploadedByName`/
+  `verifiedByName` (present on the internal staff DTO) — customers see
+  verification status/notes/dates, never which staff member acted,
+  matching how no other customer-facing surface names an internal
+  reviewer.
+- Customer App: `DocumentRepository.getVersions`, a new
+  `DocumentVersion` model, and a version-history screen reachable from
+  the document preview screen's app bar (a new "Version history" icon
+  action) — mirrors the Admin Panel's `VersionHistoryModal.tsx`
+  concept as a full mobile screen rather than a modal. Added
+  `StatusBadge.forDocumentVerificationStatus` to `shared-flutter`,
+  matching the package's existing `forApplicationStatus`/
+  `forKycStatus` factory convention instead of hand-rolling a one-off
+  status-color widget.
+
+**Verified:** backend — 149/149 tests pass (2 new:
+`getVersionsForOwner` returns the owner's history with staff-identity
+fields stripped; rejects a document that doesn't belong to the
+caller), `tsc --noEmit` clean. Frontend — `flutter analyze` clean
+across `shared-flutter` and `apps/customer-app`, `flutter build apk
+--debug` compiled successfully. Same disclosed gap as Phase 1: no live
+device in this environment to visually confirm the new screen renders
+correctly — analyzer-clean and compile-verified only.
