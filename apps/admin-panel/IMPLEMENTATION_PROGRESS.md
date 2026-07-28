@@ -1666,11 +1666,44 @@ in this environment).
 
 ---
 
+## Module 27 — Employee CRM, sub-phase 3 (Follow-up Management UI) ✅ 2026-07-28
+
+**What:** pure UI — the backend (`POST/GET/PATCH /v1/follow-ups*`) was
+already built in sub-phase 0.
+
+**`MyFollowUpsPage`** at `/employee/follow-ups`: groups the caller's
+follow-ups into Overdue/Due today/Upcoming (query-time groupings over
+one list, not separate data) plus a status filter
+(Pending/Done/Cancelled/All), with a "Mark done" action per pending
+item.
+
+**`LogFollowUpModal`**, added to `LeadDetailPage` (mirrors
+`DisburseModal`'s existing form-modal shape exactly) behind a new
+"Follow-ups" card — gated to `isEmployee` only, so admin's identical
+`/leads/:id` view is unaffected. This is the one existing-page touch
+this sub-phase makes, additive only (a new card + a new modal render),
+no existing section modified.
+
+New `shared-types/src/follow-ups.ts` mirrors the backend's
+`FollowUpResponseDto`/`FollowUpStatus`/DTOs.
+
+**Verified:** frontend `tsc -b`/eslint/build all clean. Backend
+171/171 tests still pass (untouched this sub-phase). Live-checked
+both new endpoints resolve to `401` (correctly guarded, not `404`).
+Live-checked admin's `/leads/:id`: confirmed the new Follow-ups card
+does **not** appear (the `isEmployee` gate working correctly),
+Disburse Loan/View Customer 360/Documents/Timeline/Audit trail all
+intact, zero console errors. Same disclosed gap as every prior
+sub-phase: the employee-facing Follow-ups screens themselves couldn't
+be seen rendering — no employee test credentials in this environment.
+
+---
+
 ## Up next
 
-Employee CRM sub-phases 0-2 done. Remaining: 3 (Follow-up Management
-UI), 4 (Status Updates polish), 5 (Profile + Performance Summary) —
-see `.claude/plans/linear-swinging-squirrel.md` for the full plan.
+Employee CRM sub-phases 0-3 done. Remaining: 4 (Status Updates
+polish), 5 (Profile + Performance Summary) — see
+`.claude/plans/linear-swinging-squirrel.md` for the full plan.
 Executing autonomously, one sub-phase per implement→verify→commit→
 push→document cycle, per the user's explicit instruction — no pause
 for approval except on architectural/security decisions.
