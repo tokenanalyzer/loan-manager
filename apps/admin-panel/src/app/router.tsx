@@ -106,7 +106,11 @@ const router = createBrowserRouter([
       },
       {
         path: 'notifications',
-        element: <NotificationsPage />,
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <NotificationsPage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'leads',
@@ -160,9 +164,14 @@ const router = createBrowserRouter([
         ),
       },
       {
-        // Phase 8 — self-service profile edit, any authenticated staff role.
+        // Phase 8 — self-service profile edit. Employee now uses its own
+        // /employee/profile mount of this same component (Employee CRM).
         path: 'settings/profile',
-        element: <ProfilePage />,
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <ProfilePage />
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'applications',
@@ -181,26 +190,23 @@ const router = createBrowserRouter([
         ),
       },
       {
-        // Customer 360. Reachable by employees too (same document/audit
-        // access the backend already grants them) even though the
-        // customers *list* at `/customers` is still a placeholder below —
-        // this route is reached via links from Applications/Dashboard/
-        // notifications, not by browsing a list yet.
+        // Customer 360. Admin-only at this path now — employees use
+        // /employee/my-customers/:id (Employee CRM), same component.
         path: 'customers/:id',
         element: (
-          <ProtectedRoute roles={['admin', 'employee']}>
+          <ProtectedRoute roles={['admin']}>
             <CustomerDetailPage />
           </ProtectedRoute>
         ),
       },
       {
         // Enterprise Document Center — platform-wide, unlike Customer
-        // 360's embedded per-customer view. Employees see it scoped to
-        // their assigned customers (same backend rule as everywhere
-        // else); Admin sees everything.
+        // 360's embedded per-customer view. Admin-only at this path now —
+        // employees use /employee/documents (Employee CRM), same
+        // component, still scoped to their assigned customers server-side.
         path: 'documents',
         element: (
-          <ProtectedRoute roles={['admin', 'employee']}>
+          <ProtectedRoute roles={['admin']}>
             <DocumentCenterPage />
           </ProtectedRoute>
         ),
@@ -246,8 +252,24 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      // Employee CRM — a completely separate route/nav namespace from
+      // Admin (user-directed architecture, see the Employee CRM plan):
+      // every path lives under /employee/*, distinct from the admin
+      // paths above even where the same component is reused (e.g.
+      // CustomerDetailPage at both /customers/:id and here). Dashboard/
+      // My Customers/Follow-ups are ComingSoonPage placeholders until
+      // their sub-phases build the real screens — same convention
+      // /tasks and /customers already use for admin.
       {
-        path: 'my-leads',
+        path: 'employee/dashboard',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <ComingSoonPage title="Dashboard" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/my-leads',
         element: (
           <ProtectedRoute roles={['employee']}>
             <MyLeadsPage />
@@ -255,10 +277,58 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'my-leads/:id',
+        path: 'employee/my-leads/:id',
         element: (
           <ProtectedRoute roles={['employee']}>
             <LeadDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/my-customers',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <ComingSoonPage title="My Customers" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/my-customers/:id',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <CustomerDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/follow-ups',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <ComingSoonPage title="Follow-ups" />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/documents',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <DocumentCenterPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/notifications',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <NotificationsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'employee/profile',
+        element: (
+          <ProtectedRoute roles={['employee']}>
+            <ProfilePage />
           </ProtectedRoute>
         ),
       },

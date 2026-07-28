@@ -163,3 +163,23 @@ export enum KycStatus {
   VERIFIED = 'verified',
   REJECTED = 'rejected',
 }
+
+/**
+ * Employee CRM — a scheduled, note-bearing action an employee owns
+ * against a lead. Deliberately the one concept covering everything
+ * the Employee CRM initiative's "Today's Tasks"/"Pending Follow-ups"/
+ * "Call Notes"/"Next Follow-up Date"/"Reminders" asks collapsed onto:
+ * `dueAt` being today makes it a task for today; `status = PENDING`
+ * makes it a pending follow-up; `note` is the call note; `dueAt`
+ * itself is the next follow-up date. See `FollowUpEntity`.
+ *
+ * "Reminders" are passive (surfaced via query, e.g. due-today/overdue)
+ * this round, not proactive push alerts — no scheduler infrastructure
+ * exists in this codebase to fire those, and adding one is out of
+ * scope for this pass; explicitly deferred, not silently dropped.
+ */
+export enum FollowUpStatus {
+  PENDING = 'pending',
+  DONE = 'done',
+  CANCELLED = 'cancelled',
+}

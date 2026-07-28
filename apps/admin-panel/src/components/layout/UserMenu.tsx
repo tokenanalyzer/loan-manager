@@ -21,6 +21,10 @@ export function UserMenu(): JSX.Element {
   const displayName = profile?.fullName ?? user?.email ?? 'Account';
   const email = profile?.email ?? user?.email ?? null;
   const roleLabel = profile ? ROLE_LABELS[profile.role] : null;
+  // Employee CRM: employees use their own /employee/profile mount of
+  // the same ProfilePage component, a separate route from admin's
+  // /settings/profile (see navigation.config.ts's EMPLOYEE_NAV_ITEMS).
+  const profilePath = profile?.role === 'employee' ? '/employee/profile' : '/settings/profile';
 
   return (
     <DropdownMenu
@@ -45,7 +49,7 @@ export function UserMenu(): JSX.Element {
         <div className={styles.name}>{displayName}</div>
         {email && <div className={styles.role}>{email}</div>}
       </div>
-      <Link to="/settings/profile" role="menuitem" className={styles.menuItem}>
+      <Link to={profilePath} role="menuitem" className={styles.menuItem}>
         <Icon name="user" size={16} />
         My Profile
       </Link>

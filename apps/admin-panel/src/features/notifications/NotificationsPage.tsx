@@ -18,7 +18,7 @@ import styles from './NotificationsPage.module.css';
 /**
  * A loan-application notification's deep link — role-dependent since
  * Admin and Employee land on different application-detail routes
- * (`/applications/:id` vs `/my-leads/:id`). `null` means "mark as read
+ * (`/applications/:id` vs `/employee/my-leads/:id`). `null` means "mark as read
  * only, nothing to navigate to" (KYC/break notifications, or anything
  * without a role-appropriate detail screen).
  */
@@ -33,7 +33,7 @@ function resolveNotificationRoute(
     return `/applications/${notification.relatedEntityId}`;
   }
   if (role === 'employee') {
-    return `/my-leads/${notification.relatedEntityId}`;
+    return `/employee/my-leads/${notification.relatedEntityId}`;
   }
   return null;
 }

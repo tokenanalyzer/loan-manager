@@ -118,18 +118,19 @@ function buildTimeline(lead: LeadSummary, history: LeadAssignmentHistoryEntry[])
  * Lead Detail — Customer Information, Document Viewer, Timeline /
  * Activity History, autosaved Internal Notes, and the review decision
  * (Approve / Reject / Raise Query), all reusing existing endpoints.
- * Reachable at both `/my-leads/:id` (employee) and `/leads/:id`
- * (admin) — the backend already permits both roles on every endpoint
- * this page calls, so this component is shared as-is; only the "back"
- * destination is role-aware, since the two roles have different list
- * screens to return to. Lead Locking: the underlying APIs enforce that
- * an employee may only read/write leads assigned to them (403
+ * Reachable at both `/employee/my-leads/:id` (employee, Employee CRM's
+ * own namespace) and `/leads/:id` (admin) — the backend already
+ * permits both roles on every endpoint this page calls, so this
+ * component is shared as-is; only the "back" destination and the
+ * Customer 360 link are role-aware, since the two roles have separate
+ * namespaces to return to. Lead Locking: the underlying APIs enforce
+ * that an employee may only read/write leads assigned to them (403
  * otherwise, admin is never restricted this way) — this page surfaces
  * that as a clear locked state instead of a raw error.
  */
 const BACK_LABELS: Record<string, string> = {
   '/leads': 'Back to Leads',
-  '/my-leads': 'Back to My Leads',
+  '/employee/my-leads': 'Back to My Leads',
   '/applications': 'Back to Applications',
 };
 
@@ -138,13 +139,14 @@ export function LeadDetailPage(): JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile: authProfile } = useAuth();
-  // Reachable from more than one list now (`/leads`, `/my-leads`,
+  const isEmployee = authProfile?.role === 'employee';
+  // Reachable from more than one list now (`/leads`, `/employee/my-leads`,
   // `/applications`) — the linking page passes `state: { from }` so
   // "back" returns where the admin actually came from, falling back to
   // the original role-based default when a route links in directly
   // (e.g. a bookmark) without that state.
   const backPath = (location.state as { from?: string } | null)?.from
-    ?? (authProfile?.role === 'admin' ? '/leads' : '/my-leads');
+    ?? (authProfile?.role === 'admin' ? '/leads' : '/employee/my-leads');
   const backLabel = BACK_LABELS[backPath] ?? 'Back';
 
   const [lead, setLead] = useState<LeadSummary | null>(null);
@@ -400,7 +402,11 @@ export function LeadDetailPage(): JSX.Element {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(`/customers/${lead.applicantId}`)}
+                onClick={() =>
+                  navigate(
+                    isEmployee ? `/employee/my-customers/${lead.applicantId}` : `/customers/${lead.applicantId}`,
+                  )
+                }
               >
                 View Customer 360
               </Button>

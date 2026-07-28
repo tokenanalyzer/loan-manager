@@ -14,6 +14,7 @@ export * from './document.entity';
 export * from './employee-break.entity';
 export * from './employee-profile.entity';
 export * from './enums';
+export * from './follow-up.entity';
 export * from './lead-assignment.entity';
 export * from './loan-application.entity';
 export * from './loan.entity';
@@ -32,6 +33,7 @@ import { DocumentVersionEntity } from './document-version.entity';
 import { DocumentEntity } from './document.entity';
 import { EmployeeBreakEntity } from './employee-break.entity';
 import { EmployeeProfileEntity } from './employee-profile.entity';
+import { FollowUpEntity } from './follow-up.entity';
 import { LeadAssignmentEntity } from './lead-assignment.entity';
 import { LoanApplicationEntity } from './loan-application.entity';
 import { LoanEntity } from './loan.entity';
@@ -59,4 +61,5 @@ export const ALL_ENTITIES = [
   RewardEntity,
   CaseNumberCounterEntity,
   DocumentVersionEntity,
+  FollowUpEntity,
 ];

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { In, Not, Repository } from 'typeorm';
 
 import { BaseRepository } from '../common/repository/base.repository';
 import { AccountStatus, UserEntity, UserRole } from '../database/entities';
@@ -83,8 +83,21 @@ export class UserRepository extends BaseRepository<UserEntity> {
     return { items, total };
   }
 
-  async findAllByRole(role: UserRole): Promise<UserEntity[]> {
-    return this.repository.find({ where: { role }, order: { createdAt: 'DESC' } });
+  /**
+   * `allowedIds`, when provided, additionally restricts the result to
+   * those specific users (e.g. an employee's assigned customers) — an
+   * empty array correctly returns no rows rather than being treated as
+   * "no filter" (TypeORM's `In([])` would otherwise generate invalid
+   * SQL, so this short-circuits instead of relying on that).
+   */
+  async findAllByRole(role: UserRole, allowedIds?: string[]): Promise<UserEntity[]> {
+    if (allowedIds && allowedIds.length === 0) {
+      return [];
+    }
+    return this.repository.find({
+      where: { role, ...(allowedIds ? { id: In(allowedIds) } : {}) },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   /** Used by the Lead Assignment employee picker and Work Status dashboard (need `employeeCode`). */

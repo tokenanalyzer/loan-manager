@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 
-import { NAV_ITEMS } from '../../app/navigation.config';
+import { EMPLOYEE_NAV_ITEMS, NAV_ITEMS } from '../../app/navigation.config';
 import { Icon } from '../ui/Icon';
 
 import styles from './Breadcrumbs.module.css';
@@ -16,7 +16,7 @@ export function Breadcrumbs(): JSX.Element {
 
   const crumbs = segments.map((segment, index) => {
     const path = `/${segments.slice(0, index + 1).join('/')}`;
-    const navItem = NAV_ITEMS.find((item) => item.path === path);
+    const navItem = [...NAV_ITEMS, ...EMPLOYEE_NAV_ITEMS].find((item) => item.path === path);
     return { path, label: navItem?.label ?? labelFor(segment) };
   });
 

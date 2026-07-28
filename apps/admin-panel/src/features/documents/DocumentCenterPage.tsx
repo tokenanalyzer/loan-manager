@@ -56,6 +56,12 @@ export function DocumentCenterPage(): JSX.Element {
   const { profile } = useAuth();
   const canVerify = profile?.role === 'employee' || profile?.role === 'admin';
   const canDelete = profile?.role === 'admin';
+  // Employee CRM: this page is now also mounted at /employee/documents,
+  // where the admin-only /customers/:id would 403 — same component
+  // links into /employee/my-customers/:id instead for that mount.
+  const isEmployee = profile?.role === 'employee';
+  const customerPath = (customerId: string) =>
+    isEmployee ? `/employee/my-customers/${customerId}` : `/customers/${customerId}`;
 
   const [documents, setDocuments] = useState<DocumentCenterEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -218,7 +224,7 @@ export function DocumentCenterPage(): JSX.Element {
           className={styles.linkButton}
           onClick={(event) => {
             event.stopPropagation();
-            navigate(`/customers/${doc.ownerId}`);
+            navigate(customerPath(doc.ownerId));
           }}
         >
           {doc.ownerName ?? doc.ownerId.slice(0, 8)}
@@ -412,7 +418,7 @@ export function DocumentCenterPage(): JSX.Element {
                   onViewVersions={() => setViewingVersions(doc)}
                   onViewAudit={() => setViewingAudit(doc)}
                   onDelete={canDelete ? () => setDeleting({ kind: 'single', doc }) : undefined}
-                  onOpenCustomer={() => navigate(`/customers/${doc.ownerId}`)}
+                  onOpenCustomer={() => navigate(customerPath(doc.ownerId))}
                 />
               ))}
             </div>

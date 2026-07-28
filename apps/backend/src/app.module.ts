@@ -11,6 +11,7 @@ import { CustomersModule } from './customers/customers.module';
 import { DatabaseModule } from './database/database.module';
 import { DocumentsModule } from './documents/documents.module';
 import { FirebaseAdminModule } from './firebase/firebase-admin.module';
+import { FollowUpsModule } from './follow-ups/follow-ups.module';
 import { LeadAssignmentModule } from './lead-assignment/lead-assignment.module';
 import { LoanApplicationsModule } from './loan-applications/loan-applications.module';
 import { LoggerModule } from './logger/logger.module';
@@ -64,6 +65,7 @@ import { WorkStatusModule } from './work-status/work-status.module';
     WorkStatusModule,
     RewardsModule,
     SearchModule,
+    FollowUpsModule,
   ],
   providers: [
     {

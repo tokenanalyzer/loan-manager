@@ -10,6 +10,7 @@ import { Card } from '../../components/ui/Card';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { StatCard } from '../../components/ui/StatCard';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { describeAuditAction } from '../../lib/audit-trail-meta';
 import { formatInr } from '../../lib/currency';
 import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
@@ -107,15 +108,7 @@ export function CustomerDetailPage(): JSX.Element {
     {
       key: 'status',
       header: 'Status',
-      render: (row) => {
-        const { label, color } = getDisplayStatus(row);
-        return (
-          <span className={styles.statusBadge}>
-            <span className={styles.statusDot} style={{ background: color }} />
-            {label}
-          </span>
-        );
-      },
+      render: (row) => <StatusBadge {...getDisplayStatus(row)} />,
     },
     {
       key: 'submittedAt',

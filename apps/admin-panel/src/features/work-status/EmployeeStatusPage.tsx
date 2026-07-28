@@ -7,6 +7,7 @@ import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableContainer } from '../../components/ui/TableContainer';
 
 import styles from './EmployeeStatusPage.module.css';
@@ -117,17 +118,7 @@ export function EmployeeStatusPage(): JSX.Element {
                 </td>
                 <td>{employee.employeeCode ?? employee.id.slice(0, 8)}</td>
                 <td>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: STATUS_COLORS[employee.status],
-                      }}
-                    />
-                    {STATUS_LABELS[employee.status]}
-                  </span>
+                  <StatusBadge label={STATUS_LABELS[employee.status]} color={STATUS_COLORS[employee.status]} />
                 </td>
                 <td>{new Date(employee.statusSince).toLocaleTimeString()}</td>
                 <td>{formatElapsed(employee.elapsedSeconds)}</td>

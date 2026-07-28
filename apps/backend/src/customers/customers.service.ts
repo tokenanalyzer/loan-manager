@@ -9,6 +9,7 @@ import {
   UserEntity,
   UserRole,
 } from '../database/entities';
+import { LoanApplicationRepository } from '../loan-applications/loan-application.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { UserRepository } from '../users/user.repository';
 
@@ -32,6 +33,11 @@ export class CustomersService {
     private readonly customerProfileRepository: CustomerProfileRepository,
     private readonly userRepository: UserRepository,
     private readonly notificationsService: NotificationsService,
+    // Duplicated lightweight repository provider, not a module import of
+    // LoanApplicationsModule — see CustomersModule's own doc comment on
+    // why (module cycle). Same pattern this module already uses for
+    // LoanApplicationRepository elsewhere (CustomerOverviewService).
+    private readonly loanApplicationRepository: LoanApplicationRepository,
     @InjectRepository(AuditLogEntity)
     private readonly auditLogRepository: Repository<AuditLogEntity>,
   ) {}
@@ -233,8 +239,20 @@ export class CustomersService {
     return requestedAt;
   }
 
-  async listCustomers(): Promise<UserEntity[]> {
-    return this.userRepository.findAllByRole(UserRole.CUSTOMER);
+  /**
+   * Employee CRM: an EMPLOYEE caller only sees customers they have at
+   * least one assigned application for — closes a real data-exposure
+   * gap (this endpoint previously returned every customer to any
+   * employee, unlike every other employee-facing endpoint). ADMIN is
+   * unrestricted, unchanged. Reuses the same scoping primitive
+   * Document Center/Global Search already use.
+   */
+  async listCustomers(requester: UserEntity): Promise<UserEntity[]> {
+    const allowedIds =
+      requester.role === UserRole.EMPLOYEE
+        ? await this.loanApplicationRepository.findDistinctApplicantIdsAssignedTo(requester.id)
+        : undefined;
+    return this.userRepository.findAllByRole(UserRole.CUSTOMER, allowedIds);
   }
 
   async getCustomerById(id: string): Promise<UserEntity> {

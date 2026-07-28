@@ -76,8 +76,8 @@ export class CustomersController {
 
   @Get()
   @Auth(UserRole.EMPLOYEE, UserRole.ADMIN)
-  async listCustomers(): Promise<CustomerSummaryResponseDto[]> {
-    const customers = await this.customersService.listCustomers();
+  async listCustomers(@CurrentAppUser() requester: UserEntity): Promise<CustomerSummaryResponseDto[]> {
+    const customers = await this.customersService.listCustomers(requester);
     return customers.map((customer) => CustomerSummaryResponseDto.fromEntity(customer));
   }
 

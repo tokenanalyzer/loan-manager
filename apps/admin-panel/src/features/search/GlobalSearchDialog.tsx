@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
 import { LoadingState } from '../../components/states/LoadingState';
 import { Icon, type IconName } from '../../components/ui/Icon';
+import { useAuth } from '../../core/auth-context';
 import { backdropVariants, scaleInVariants } from '../../theme/motion';
 import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS } from '../workspace/lead-status-meta';
 
@@ -54,17 +55,28 @@ function statusDisplay(result: SearchResult): { label: string; color: string } |
  * already appears in the embedded Document Management Center. An
  * employee result deep-links to the Team screen (no individual
  * employee-detail page exists yet) rather than a route that isn't real.
+ *
+ * Employee CRM: `application`/`customer`/`document` results deep-link
+ * into the employee's own `/employee/*` namespace when the viewer is
+ * an employee (the admin-only `/applications/:id`/`/customers/:id`
+ * would otherwise 403 them post-restructuring) — same components,
+ * different mount path, matching every other dual-mounted screen. The
+ * `employee`/no-owner `document` fallback still points at
+ * `/settings/team`, which stays admin-only-reachable — no individual
+ * employee-directory screen exists for an employee to view their
+ * colleagues, unchanged from before this restructuring.
  */
-function resolveRoute(result: SearchResult): string {
+function resolveRoute(result: SearchResult, isEmployee: boolean): string {
   switch (result.type) {
     case 'application':
-      return `/applications/${result.id}`;
+      return isEmployee ? `/employee/my-leads/${result.id}` : `/applications/${result.id}`;
     case 'customer':
-      return `/customers/${result.id}`;
+      return isEmployee ? `/employee/my-customers/${result.id}` : `/customers/${result.id}`;
     case 'employee':
       return '/settings/team';
     case 'document':
-      return result.ownerId ? `/customers/${result.ownerId}` : '/settings/team';
+      if (!result.ownerId) return '/settings/team';
+      return isEmployee ? `/employee/my-customers/${result.ownerId}` : `/customers/${result.ownerId}`;
   }
 }
 
@@ -77,6 +89,8 @@ function resolveRoute(result: SearchResult): string {
  */
 export function GlobalSearchDialog({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const isEmployee = profile?.role === 'employee';
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [query, setQuery] = useState('');
@@ -149,7 +163,7 @@ export function GlobalSearchDialog({ open, onClose }: { open: boolean; onClose: 
   function openResult(result: SearchResult): void {
     recordRecentSearch(query);
     onClose();
-    navigate(resolveRoute(result));
+    navigate(resolveRoute(result, isEmployee));
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {

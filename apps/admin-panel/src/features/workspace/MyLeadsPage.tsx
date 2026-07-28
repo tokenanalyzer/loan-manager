@@ -7,6 +7,7 @@ import { ErrorState } from '../../components/states/ErrorState';
 import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { TableContainer } from '../../components/ui/TableContainer';
 
 import { getDisplayStatus, LEAD_STATUS_LABELS } from './lead-status-meta';
@@ -131,20 +132,14 @@ export function MyLeadsPage(): JSX.Element {
                     <tr
                       key={lead.id}
                       className={styles.row}
-                      onClick={() => navigate(`/my-leads/${lead.id}`)}
+                      onClick={() => navigate(`/employee/my-leads/${lead.id}`)}
                     >
                       <td>{lead.caseNumber}</td>
                       <td>{lead.applicantName ?? lead.applicantId.slice(0, 8)}</td>
                       <td>{lead.requestedAmount}</td>
                       <td>{lead.requestedTermMonths} mo</td>
                       <td>
-                        <span className={styles.statusBadge}>
-                          <span
-                            className={styles.dot}
-                            style={{ background: getDisplayStatus(lead).color }}
-                          />
-                          {getDisplayStatus(lead).label}
-                        </span>
+                        <StatusBadge {...getDisplayStatus(lead)} />
                       </td>
                       <td>{new Date(lead.submittedAt).toLocaleDateString()}</td>
                       <td>
