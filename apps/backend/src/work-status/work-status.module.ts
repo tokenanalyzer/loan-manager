@@ -18,5 +18,8 @@ import { WorkStatusService } from './work-status.service';
   ],
   controllers: [WorkStatusController],
   providers: [EmployeeProfileRepository, EmployeeBreakRepository, WorkStatusService],
+  // Employee CRM: EmployeeDashboardModule reuses getMyStatus's
+  // existing isBreakStatus mapping rather than duplicating it.
+  exports: [WorkStatusService],
 })
 export class WorkStatusModule {}

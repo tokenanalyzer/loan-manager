@@ -13,6 +13,7 @@ export * from './audit-trail';
 export * from './auth';
 export * from './customers';
 export * from './documents';
+export * from './employee-dashboard';
 export * from './lead-assignment';
 export * from './notifications';
 export * from './search';

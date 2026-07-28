@@ -10,6 +10,7 @@ import { envValidationSchema } from './config/env.validation';
 import { CustomersModule } from './customers/customers.module';
 import { DatabaseModule } from './database/database.module';
 import { DocumentsModule } from './documents/documents.module';
+import { EmployeeDashboardModule } from './employee-dashboard/employee-dashboard.module';
 import { FirebaseAdminModule } from './firebase/firebase-admin.module';
 import { FollowUpsModule } from './follow-ups/follow-ups.module';
 import { LeadAssignmentModule } from './lead-assignment/lead-assignment.module';
@@ -66,6 +67,7 @@ import { WorkStatusModule } from './work-status/work-status.module';
     RewardsModule,
     SearchModule,
     FollowUpsModule,
+    EmployeeDashboardModule,
   ],
   providers: [
     {

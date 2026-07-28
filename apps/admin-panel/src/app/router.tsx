@@ -23,6 +23,11 @@ const AdminDashboardPage = lazy(() =>
 const DocumentCenterPage = lazy(() =>
   import('../features/documents/DocumentCenterPage').then((m) => ({ default: m.DocumentCenterPage })),
 );
+const EmployeeDashboardPage = lazy(() =>
+  import('../features/employee-dashboard/EmployeeDashboardPage').then((m) => ({
+    default: m.EmployeeDashboardPage,
+  })),
+);
 const LeadsPage = lazy(() => import('../features/leads/LeadsPage').then((m) => ({ default: m.LeadsPage })));
 const NotificationsPage = lazy(() =>
   import('../features/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
@@ -264,7 +269,7 @@ const router = createBrowserRouter([
         path: 'employee/dashboard',
         element: (
           <ProtectedRoute roles={['employee']}>
-            <ComingSoonPage title="Dashboard" />
+            <EmployeeDashboardPage />
           </ProtectedRoute>
         ),
       },
