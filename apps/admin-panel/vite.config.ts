@@ -13,6 +13,19 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        // Design System Phase 3-4, sub-phase 11: splits the heaviest
+        // vendor libraries into their own chunk, cached independently
+        // from app code that changes far more often. Route-level
+        // splitting (see app/router.tsx's React.lazy pages) handles
+        // shrinking the app-code side of the bundle; this handles the
+        // vendor side.
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', 'framer-motion', 'axios'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     // @loan-manager/shared-types is a pnpm workspace symlink resolving outside

@@ -1406,12 +1406,64 @@ directly serving the referenced asset path at 200.
 
 ---
 
+## Module 22 — Design System Phase 3-4, sub-phase 11 (Performance) ✅ 2026-07-28
+
+**Route-level code-splitting** — `app/router.tsx`'s ~20 feature-page
+imports (every route element nested under `AppLayout`) converted from
+static `import` to `React.lazy(() => import('...').then((m) => ({
+default: m.ComponentName })))`, confirmed by the original pre-planning
+audit to be the real contributor to the single ~700KB eager JS chunk
+Vite already warned about on every build this session. `AppLayout`,
+`ProtectedRoute`, and `LoginPage` stay eager — the shell/auth-guard is
+structural (needed for every route regardless) and `LoginPage` is the
+actual first paint for a fresh unauthenticated visit, so lazy-loading
+it would add a network round-trip before the very first thing most
+visitors see. One `<Suspense>` wraps `RouterProvider` at the router
+root (not one per route) — `RouterProvider` has no children slot, so
+this is both simpler and sufficient, since Suspense catches a
+suspended lazy import anywhere in its subtree; falls back to the
+existing `LoadingState` full-page treatment, no new component.
+
+**Vendor chunk splitting** — `vite.config.ts` gained
+`build.rollupOptions.output.manualChunks`, grouping
+`react`/`react-dom`/`react-router-dom`/`framer-motion`/`axios` into a
+dedicated `vendor` chunk, cached independently from app code that
+changes far more often.
+
+**Result:** the main entry chunk dropped from ~707KB to 209.26KB
+(gzip 49.10KB); a new `vendor` chunk at 368.53KB (gzip 122.47KB)
+carries the split-out libraries; ~35 small per-route/component chunks
+(0.2KB–16KB each) now load on demand. The "chunk larger than 500kB"
+Vite build warning present in every prior build this session is gone
+entirely.
+
+**Deliberately deferred (not this sub-phase):** the `ReportsPage`
+cross-page-refetch-duplication finding from the original audit (it
+re-fetches data other pages already fetched, no shared cache layer) —
+fixing it properly needs a caching layer or a new dependency
+(e.g. react-query), out of scope for a no-new-dependency polish pass.
+Noted here and in project memory as a real, known, future item — not
+silently dropped.
+
+**Verified:** frontend typecheck/lint clean; production build
+confirms the bundle-size result above (no backend touched, no
+migration). Live in Chrome against the real seeded admin session:
+navigated to four distinct lazy-loaded routes (`/dashboard`,
+`/settings/document-types`, `/documents`, `/reports`) — each rendered
+its real data correctly (15 applications, the real document-type
+catalog including the QA test type, 42 real documents, the real
+Reports widgets) with zero console errors and no visible
+Suspense-fallback flash between navigations.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-10 of 12 done, see above. Remaining: 11. Performance
-(code-splitting) — 12. Final QA. Full plan at
-`.claude/plans/linear-swinging-squirrel.md` (or the equivalent
+sub-phases 1-11 of 12 done, see above. Remaining: 12. Final QA — full
+live Chrome walkthrough of every screen, full backend+frontend test
+suite run, final memory update marking the initiative complete. Full
+plan at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent
 project-memory entry). Executing autonomously, one sub-phase per
 implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on

@@ -1,29 +1,65 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
-import { ApplicationsPage } from '../features/applications/ApplicationsPage';
-import { PendingApprovalsPage } from '../features/approvals/PendingApprovalsPage';
+import { LoadingState } from '../components/states/LoadingState';
+import fullPageStyles from '../components/states/States.module.css';
 import { LoginPage } from '../features/auth/LoginPage';
-import { CustomerDetailPage } from '../features/customers/CustomerDetailPage';
-import { AdminDashboardPage } from '../features/dashboard/AdminDashboardPage';
-import { DocumentCenterPage } from '../features/documents/DocumentCenterPage';
-import { LeadsPage } from '../features/leads/LeadsPage';
-import { NotificationsPage } from '../features/notifications/NotificationsPage';
-import { ReportsPage } from '../features/reports/ReportsPage';
-import { DocumentTypesPage } from '../features/settings/DocumentTypesPage';
-import { ProfilePage } from '../features/settings/ProfilePage';
-import { SettingsHubPage } from '../features/settings/SettingsHubPage';
-import { StaffListPage } from '../features/settings/StaffListPage';
-import { EmployeeStatusPage } from '../features/work-status/EmployeeStatusPage';
-import { LeadDetailPage } from '../features/workspace/LeadDetailPage';
-import { MyLeadsPage } from '../features/workspace/MyLeadsPage';
 import { AppLayout } from '../layouts/AppLayout';
-import { AccessDeniedPage } from '../pages/AccessDeniedPage';
-import { ComingSoonPage } from '../pages/ComingSoonPage';
-import { DashboardPlaceholderPage } from '../pages/DashboardPlaceholderPage';
-import { NotFoundPage } from '../pages/NotFoundPage';
-import { SessionExpiredPage } from '../pages/SessionExpiredPage';
 
 import { ProtectedRoute } from './ProtectedRoute';
+
+const ApplicationsPage = lazy(() =>
+  import('../features/applications/ApplicationsPage').then((m) => ({ default: m.ApplicationsPage })),
+);
+const PendingApprovalsPage = lazy(() =>
+  import('../features/approvals/PendingApprovalsPage').then((m) => ({ default: m.PendingApprovalsPage })),
+);
+const CustomerDetailPage = lazy(() =>
+  import('../features/customers/CustomerDetailPage').then((m) => ({ default: m.CustomerDetailPage })),
+);
+const AdminDashboardPage = lazy(() =>
+  import('../features/dashboard/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })),
+);
+const DocumentCenterPage = lazy(() =>
+  import('../features/documents/DocumentCenterPage').then((m) => ({ default: m.DocumentCenterPage })),
+);
+const LeadsPage = lazy(() => import('../features/leads/LeadsPage').then((m) => ({ default: m.LeadsPage })));
+const NotificationsPage = lazy(() =>
+  import('../features/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
+);
+const ReportsPage = lazy(() => import('../features/reports/ReportsPage').then((m) => ({ default: m.ReportsPage })));
+const DocumentTypesPage = lazy(() =>
+  import('../features/settings/DocumentTypesPage').then((m) => ({ default: m.DocumentTypesPage })),
+);
+const ProfilePage = lazy(() =>
+  import('../features/settings/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
+const SettingsHubPage = lazy(() =>
+  import('../features/settings/SettingsHubPage').then((m) => ({ default: m.SettingsHubPage })),
+);
+const StaffListPage = lazy(() =>
+  import('../features/settings/StaffListPage').then((m) => ({ default: m.StaffListPage })),
+);
+const EmployeeStatusPage = lazy(() =>
+  import('../features/work-status/EmployeeStatusPage').then((m) => ({ default: m.EmployeeStatusPage })),
+);
+const LeadDetailPage = lazy(() =>
+  import('../features/workspace/LeadDetailPage').then((m) => ({ default: m.LeadDetailPage })),
+);
+const MyLeadsPage = lazy(() =>
+  import('../features/workspace/MyLeadsPage').then((m) => ({ default: m.MyLeadsPage })),
+);
+const AccessDeniedPage = lazy(() =>
+  import('../pages/AccessDeniedPage').then((m) => ({ default: m.AccessDeniedPage })),
+);
+const ComingSoonPage = lazy(() => import('../pages/ComingSoonPage').then((m) => ({ default: m.ComingSoonPage })));
+const DashboardPlaceholderPage = lazy(() =>
+  import('../pages/DashboardPlaceholderPage').then((m) => ({ default: m.DashboardPlaceholderPage })),
+);
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const SessionExpiredPage = lazy(() =>
+  import('../pages/SessionExpiredPage').then((m) => ({ default: m.SessionExpiredPage })),
+);
 
 /**
  * App routing — role-based, shared by the Employee Portal, CRM, and
@@ -35,6 +71,20 @@ import { ProtectedRoute } from './ProtectedRoute';
  * `roles` on a route's `ProtectedRoute` is the role-based-routing
  * mechanism itself — omit it for "any authenticated role," pass e.g.
  * `['admin']` to restrict a route to Super Admin only.
+ *
+ * Design System Phase 3-4, sub-phase 11: every route element below
+ * `AppLayout` (~20 feature pages) is `React.lazy`-loaded — confirmed
+ * by the audit to be a real contributor to the single ~700KB eager
+ * chunk Vite already warned about. `AppLayout`/`ProtectedRoute`/
+ * `LoginPage` stay eager: the shell and the auth guard are structural
+ * (needed for every route regardless), and `LoginPage` is the actual
+ * first paint for a fresh unauthenticated visit — lazy-loading it
+ * would add a network round-trip before the very first thing most
+ * visitors see. One `<Suspense>` at the router root (not one per
+ * route) catches every lazy page; `RouterProvider` has no children
+ * slot, so wrapping it here — rather than each `element` individually
+ * — is both simpler and sufficient, since Suspense catches a suspended
+ * lazy import anywhere in its subtree.
  */
 const router = createBrowserRouter([
   {
@@ -233,5 +283,15 @@ const router = createBrowserRouter([
 ]);
 
 export function AppRouter(): JSX.Element {
-  return <RouterProvider router={router} />;
+  return (
+    <Suspense
+      fallback={
+        <div className={fullPageStyles.fullPage}>
+          <LoadingState message="Loading…" />
+        </div>
+      }
+    >
+      <RouterProvider router={router} />
+    </Suspense>
+  );
 }
