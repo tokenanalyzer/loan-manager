@@ -357,3 +357,47 @@ device-token`, `GET /v1/documents/:id/versions`) resolve to `401`
 the routes are wired, not just unit-tested in isolation. Full FCM
 send/receive was not live-tested — no real device token exists yet
 until Phase 4 registers one from an actual device.
+
+## Phase 4 — Push Notifications: Customer App ✅ 2026-07-28
+
+**What:** completes the loop started in Phase 3 — `firebase_messaging`
+had been a declared dependency with zero implementation until now.
+
+- `fcm_background_handler.dart`: a minimal top-level handler
+  registered via `FirebaseMessaging.onBackgroundMessage` right after
+  `Firebase.initializeApp()` (`firebase_bootstrap.dart`) — satisfies
+  FCM's isolate-registration contract. Deliberately does nothing else
+  (per the plan's scope decision): Android already renders the
+  system-tray notification for a backgrounded/terminated app from
+  FCM's own `notification` payload — no `flutter_local_notifications`
+  dependency added.
+- `fcm_service.dart`: permission request + token registration tied to
+  `AuthController`'s state (via GetIt, not Riverpod — the endpoint
+  needs an authenticated session, so this fires once one exists and
+  again on every future sign-in), token refresh handling, a
+  foreground-message handler that silently invalidates
+  `notificationsProvider` (no system-tray duplication while
+  foregrounded, per the plan), and `onMessageOpenedApp`/
+  `getInitialMessage` tap-to-open handling.
+- `notification_deep_link.dart`: the `relatedEntityType` routing
+  switch extracted from `notifications_screen.dart` into one shared
+  function, now used by both the in-app list tap and FCM's tap
+  handlers so the two paths can never drift apart.
+- `UserRepository.updateDeviceToken` wraps the new backend endpoint.
+- `main.dart` now builds its own `ProviderContainer`
+  (`UncontrolledProviderScope` instead of `ProviderScope`) so
+  `FcmService` can invalidate a Riverpod provider from outside the
+  widget tree — `app_smoke_test.dart` pumps `CustomerApp` under its
+  own `ProviderScope` directly and never calls `main()`, so this is a
+  no-op for that test (confirmed, not assumed).
+
+**Verified:** `flutter analyze` clean across `shared-flutter` and
+`apps/customer-app`. `flutter build apk --debug` compiled
+successfully. `flutter test` has the same single pre-existing
+`app_smoke_test.dart` failure as every prior phase, unchanged. **No
+Android device in this environment** — permission prompts, token
+retrieval, foreground/background delivery, and tap deep-linking are
+analyzer-clean and compile-verified only, not seen running. A real
+device is needed to confirm push notifications actually work
+end-to-end; this is the last remaining gap before the initiative's
+Final QA phase.
