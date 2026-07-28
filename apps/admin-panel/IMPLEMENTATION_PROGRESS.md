@@ -1605,15 +1605,49 @@ routes carrying real, previously-shipped functionality forward.
 
 ---
 
+## Module 25 — Employee CRM, sub-phase 1 (Employee Dashboard) ✅ 2026-07-28
+
+**What:** employees now land on a real dashboard at `/employee/dashboard`
+instead of the generic placeholder every role previously saw.
+
+**Backend:** new `GET /v1/employee-dashboard/summary`, its own small
+module composing already-existing repository queries
+(`LoanApplicationRepository`'s workload counts — the same ones
+`LeadAssignmentService.getEmployeesWithWorkload` already uses for the
+admin roster) plus the new `FollowUpRepository` counts from sub-phase
+0 and `WorkStatusService.getMyStatus` (exported from `WorkStatusModule`
+for reuse rather than duplicating its `isBreakStatus` mapping).
+Deliberately its own module, not bolted onto `WorkStatusController`.
+
+**Admin Panel:** `EmployeeDashboardPage` — status badge, 5 `StatCard`s
+(active/pending/today's leads, pending/due-today follow-ups, each
+clickable through to the relevant list) and quick-link cards to My
+Leads/My Customers/Follow-ups/Documents, reusing the exact
+Card+Link pattern `SettingsHubPage` already established. Mounted at
+the existing `/employee/dashboard` route, replacing sub-phase 0's
+`ComingSoonPage` placeholder. New `shared-types/src/employee-dashboard.ts`
+mirrors the response shape.
+
+**Verified:** backend 171/171 tests (+1 new), `tsc --noEmit` clean.
+Frontend `tsc -b`/eslint/build clean. Live-checked: the new endpoint
+resolves to `401` (correctly guarded, not `404`); re-confirmed the
+admin Dashboard still renders correctly with real data and zero
+console errors after the shared-types rebuild and new module
+registration. Same disclosed gap as sub-phase 0: the employee-facing
+page itself couldn't be seen rendering — no employee test credentials
+available in this environment.
+
+---
+
 ## Up next
 
-Employee CRM sub-phase 0 (Foundation) is done. Remaining: sub-phase 1
-(Employee Dashboard), 2 (My Customers), 3 (Follow-up Management UI), 4
-(Status Updates polish), 5 (Profile + Performance Summary) — see
-`.claude/plans/linear-swinging-squirrel.md` for the full plan.
-Executing autonomously, one sub-phase per implement→verify→commit→
-push→document cycle, per the user's explicit instruction — no pause
-for approval except on architectural/security decisions.
+Employee CRM sub-phases 0-1 done. Remaining: 2 (My Customers), 3
+(Follow-up Management UI), 4 (Status Updates polish), 5 (Profile +
+Performance Summary) — see `.claude/plans/linear-swinging-squirrel.md`
+for the full plan. Executing autonomously, one sub-phase per
+implement→verify→commit→push→document cycle, per the user's explicit
+instruction — no pause for approval except on architectural/security
+decisions.
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
 is complete — all 12 sub-phases done. Admin Panel and backend business
