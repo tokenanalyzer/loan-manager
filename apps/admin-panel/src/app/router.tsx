@@ -24,9 +24,12 @@ const DocumentCenterPage = lazy(() =>
   import('../features/documents/DocumentCenterPage').then((m) => ({ default: m.DocumentCenterPage })),
 );
 const EmployeeDashboardPage = lazy(() =>
-  import('../features/employee-dashboard/EmployeeDashboardPage').then((m) => ({
+  import('../features/employee/EmployeeDashboardPage').then((m) => ({
     default: m.EmployeeDashboardPage,
   })),
+);
+const MyCustomersPage = lazy(() =>
+  import('../features/employee/MyCustomersPage').then((m) => ({ default: m.MyCustomersPage })),
 );
 const LeadsPage = lazy(() => import('../features/leads/LeadsPage').then((m) => ({ default: m.LeadsPage })));
 const NotificationsPage = lazy(() =>
@@ -293,7 +296,7 @@ const router = createBrowserRouter([
         path: 'employee/my-customers',
         element: (
           <ProtectedRoute roles={['employee']}>
-            <ComingSoonPage title="My Customers" />
+            <MyCustomersPage />
           </ProtectedRoute>
         ),
       },
