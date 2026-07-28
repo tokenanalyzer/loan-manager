@@ -110,12 +110,19 @@
 
   /*
    * Z-index scale — Design System Phase 3: replaces hardcoded values
-   * previously duplicated across Modal.module.css (100) and
-   * DropdownMenu.module.css (90). Additive, admin-panel-only.
+   * previously duplicated (and colliding) across Modal.module.css
+   * (100), DropdownMenu.module.css (90), the mobile sidebar drawer +
+   * scrim, and GlobalSearchDialog.module.css — the last two both
+   * independently hardcoded 200, an exact collision with each other
+   * and with --z-toast. Additive, admin-panel-only.
    */
   --z-dropdown: 90;
   --z-modal: 100;
+  --z-sidebar-mobile-scrim: 150;
+  --z-sidebar-mobile: 160;
   --z-toast: 200;
+  /* The Ctrl+K command palette — an explicit, full-takeover user action, kept above everything including toasts. */
+  --z-command-palette: 210;
 
   /* Layout */
   --layout-sidebar-width: 264px;

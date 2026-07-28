@@ -27,6 +27,6 @@
     background: rgba(20, 22, 46, 0.4);
     border: none;
     padding: 0;
-    z-index: 150;
+    z-index: var(--z-sidebar-mobile-scrim);
   }
 }

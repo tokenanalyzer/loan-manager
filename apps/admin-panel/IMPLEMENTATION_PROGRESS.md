@@ -1261,16 +1261,68 @@ errors.
 
 ---
 
+## Module 19 — Design System Phase 3-4, sub-phase 8 (Responsiveness) ✅ 2026-07-28
+
+**Environment constraint, encountered and worked around:** this
+session's Chrome automation tooling's `resize_window` call reports
+success but does not actually change the reported viewport
+(`window.innerWidth` stays at the display's native 1600px regardless
+of the requested size — confirmed by checking `window.innerWidth`
+immediately after resize). True live narrow-viewport screenshot
+verification isn't possible in this environment. Responsiveness was
+instead verified via rigorous CSS-mechanics code review — reasoning
+through exactly what each rule computes at narrow widths rather than
+assuming.
+
+**Confirmed already-safe by construction (no fix needed):** `Modal`'s
+`.panel` (`width: 100%; max-width: 560px`) naturally shrinks to fit
+any viewport narrower than 560px, since `width: 100%` resolves against
+its padded fixed-position parent, not the max-width — verified via the
+CSS box model, not a guess. `SettingsHubPage`/`DocumentCenterPage`'s
+`repeat(auto-fill, minmax(220px, 1fr))` grids collapse to a single
+column below ~250px of available width with zero explicit breakpoint
+needed. `AppLayout.module.css`'s `.main { min-width: 0 }` already
+guards against the classic flexbox overflow bug where a wide table
+child would otherwise force the whole shell to overflow horizontally
+— `DataTable`/`TableContainer`'s own `overflow-x: auto` wrapper
+correctly contains scroll locally rather than leaking to the page.
+
+**Real bugs found and fixed via a full z-index audit** (prompted by
+noticing the mobile sidebar drawer's hardcoded `z-index: 200` while
+reviewing `AppLayout.module.css` for viewport-safety — this was not
+what the sub-phase set out to find, but a concrete stacking-order
+collision worth fixing on discovery): the mobile sidebar drawer
+(`Sidebar.module.css`) and `GlobalSearchDialog.module.css` (the Ctrl+K
+command palette) each independently hardcoded `z-index: 200` — the
+exact same value newly introduced for `--z-toast` in sub-phase 5,
+meaning THREE unrelated full-screen overlays could occupy the same
+stacking layer with DOM-order-dependent (i.e. undefined-in-practice)
+paint order. Extended the token scale: `--z-sidebar-mobile-scrim: 150`,
+`--z-sidebar-mobile: 160`, `--z-command-palette: 210` (command palette
+stays above toast — it's an explicit full-takeover the user
+summoned). All three consumers now reference tokens instead of
+hardcoded numbers.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: the `GlobalSearchDialog` fix (not
+viewport-gated, so testable) confirmed rendering correctly with
+`getComputedStyle` showing `z-index: 210` as expected, zero console
+errors. The mobile sidebar drawer's fix is viewport-gated
+(`@media (max-width: 768px)`) and — per the environment constraint
+above — wasn't live-triggered; verified by the same rigorous code
+review as the rest of this sub-phase.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-7 of 12 done, see above. Remaining: 8. Responsiveness —
-9. Accessibility (Modal focus trap + Escape, DropdownMenu keyboard
-nav, contrast) — 10. Branding (AuthLayout logo, favicon) — 11.
-Performance (code-splitting) — 12. Final QA. Full plan at
-`.claude/plans/linear-swinging-squirrel.md` (or the equivalent
-project-memory entry). Executing autonomously, one sub-phase per
-implement→verify→commit→push→document cycle, per the
+sub-phases 1-8 of 12 done, see above. Remaining: 9. Accessibility
+(Modal focus trap + Escape, DropdownMenu keyboard nav, contrast) — 10.
+Branding (AuthLayout logo, favicon) — 11. Performance (code-splitting)
+— 12. Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md`
+(or the equivalent project-memory entry). Executing autonomously, one
+sub-phase per implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on
 architectural/business-logic/breaking-API/security calls.
 

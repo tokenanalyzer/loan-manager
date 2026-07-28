@@ -165,7 +165,7 @@
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
-    z-index: 200;
+    z-index: var(--z-sidebar-mobile);
     left: 0;
     top: 0;
     transform: translateX(-100%);
