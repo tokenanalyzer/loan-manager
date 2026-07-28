@@ -315,3 +315,45 @@ across `shared-flutter` and `apps/customer-app`, `flutter build apk
 --debug` compiled successfully. Same disclosed gap as Phase 1: no live
 device in this environment to visually confirm the new screen renders
 correctly — analyzer-clean and compile-verified only.
+
+## Phase 3 — Push Notifications: backend ✅ 2026-07-28
+
+**What:** `firebase_messaging` has been a declared Customer App
+dependency with zero implementation. This phase wires the entire
+backend half — no Customer App change yet (Phase 4).
+
+- Migration `AddFcmTokenToUsers`: single `fcm_token`/
+  `fcm_token_updated_at` columns on `users` (matches the existing
+  single-value `last_device` precedent — no multi-device table).
+  Verified live against the dev database with a full `migration:run`
+  → `revert` → `run` cycle, confirming `down` is symmetric.
+- `FirebaseAdminService.sendPushNotification` wraps
+  `admin.messaging().send(...)` using the same already-loaded
+  service-account credential Auth already uses — no separate
+  `FCM_SERVER_KEY` (that's the legacy pre-v1 HTTP API, unused here).
+  Never throws, same discipline as the existing `revokeSessions` — a
+  push failure must never fail the business transaction that
+  triggered the underlying notification. Reports a stale token so the
+  caller can stop retrying a token FCM will never accept again.
+- **Zero changes needed at any of the 16 existing notification call
+  sites**: `NotificationsService.createForUser` is the one choke
+  point they already all go through (KYC decisions, loan approve/
+  reject/query/disburse, document re-upload, lead assignment,
+  maker-checker, work-status) — the push send was added inside it,
+  right after the in-app row is created, using the notification's own
+  `title`/`body`/`relatedEntityType`/`relatedEntityId` as the payload.
+- New `POST /v1/auth/me/device-token` (any authenticated role, not
+  customer-only — staff benefit too) registers/refreshes the caller's
+  token, idempotent, safe to call on every app foreground/refresh.
+
+**Verified:** backend — 159/159 tests pass (+10 new: FirebaseAdminService
+push-send/stale-token-detection/no-op-when-Firebase-unconfigured, and
+a new `NotificationsService` suite covering push-send, skip-when-
+no-token, skip-when-recipient-missing, stale-token-clearing, and the
+transactional-manager code path), `tsc --noEmit` clean. Live-verified
+against the real dev backend: both new endpoints (`POST /v1/auth/me/
+device-token`, `GET /v1/documents/:id/versions`) resolve to `401`
+(correctly guarded) rather than `404` (an unreachable typo) — proves
+the routes are wired, not just unit-tested in isolation. Full FCM
+send/receive was not live-tested — no real device token exists yet
+until Phase 4 registers one from an actual device.
