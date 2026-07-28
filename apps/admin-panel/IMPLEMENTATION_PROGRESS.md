@@ -1201,16 +1201,44 @@ instead.
 
 ---
 
+## Module 17 — Design System Phase 3-4, sub-phase 6 (Loading experience: DocumentCenter grid skeleton) ✅ 2026-07-28
+
+`DocumentCenterPage`'s Grid view showed a single page-level spinner
+(`LoadingState`) on initial load — a coarser-grained pattern than
+`DataTable`'s per-row shimmer `Skeleton` already used for List view
+(`DataTable`'s own `data: null` handling). Added
+`DocumentGridCardSkeleton` — a placeholder `Card` matching
+`DocumentGridCard`'s exact field layout (checkbox/icon/menu row,
+filename, type, customer link, size/date, status, two action buttons)
+built from the existing `Skeleton` component (`variant="text"`/`"rect"`/
+`"circle"`), rendered 8-up only when `viewMode === 'grid'` during the
+initial fetch; List/Folders views keep their existing `LoadingState`/
+`DataTable`-internal handling unchanged.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: confirmed Grid view still renders correctly
+with real data (42 documents) post-change, zero console errors. The
+skeleton's own transient loading state wasn't live-triggered — local
+dev fetch resolves faster than the automated browser can switch to
+Grid view before data loads, and the page's Refresh action doesn't
+reset state to `null` (pre-existing behavior, unrelated to this
+change) — so there's no user-reachable moment to re-observe it after
+initial mount. Code-reviewed instead: it's a straightforward
+composition of the already-proven `Skeleton` primitive matching
+`DocumentGridCard`'s real field shape.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-5 of 12 done, see above. Remaining: 6. Loading experience
-— 7. Micro-interactions — 8. Responsiveness — 9. Accessibility (Modal
-focus trap + Escape, DropdownMenu keyboard nav, contrast) — 10.
-Branding (AuthLayout logo, favicon) — 11. Performance (code-splitting)
-— 12. Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md`
-(or the equivalent project-memory entry). Executing autonomously, one
-sub-phase per implement→verify→commit→push→document cycle, per the
+sub-phases 1-6 of 12 done, see above. Remaining: 7. Micro-interactions
+— 8. Responsiveness — 9. Accessibility (Modal focus trap + Escape,
+DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
+favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan
+at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent
+project-memory entry). Executing autonomously, one sub-phase per
+implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on
 architectural/business-logic/breaking-API/security calls.
 

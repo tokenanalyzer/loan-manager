@@ -12,6 +12,7 @@ import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { DropdownMenu } from '../../components/ui/DropdownMenu';
 import { Icon, type IconName } from '../../components/ui/Icon';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuth } from '../../core/auth-context';
 import { formatDateTime } from '../workspace/lead-status-meta';
 
@@ -381,7 +382,16 @@ export function DocumentCenterPage(): JSX.Element {
           )}
 
           {documents === null && !error ? (
-            <LoadingState message="Loading documents…" />
+            viewMode === 'grid' ? (
+              <div className={styles.grid}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  // eslint-disable-next-line react/no-array-index-key -- skeleton placeholder cards have no real identity
+                  <DocumentGridCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
+              <LoadingState message="Loading documents…" />
+            )
           ) : filtered.length === 0 ? (
             <EmptyState icon="upload" message="No documents match your filters." />
           ) : viewMode === 'list' ? (
@@ -573,6 +583,28 @@ function DocumentGridCard({
         <Button size="sm" variant="secondary" disabled={downloading} onClick={onDownload}>
           {downloading ? 'Downloading…' : 'Download'}
         </Button>
+      </div>
+    </Card>
+  );
+}
+
+/** Grid view's initial-load placeholder — matches `DocumentGridCard`'s shape, same shimmer convention as `DataTable`'s row skeletons. */
+function DocumentGridCardSkeleton(): JSX.Element {
+  return (
+    <Card className={styles.gridCard}>
+      <div className={styles.gridCardHeader}>
+        <Skeleton variant="rect" width={16} height={16} />
+        <Skeleton variant="rect" width={28} height={28} />
+        <Skeleton variant="circle" width={24} height={24} />
+      </div>
+      <Skeleton variant="text" width="80%" />
+      <Skeleton variant="text" width="50%" />
+      <Skeleton variant="text" width="60%" />
+      <Skeleton variant="text" width="70%" />
+      <Skeleton variant="text" width="40%" />
+      <div className={styles.gridCardActions}>
+        <Skeleton variant="rect" width={72} height={32} />
+        <Skeleton variant="rect" width={84} height={32} />
       </div>
     </Card>
   );
