@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
 import { LoadingState } from '../../components/states/LoadingState';
-import { SuccessBanner } from '../../components/states/SuccessBanner';
 import { Button } from '../../components/ui/Button';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { TableContainer } from '../../components/ui/TableContainer';
+import { useToast } from '../../components/ui/Toast';
 
 import { ApprovalDecisionModal } from './ApprovalDecisionModal';
 import { fetchPendingApprovals } from './approvals-api';
@@ -21,9 +21,9 @@ import { describeAction } from './approvals-meta';
  * framework is meant to extend to more gated actions later.
  */
 export function PendingApprovalsPage(): JSX.Element {
+  const toast = useToast();
   const [requests, setRequests] = useState<ApprovalRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [decisionTarget, setDecisionTarget] = useState<ApprovalRequest | null>(null);
 
   const load = useCallback(async () => {
@@ -41,7 +41,7 @@ export function PendingApprovalsPage(): JSX.Element {
   }, [load]);
 
   function handleDecided(outcome: 'approved' | 'rejected'): void {
-    setSuccessMessage(outcome === 'approved' ? 'Request approved.' : 'Request rejected.');
+    toast.success(outcome === 'approved' ? 'Request approved.' : 'Request rejected.');
     setDecisionTarget(null);
     void load();
   }
@@ -51,8 +51,6 @@ export function PendingApprovalsPage(): JSX.Element {
       title="Approvals"
       description="Requests from Admin-tier staff that need a Super Admin's review before they take effect."
     >
-      {successMessage && <SuccessBanner message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
-
       {error && <ErrorState message={error} onRetry={() => void load()} />}
 
       {!error && requests === null && <LoadingState message="Loading approvals queue…" />}

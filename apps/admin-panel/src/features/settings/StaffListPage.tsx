@@ -4,11 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
 import { LoadingState } from '../../components/states/LoadingState';
-import { SuccessBanner } from '../../components/states/SuccessBanner';
 import { Button } from '../../components/ui/Button';
 import { Icon } from '../../components/ui/Icon';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { TableContainer } from '../../components/ui/TableContainer';
+import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../core/auth-context';
 import { ROLE_LABELS } from '../../core/constants';
 
@@ -88,12 +88,12 @@ function formatLastLogin(value: string | null): string {
  */
 export function StaffListPage(): JSX.Element {
   const { profile } = useAuth();
+  const toast = useToast();
   const [staff, setStaff] = useState<StaffUser[] | null>(null);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [lifecycleTarget, setLifecycleTarget] = useState<{ action: LifecycleAction; user: StaffUser } | null>(
     null,
@@ -173,7 +173,7 @@ export function StaffListPage(): JSX.Element {
     const name = user.fullName ?? user.email ?? 'This account';
     const message =
       outcome === 'pending_approval' ? PENDING_APPROVAL_MESSAGE[action]?.(name) : SUCCESS_MESSAGE[action](name);
-    setSuccessMessage(message ?? SUCCESS_MESSAGE[action](name));
+    toast.success(message ?? SUCCESS_MESSAGE[action](name));
     void load(true);
   }
 
@@ -183,10 +183,6 @@ export function StaffListPage(): JSX.Element {
       description="Employee and admin accounts. Firebase sign-in alone can never create one of these — every account here was explicitly provisioned."
       actions={<Button onClick={() => setCreateOpen(true)}>Add staff account</Button>}
     >
-      {successMessage && (
-        <SuccessBanner message={successMessage} onDismiss={() => setSuccessMessage(null)} />
-      )}
-
       <div className={styles.filterBar}>
         <div className={styles.searchBox}>
           <Icon name="search" size={16} className={styles.searchIcon} />
@@ -405,7 +401,7 @@ export function StaffListPage(): JSX.Element {
           onClose={() => setCreateOpen(false)}
           onCreated={() => {
             setCreateOpen(false);
-            setSuccessMessage('Staff account created.');
+            toast.success('Staff account created.');
             void load(true);
           }}
         />

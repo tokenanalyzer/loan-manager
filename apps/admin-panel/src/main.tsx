@@ -10,6 +10,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 
 import { AppRouter } from './app/router';
+import { ToastProvider } from './components/ui/Toast';
 import { AuthProvider } from './core/auth-context';
 import './theme/global.css';
 
@@ -18,9 +19,11 @@ const rootElement = document.getElementById('root');
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-      <AuthProvider>
-        <AppRouter />
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <AppRouter />
+        </AuthProvider>
+      </ToastProvider>
     </React.StrictMode>,
   );
 }

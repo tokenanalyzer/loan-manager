@@ -1137,17 +1137,80 @@ instances, code-reviewed rather than re-verified live.
 
 ---
 
+## Module 16 — Design System Phase 3-4, sub-phase 5 (Notifications: custom toast system) ✅ 2026-07-28
+
+Built per the user's confirmed spec: custom, zero new dependencies,
+reusing `Alert`'s variant color language and this app's own
+`theme/motion.ts` variants. New `components/ui/Toast.tsx` +
+`Toast.module.css`: `ToastProvider` (mounted once at the app root in
+`main.tsx`, outermost — before `AuthProvider` — since it has no auth
+dependency), `useToast()` returning `{ success, error, warning, info }`
+called as `toast.success(message, options?)`, a `ToastCard` built on
+`motion.div` + `slideInRightVariants`, auto-dismiss (default 5s,
+`duration: 0` to require manual dismissal), manual dismiss, an
+optional `action` button, and real queue management — at most 4 toasts
+visible at once (`MAX_VISIBLE`); a 5th waits in the `toasts` array
+past that index and only starts its own auto-dismiss timer once
+promoted into the visible slice (a queued toast can't expire before
+it's ever shown).
+
+Migrated the 4 real one-shot `SuccessBanner` post-action-confirmation
+call sites (`StaffListPage`, `DocumentTypesPage`, `ProfilePage`,
+`PendingApprovalsPage`) to `toast.success(...)`. `Alert`/`SuccessBanner`
+themselves are left in place, unused for now — no current persistent-
+banner use case exists in this codebase, but removing a small, tested,
+zero-maintenance component wasn't necessary for this task and the plan
+explicitly called for keeping them available for that case.
+
+**Real bug found and fixed during live verification, worth recording:**
+the toast region's `role="region" aria-label="Notifications"` collided
+with the Topbar's existing notification-bell link, which already used
+that exact same accessible name — a real accessibility regression
+(ambiguous landmark for screen-reader region navigation) that would've
+shipped unnoticed by typecheck/lint/build. Renamed to `"Toast
+notifications"`. Caught only because live verification queried the
+DOM by that label and got the wrong element back.
+
+**Debugging note, not a real bug:** initial live checks (via fast,
+synchronous JS `element.click()` + immediate `getComputedStyle` reads,
+completing in under a second) showed every toast stuck at its
+`initial` animation values (`opacity: 0`, untranslated) and concluded
+this was a broken animation. It wasn't — Chrome throttles
+`requestAnimationFrame` on tabs that aren't genuinely
+foregrounded/focused (true of an automation-controlled tab), so the
+200ms slide-in animation was queued but never got enough real rAF
+ticks to progress within the test's sub-second window, while the
+`setTimeout`-based auto-dismiss timer (unaffected by rAF throttling)
+fired on schedule regardless. Confirmed by switching to
+screenshot-based verification (which has enough real round-trip
+latency for rAF to catch up, same as a real user's active tab would
+experience in under 200ms) — the toast renders and animates
+correctly. Worth remembering for any future Framer-Motion
+verification in this environment: don't trust millisecond-precision
+JS timing checks for animation state; screenshot instead.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: full lifecycle confirmed on `DocumentTypesPage`'s
+Activate/Deactivate action — entrance animation, correct icon/color/
+positioning, row-state update, auto-dismiss after 5s, and manual
+dismiss via the X button, all working; zero console errors.
+`StaffListPage`'s "Resend Invite" toast wasn't live-triggered (would
+generate a real Firebase password-setup link on a seeded account) —
+same `toast.success(...)` call already proven elsewhere, code-reviewed
+instead.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-4 of 12 done, see above. Remaining: 5. Notifications
-(custom toast system) — 6. Loading experience — 7. Micro-interactions
-— 8. Responsiveness — 9. Accessibility (Modal focus trap + Escape,
-DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
-favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan
-at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent
-project-memory entry). Executing autonomously, one sub-phase per
-implement→verify→commit→push→document cycle, per the
+sub-phases 1-5 of 12 done, see above. Remaining: 6. Loading experience
+— 7. Micro-interactions — 8. Responsiveness — 9. Accessibility (Modal
+focus trap + Escape, DropdownMenu keyboard nav, contrast) — 10.
+Branding (AuthLayout logo, favicon) — 11. Performance (code-splitting)
+— 12. Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md`
+(or the equivalent project-memory entry). Executing autonomously, one
+sub-phase per implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on
 architectural/business-logic/breaking-API/security calls.
 

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import { SuccessBanner } from '../../components/states/SuccessBanner';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { FormActions, FormField, FormInput, FormRow } from '../../components/ui/FormLayout';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../core/auth-context';
 import { ROLE_LABELS } from '../../core/constants';
 
@@ -19,13 +19,13 @@ import { updateProfile } from './profile-api';
  */
 export function ProfilePage(): JSX.Element {
   const { profile, refreshProfile } = useAuth();
+  const toast = useToast();
 
   const [fullName, setFullName] = useState(profile?.fullName ?? '');
   const [phone, setPhone] = useState(profile?.phone ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fullNameError, setFullNameError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const isDirty =
     !!profile && (fullName.trim() !== (profile.fullName ?? '') || phone.trim() !== (profile.phone ?? ''));
@@ -65,7 +65,7 @@ export function ProfilePage(): JSX.Element {
         phone: phone.trim() || undefined,
       });
       await refreshProfile();
-      setSuccessMessage('Your profile was updated.');
+      toast.success('Your profile was updated.');
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -78,8 +78,6 @@ export function ProfilePage(): JSX.Element {
 
   return (
     <PageContainer title="Profile" description="Your own account details.">
-      {successMessage && <SuccessBanner message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
-
       <FormField label="Email" htmlFor="profile-email">
         <FormInput id="profile-email" value={profile.email ?? '—'} readOnly disabled />
       </FormField>

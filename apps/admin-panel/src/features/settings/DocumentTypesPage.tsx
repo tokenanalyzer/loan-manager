@@ -1,10 +1,10 @@
 import type { DocumentTypeCatalogEntry } from '@loan-manager/shared-types';
 import { useCallback, useEffect, useState } from 'react';
 
-import { SuccessBanner } from '../../components/states/SuccessBanner';
 import { Button } from '../../components/ui/Button';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { useToast } from '../../components/ui/Toast';
 import { CATEGORY_LABEL } from '../documents/document-status-meta';
 
 import { fetchDocumentTypes, updateDocumentType } from './document-types-api';
@@ -19,9 +19,9 @@ import styles from './DocumentTypesPage.module.css';
  * release required (see `DocumentTypeEntity`'s doc comment).
  */
 export function DocumentTypesPage(): JSX.Element {
+  const toast = useToast();
   const [types, setTypes] = useState<DocumentTypeCatalogEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formTarget, setFormTarget] = useState<'create' | DocumentTypeCatalogEntry | null>(null);
   const [togglingCode, setTogglingCode] = useState<string | null>(null);
 
@@ -43,7 +43,7 @@ export function DocumentTypesPage(): JSX.Element {
     setTogglingCode(entry.code);
     try {
       await updateDocumentType(entry.code, { isActive: !entry.isActive });
-      setSuccessMessage(`${entry.label} was ${entry.isActive ? 'deactivated' : 'activated'}.`);
+      toast.success(`${entry.label} was ${entry.isActive ? 'deactivated' : 'activated'}.`);
       await load();
     } catch {
       setError(`Could not ${entry.isActive ? 'deactivate' : 'activate'} ${entry.label}.`);
@@ -104,8 +104,6 @@ export function DocumentTypesPage(): JSX.Element {
       description="The document catalog customers upload against. Add, edit, or retire a type here — no app release required."
       actions={<Button onClick={() => setFormTarget('create')}>Add document type</Button>}
     >
-      {successMessage && <SuccessBanner message={successMessage} onDismiss={() => setSuccessMessage(null)} />}
-
       <DataTable
         columns={columns}
         data={types}
@@ -122,7 +120,7 @@ export function DocumentTypesPage(): JSX.Element {
           onClose={() => setFormTarget(null)}
           onSaved={(message) => {
             setFormTarget(null);
-            setSuccessMessage(message);
+            toast.success(message);
             void load();
           }}
         />
