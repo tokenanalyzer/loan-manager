@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 
@@ -7,6 +7,7 @@ import { UserEntity } from '../database/entities';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators/auth.decorator';
 import { CurrentAppUser } from './decorators/current-app-user.decorator';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto';
 
 /**
@@ -55,5 +56,16 @@ export class AuthController {
   @Auth()
   getCurrentUser(@CurrentAppUser() user: UserEntity): UserProfileResponseDto {
     return UserProfileResponseDto.fromEntity(user);
+  }
+
+  /** Settings → Profile: self-service edit of full name / phone. See `AuthService.updateProfile`. */
+  @Patch('me')
+  @Auth()
+  async updateProfile(
+    @CurrentAppUser() user: UserEntity,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<UserProfileResponseDto> {
+    const updated = await this.authService.updateProfile(user, dto);
+    return UserProfileResponseDto.fromEntity(updated);
   }
 }

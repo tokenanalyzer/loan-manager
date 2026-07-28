@@ -1,0 +1,26 @@
+.statusActive,
+.statusInactive {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-label-sm);
+  font-weight: 600;
+}
+
+.statusActive {
+  color: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
+}
+
+.statusInactive {
+  color: var(--color-text-secondary);
+  background: color-mix(in srgb, var(--color-text-secondary) 12%, transparent);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

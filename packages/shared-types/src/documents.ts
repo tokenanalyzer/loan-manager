@@ -108,6 +108,52 @@ export interface DocumentCenterEntry {
 /** Why a required document type is blocking loan approval — mirrors the backend's `BlockingDocumentReason`. */
 export type BlockingDocumentReason = 'missing' | 'pending' | 'rejected' | 'reupload_requested';
 
+/** Mirrors the backend's `DocumentCategory` enum (`database/entities/enums.ts`). */
+export type DocumentCategory =
+  | 'identity'
+  | 'income'
+  | 'employment'
+  | 'balance_transfer'
+  | 'loan_specific'
+  | 'photo'
+  | 'other';
+
+/**
+ * Settings → Document Types. Mirrors the backend's
+ * `DocumentTypeResponseDto` (`documents/document-types.controller.ts`)
+ * — the document catalog row an Admin manages directly, no migration
+ * or Flutter release required to add/retire a type.
+ */
+export interface DocumentTypeCatalogEntry {
+  code: string;
+  label: string;
+  category: DocumentCategory;
+  isRequired: boolean;
+  maxUploads: number;
+  applicableLoanCategoryIds: string[] | null;
+  requirementGroupCode: string | null;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** `code` is immutable after creation — see `DocumentTypeCatalogEntry`'s doc comment. */
+export interface CreateDocumentTypePayload {
+  code: string;
+  label: string;
+  category: DocumentCategory;
+  isRequired?: boolean;
+  maxUploads?: number;
+  applicableLoanCategoryIds?: string[];
+  sortOrder?: number;
+  requirementGroupCode?: string;
+}
+
+export type UpdateDocumentTypePayload = Partial<Omit<CreateDocumentTypePayload, 'code'>> & {
+  isActive?: boolean;
+};
+
 /**
  * One required document type standing in the way of approval — the
  * backend's `PATCH /loan-applications/:id/review` returns a list of

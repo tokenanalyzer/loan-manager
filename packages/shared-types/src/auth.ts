@@ -18,3 +18,9 @@ export interface UserProfile {
   role: UserRole;
   isActive: boolean;
 }
+
+/** Settings → Profile self-edit payload for `PATCH /v1/auth/me`. */
+export interface UpdateProfilePayload {
+  fullName?: string;
+  phone?: string;
+}

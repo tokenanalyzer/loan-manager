@@ -16,6 +16,8 @@ export interface AuthContextValue {
   profile: UserProfile | null;
   errorMessage: string | null;
   signOut: () => Promise<void>;
+  /** Re-fetches `GET /v1/auth/me` and replaces `profile` — used by Settings → Profile after a self-edit, so the Topbar/Sidebar identity reflects the change immediately without a full reload. */
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -91,6 +93,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }): JSX.E
         if (firebaseAuth) {
           await firebaseSignOut(firebaseAuth);
         }
+      },
+      refreshProfile: async () => {
+        const response = await apiClient.get<UserProfile>('/v1/auth/me');
+        setProfile(response.data);
       },
     }),
     [status, user, profile, errorMessage],

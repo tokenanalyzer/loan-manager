@@ -195,3 +195,53 @@ describe('AuthService — activatedAt stamping on direct-match first sign-in', (
     expect(patch.activatedAt).toBeUndefined();
   });
 });
+
+/**
+ * Settings → Profile self-edit (`PATCH /v1/auth/me`). Only fields
+ * actually present in the DTO should be touched — an omitted field
+ * must be left exactly as-is, not cleared.
+ */
+describe('AuthService — updateProfile', () => {
+  function buildService() {
+    const update = jest.fn().mockImplementation((id, patch) => Promise.resolve({ id, ...patch }));
+    const userRepository = { update } as unknown as UserRepository;
+    const logger = { setContext: jest.fn(), info: jest.fn(), warn: jest.fn() } as unknown as PinoLogger;
+    return { service: new AuthService(userRepository, logger), update };
+  }
+
+  function buildUser(overrides: Partial<UserEntity> = {}): UserEntity {
+    return { id: 'user-1', fullName: 'Old Name', phone: '+911234567890', ...overrides } as UserEntity;
+  }
+
+  it('updates only fullName when phone is omitted', async () => {
+    const { service, update } = buildService();
+
+    await service.updateProfile(buildUser(), { fullName: 'New Name' });
+
+    expect(update).toHaveBeenCalledWith('user-1', { fullName: 'New Name' });
+  });
+
+  it('updates only phone when fullName is omitted', async () => {
+    const { service, update } = buildService();
+
+    await service.updateProfile(buildUser(), { phone: '+919876543210' });
+
+    expect(update).toHaveBeenCalledWith('user-1', { phone: '+919876543210' });
+  });
+
+  it('trims both fields when both are provided', async () => {
+    const { service, update } = buildService();
+
+    await service.updateProfile(buildUser(), { fullName: '  New Name  ', phone: '  +919876543210  ' });
+
+    expect(update).toHaveBeenCalledWith('user-1', { fullName: 'New Name', phone: '+919876543210' });
+  });
+
+  it('sends an empty patch when neither field is provided', async () => {
+    const { service, update } = buildService();
+
+    await service.updateProfile(buildUser(), {});
+
+    expect(update).toHaveBeenCalledWith('user-1', {});
+  });
+});

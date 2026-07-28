@@ -9,6 +9,9 @@ import { DocumentCenterPage } from '../features/documents/DocumentCenterPage';
 import { LeadsPage } from '../features/leads/LeadsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { ReportsPage } from '../features/reports/ReportsPage';
+import { DocumentTypesPage } from '../features/settings/DocumentTypesPage';
+import { ProfilePage } from '../features/settings/ProfilePage';
+import { SettingsHubPage } from '../features/settings/SettingsHubPage';
 import { StaffListPage } from '../features/settings/StaffListPage';
 import { EmployeeStatusPage } from '../features/work-status/EmployeeStatusPage';
 import { LeadDetailPage } from '../features/workspace/LeadDetailPage';
@@ -96,6 +99,22 @@ const router = createBrowserRouter([
         ),
       },
       {
+        // Phase 8 — Document Types catalog CRUD. `DocumentTypesController`
+        // already existed fully built on the backend; this is the first
+        // screen wired to it.
+        path: 'settings/document-types',
+        element: (
+          <ProtectedRoute roles={['admin']}>
+            <DocumentTypesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        // Phase 8 — self-service profile edit, any authenticated staff role.
+        path: 'settings/profile',
+        element: <ProfilePage />,
+      },
+      {
         path: 'applications',
         element: (
           <ProtectedRoute roles={['admin']}>
@@ -167,10 +186,13 @@ const router = createBrowserRouter([
         ),
       },
       {
+        // Phase 8 — Settings hub, replacing the Phase 1 "Coming Soon"
+        // placeholder with real links to Profile/Team/Approvals/Document
+        // Types.
         path: 'settings',
         element: (
           <ProtectedRoute roles={['admin']}>
-            <ComingSoonPage title="Settings" />
+            <SettingsHubPage />
           </ProtectedRoute>
         ),
       },

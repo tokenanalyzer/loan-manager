@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 import { useAuth } from '../../core/auth-context';
 import { ROLE_LABELS } from '../../core/constants';
 import { DropdownMenu } from '../ui/DropdownMenu';
@@ -43,6 +45,10 @@ export function UserMenu(): JSX.Element {
         <div className={styles.name}>{displayName}</div>
         {email && <div className={styles.role}>{email}</div>}
       </div>
+      <Link to="/settings/profile" role="menuitem" className={styles.menuItem}>
+        <Icon name="user" size={16} />
+        My Profile
+      </Link>
       <button type="button" role="menuitem" className={styles.menuItem} onClick={() => void signOut()}>
         <Icon name="logout" size={16} />
         Sign out

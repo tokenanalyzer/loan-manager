@@ -57,6 +57,7 @@ export function DropdownMenu({
             initial="initial"
             animate="animate"
             exit="exit"
+            onClick={() => setOpen(false)}
           >
             {children}
           </motion.div>

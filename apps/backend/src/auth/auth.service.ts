@@ -7,6 +7,8 @@ import { UserEntity, UserRole } from '../database/entities';
 import { UserRepository } from '../users/user.repository';
 import { PENDING_STAFF_UID_PREFIX } from '../users/users.service';
 
+import { UpdateProfileDto } from './dto/update-profile.dto';
+
 /**
  * AuthService — syncs a verified Firebase identity with our `users` table.
  *
@@ -222,5 +224,22 @@ export class AuthService {
    */
   async recordFailedLogin(user: UserEntity): Promise<void> {
     await this.userRepository.update(user.id, { lastFailedLoginAt: new Date() });
+  }
+
+  /**
+   * Self-service profile edit (`PATCH /v1/auth/me`) — only the fields
+   * present in `dto` are touched, so an omitted field is left exactly
+   * as-is rather than cleared.
+   */
+  async updateProfile(user: UserEntity, dto: UpdateProfileDto): Promise<UserEntity> {
+    const patch: Partial<UserEntity> = {};
+    if (dto.fullName !== undefined) {
+      patch.fullName = dto.fullName.trim();
+    }
+    if (dto.phone !== undefined) {
+      patch.phone = dto.phone.trim();
+    }
+    const updated = await this.userRepository.update(user.id, patch);
+    return updated ?? user;
   }
 }
