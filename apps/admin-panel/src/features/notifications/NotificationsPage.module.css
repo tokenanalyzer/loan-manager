@@ -28,6 +28,11 @@
   background: var(--color-background);
 }
 
+.row:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
 .unread {
   background: color-mix(in srgb, var(--color-primary) 6%, transparent);
 }

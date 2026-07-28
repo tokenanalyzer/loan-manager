@@ -1229,14 +1229,46 @@ composition of the already-proven `Skeleton` primitive matching
 
 ---
 
+## Module 18 — Design System Phase 3-4, sub-phase 7 (Micro-interactions: Card hover + motion consistency) ✅ 2026-07-28
+
+Card's interactive hover treatment was already handled in sub-phase 1
+(the `.interactive` variant, `SettingsHubPage`'s link-cards) — this
+sub-phase's remaining scope was a spot-check across the rest of the
+app: no other `Card` usage in the codebase is individually clickable
+(`ReportsPage`/`CustomerDetailPage`/`DocumentCenterPage` all use it as
+a static content-panel wrapper), so no further `.interactive` sites
+exist.
+
+**Two real gaps found during the motion/interaction spot-check:**
+`NotificationsPage`'s notification-row `<button>` had `:hover` but no
+`:focus-visible` (a real keyboard-accessibility gap missed by sub-phase
+1's audit, which only covered `components/ui/`, not this feature's own
+CSS module) — fixed using the same `--focus-ring-*` tokens.
+`StaffListPage.module.css`'s `.tableRefreshing` opacity fade used a
+hardcoded `0.15s ease` instead of the `--motion-duration-*`/
+`--motion-ease-*` tokens every other transition in the app already
+references — fixed to `var(--motion-duration-fast) var(--motion-ease-standard)`.
+Grepped every `.module.css` transition for non-token duration values
+project-wide to confirm these were the only two stragglers (the other
+hit, `States.module.css`'s spinner `0.7s linear infinite`, is a
+continuous-loop animation speed, not a one-shot UI-feedback transition
+— doesn't map to any `--motion-duration-*` token and was left as-is).
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: confirmed the notification row's focus ring
+renders correctly via real keyboard Tab navigation, zero console
+errors.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-6 of 12 done, see above. Remaining: 7. Micro-interactions
-— 8. Responsiveness — 9. Accessibility (Modal focus trap + Escape,
-DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
-favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan
-at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent
+sub-phases 1-7 of 12 done, see above. Remaining: 8. Responsiveness —
+9. Accessibility (Modal focus trap + Escape, DropdownMenu keyboard
+nav, contrast) — 10. Branding (AuthLayout logo, favicon) — 11.
+Performance (code-splitting) — 12. Final QA. Full plan at
+`.claude/plans/linear-swinging-squirrel.md` (or the equivalent
 project-memory entry). Executing autonomously, one sub-phase per
 implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on
