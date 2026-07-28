@@ -1519,17 +1519,112 @@ Accessibility — 10. Branding — 11. Performance — 12. Final QA. See
 
 ---
 
+## Module 24 — Employee CRM, sub-phase 0 (Foundation) ✅ 2026-07-28
+
+**What:** first sub-phase of a new highest-priority initiative, kicked
+off immediately after the system-wide freeze that closed out Design
+System Phase 3-4 (see [[admin_panel_frozen]]/[[customer_app_frozen]]).
+Full architecture/audit/plan (existing backend capabilities, genuine
+gaps, UI/UX plan, DB/API mapping, implementation order) was presented
+and approved before any code was written — see
+`.claude/plans/linear-swinging-squirrel.md` and
+[[project_employee_crm]]. The audit's headline finding: most of
+"Employee CRM" already existed and worked — Assigned Leads, Lead
+Detail (Timeline/Audit Trail/Documents/Notes/Approve-Reject-Query/
+Disburse), Customer 360, Notifications, basic Profile, and self-service
+status were all already fully wired for the `EMPLOYEE` role. The real
+gaps: no Employee Dashboard, `GET /v1/customers` wasn't scoped to
+assigned customers, and no Task/Follow-up/Reminder/Call-Note concept
+existed anywhere.
+
+**User-directed architecture refinement:** rather than reuse Admin's
+`/dashboard` route with a role switch (the original draft), the
+Employee experience gets a **completely separate URL namespace and nav
+structure** — `/employee/*`, with its own `EMPLOYEE_NAV_ITEMS` config,
+never merged with admin's `NAV_ITEMS`. Admin stays completely
+untouched and frozen.
+
+**Backend — one new entity covering four of the plan's asks at once:**
+`FollowUpEntity`/`follow_ups` (migration `AddFollowUps`, run/revert/run
+verified live) — `dueAt` being today makes it a task for today,
+`status = pending` makes it a pending follow-up, `note` is the call
+note, `dueAt` itself is the next follow-up date. CRUD
+(`POST/GET/PATCH /v1/follow-ups*`, employee-only), ownership-scoped via
+the same "Lead Locking" pattern `LoanApplicationsService.updateNotes`
+already established. Reminders are passive (due-today/overdue query
+filters) this round — no scheduler infrastructure exists in this
+codebase to fire proactive push alerts; explicitly deferred, not
+silently dropped. Separately: `GET /v1/customers` now scopes an
+`EMPLOYEE` caller to their assigned customers
+(`findDistinctApplicantIdsAssignedTo`, the same primitive Document
+Center/Search already use) instead of returning every customer —
+closes a real data-exposure gap the audit found; traced every frontend
+caller first to confirm this is behaviorally invisible to admin (only
+the admin-only, frozen `AdminDashboardPage` used the unscoped list).
+
+**Admin Panel — the routing/nav split, plus fixing every regression it
+would have introduced:** new `/employee/dashboard|my-leads|
+my-customers|follow-ups|documents|notifications|profile` route tree.
+Dashboard/My Customers/Follow-ups are `ComingSoonPage` placeholders
+until sub-phases 1-3 build the real screens (same convention `/tasks`
+and `/customers` already use for admin) — every commit stays in a
+fully working state, nothing is ever left broken mid-initiative. The
+already-built `LeadDetailPage`/`MyLeadsPage`/`DocumentCenterPage`/
+`NotificationsPage`/`ProfilePage`/`CustomerDetailPage` are reused
+unmodified at their new employee paths; the old shared routes
+(`/my-leads`, `/documents`, `/notifications`, `/settings/profile`,
+`/customers/:id`) narrowed to admin-only. Because several of those
+old paths were previously reachable by employees, narrowing them
+created real navigation dead-ends this sub-phase had to fix in the
+same pass: `GlobalSearchDialog`'s result deep-links, `NotificationsPage`'s
+loan-application deep-link, `MyLeadsPage`'s row click,
+`LeadDetailPage`'s back-button and Customer 360 link,
+`DocumentCenterPage`'s owner-name links, and `UserMenu`'s "My Profile"
+link are all now role-aware (employee → `/employee/*`, admin →
+unchanged). Also extracted a shared `StatusBadge` component from three
+independent hand-rolled "colored dot + label" implementations
+(`MyLeadsPage`, `CustomerDetailPage`, `EmployeeStatusPage`) found
+during the audit — mechanical, no visual change.
+
+**Verified:** backend 170/170 tests pass (+11 new — `customers.service.spec.ts`'s
+scoping tests, `follow-ups.service.spec.ts`'s ownership/status tests),
+`tsc --noEmit` clean, migration run→revert→run cycle confirmed
+symmetric. Frontend `tsc -b`/eslint/build all clean. Live-verified in
+Chrome against the real QA Admin account: Customer 360, Document
+Center, Lead Assignment, Lead Detail, the extracted `StatusBadge`,
+`UserMenu`'s My Profile link, and Global Search all still work
+correctly for admin after the restructuring, zero console errors.
+**The new `/employee/*` routes could not be live-verified this
+session** — staff accounts are provisioned via Firebase invite-link,
+and no password is known for the seeded Test Employee account in this
+environment; flagged transparently rather than claimed as tested. A
+future session with real employee credentials (or the user testing
+directly) should walk through `/employee/my-leads` and
+`/employee/my-leads/:id` at minimum, since those are the two employee
+routes carrying real, previously-shipped functionality forward.
+
+---
+
 ## Up next
 
-Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
-is **complete** — all 12 sub-phases done, verified, committed, and
-pushed. No active initiative queued; awaiting the user's next
-direction.
+Employee CRM sub-phase 0 (Foundation) is done. Remaining: sub-phase 1
+(Employee Dashboard), 2 (My Customers), 3 (Follow-up Management UI), 4
+(Status Updates polish), 5 (Profile + Performance Summary) — see
+`.claude/plans/linear-swinging-squirrel.md` for the full plan.
+Executing autonomously, one sub-phase per implement→verify→commit→
+push→document cycle, per the user's explicit instruction — no pause
+for approval except on architectural/security decisions.
 
-Deferred indefinitely (no backend domain exists): Task Management,
+Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
+is complete — all 12 sub-phases done. Admin Panel and backend business
+logic are frozen (bug fixes only) while Employee CRM is the active
+initiative — see [[admin_panel_frozen]]/[[customer_app_frozen]].
+
+Deferred indefinitely (no backend domain exists): Task Management (as
+a generic concept beyond Employee CRM's lead-scoped Follow-ups),
 Branch Management, Revenue/Finance, Loan Products, dynamic RBAC, Email
 Templates. Also on record as explicitly deferred (not forgotten): the
 `ReportsPage` cross-page-refetch-duplication finding (needs a caching
-layer/new dependency) and in-app route-navigation blocking via
-`useBlocker` for unsaved changes (bigger app-wide behavioral change,
-deliberately out of scope for this polish pass).
+layer/new dependency), in-app route-navigation blocking via
+`useBlocker` for unsaved changes, and proactive push-on-due-date for
+Follow-up Reminders (needs new scheduler infrastructure).
