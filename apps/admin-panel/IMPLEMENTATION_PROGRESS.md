@@ -1639,15 +1639,41 @@ available in this environment.
 
 ---
 
+## Module 26 — Employee CRM, sub-phase 2 (My Customers) ✅ 2026-07-28
+
+**What:** new `MyCustomersPage` at `/employee/my-customers`, listing
+the employee's own assigned customers and linking into the
+already-fully-built `CustomerDetailPage` at `/employee/my-customers/:id`
+(wired in sub-phase 0). `GET /v1/customers` was already scoped
+server-side to the caller's assigned customers by sub-phase 0's
+`CustomersService.listCustomers` change, so this page is pure UI —
+same fetch-once/filter-client-side shape as `MyLeadsPage`, for the
+same reason (one employee's customer count doesn't warrant
+server-side paging).
+
+**Also:** renamed `features/employee-dashboard/` to `features/employee/`
+(`git mv`, history preserved) — a folder named after one screen no
+longer fit once a second Employee CRM screen landed in it; sub-phase
+3's Follow-ups screen will live here too.
+
+**Verified:** frontend `tsc -b`/eslint/build all clean. Live-checked:
+admin Dashboard's Active Customers count and Employee Workload
+Summary still render correctly with zero console errors — confirms
+the sub-phase 0 customer-listing scope change remains invisible to
+admin. Same disclosed gap as every prior sub-phase: the employee-facing
+page itself couldn't be seen rendering (no employee test credentials
+in this environment).
+
+---
+
 ## Up next
 
-Employee CRM sub-phases 0-1 done. Remaining: 2 (My Customers), 3
-(Follow-up Management UI), 4 (Status Updates polish), 5 (Profile +
-Performance Summary) — see `.claude/plans/linear-swinging-squirrel.md`
-for the full plan. Executing autonomously, one sub-phase per
-implement→verify→commit→push→document cycle, per the user's explicit
-instruction — no pause for approval except on architectural/security
-decisions.
+Employee CRM sub-phases 0-2 done. Remaining: 3 (Follow-up Management
+UI), 4 (Status Updates polish), 5 (Profile + Performance Summary) —
+see `.claude/plans/linear-swinging-squirrel.md` for the full plan.
+Executing autonomously, one sub-phase per implement→verify→commit→
+push→document cycle, per the user's explicit instruction — no pause
+for approval except on architectural/security decisions.
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
 is complete — all 12 sub-phases done. Admin Panel and backend business
