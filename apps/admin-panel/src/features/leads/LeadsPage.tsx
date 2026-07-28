@@ -24,6 +24,8 @@ import {
 } from './leads-api';
 import styles from './LeadsPage.module.css';
 
+const PAGE_SIZE = 20;
+
 type Tab = 'unassigned' | 'assigned';
 
 type PendingAction =
@@ -56,6 +58,7 @@ export function LeadsPage(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [action, setAction] = useState<PendingAction | null>(null);
   const [historyForLeadId, setHistoryForLeadId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const loadLeads = useCallback(async (nextTab: Tab) => {
     setLeads(null);
@@ -94,6 +97,13 @@ export function LeadsPage(): JSX.Element {
     void loadEmployees();
   }, [loadEmployees]);
 
+  // A filter/tab change can shrink the result set below the current
+  // page — staying on, say, page 3 of a now-empty page would just show
+  // "no results" instead of the actual matches on page 1.
+  useEffect(() => {
+    setPage(1);
+  }, [tab, query, categoryFilter]);
+
   function switchTab(nextTab: Tab): void {
     setTab(nextTab);
     setQuery('');
@@ -124,6 +134,10 @@ export function LeadsPage(): JSX.Element {
       return haystack.includes(normalizedQuery);
     });
   }, [leads, query, categoryFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   function toggleSelected(id: string): void {
     setSelectedIds((prev) => {
@@ -248,7 +262,7 @@ export function LeadsPage(): JSX.Element {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((lead) => (
+                {pageItems.map((lead) => (
                   <tr key={lead.id}>
                     <td>
                       <input
@@ -299,6 +313,32 @@ export function LeadsPage(): JSX.Element {
                 ))}
               </tbody>
             </TableContainer>
+          )}
+
+          {filtered.length > PAGE_SIZE && (
+            <div className={styles.pagination}>
+              <span className={styles.paginationSummary}>
+                {filtered.length} lead{filtered.length === 1 ? '' : 's'} — page {currentPage} of {totalPages}
+              </span>
+              <div className={styles.paginationControls}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage <= 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           )}
         </>
       )}

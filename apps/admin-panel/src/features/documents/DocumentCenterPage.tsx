@@ -416,7 +416,7 @@ export function DocumentCenterPage(): JSX.Element {
                       <span className={styles.folderLabel}>{CATEGORY_LABEL[category] ?? category}</span>
                       <span className={styles.folderCount}>{docs.length}</span>
                     </summary>
-                    <DataTable columns={columns} data={docs} keyExtractor={(doc) => doc.id} />
+                    <DataTable columns={columns} data={docs} keyExtractor={(doc) => doc.id} pageSize={20} />
                   </details>
                 </Card>
               ))}

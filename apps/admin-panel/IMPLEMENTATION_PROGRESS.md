@@ -1058,18 +1058,60 @@ zero console errors throughout.
 
 ---
 
+## Module 14 — Design System Phase 3-4, sub-phase 3 (Tables: pagination + shared polish) ✅ 2026-07-28
+
+**Pagination added** to the three tables the audit found rendering a
+full unpaginated list: `LeadsPage` (both Unassigned/Assigned tabs — a
+20-per-page slice of `filtered`, resets to page 1 on tab/search/filter
+change, Previous/Next controls matching `StaffListPage`'s existing
+pattern), `EmployeeStatusPage` (new `EmployeeStatusPage.module.css` —
+this page had no CSS module before; page is clamped rather than
+force-reset on each 15s live-poll, so an admin mid-review on page 2
+isn't yanked back to page 1 every refresh), and `DocumentCenterPage`'s
+Folders view (`pageSize={20}` — the List/Grid views already had this,
+just a missing prop on the per-category `DataTable` call).
+
+**`TableContainer.module.css` harmonized with `DataTable.module.css`**
+(CSS-only, zero markup changes across its 5 consuming pages): sticky
+header (`position: sticky`, matching `DataTable`'s existing pattern,
+kept for consistency even though neither component's header visibly
+sticks without a bounded-height scroll
+container), header font-weight 700 (was 600) and padding tightened to
+match, and the previously-transition-less unconditional row hover now
+animates via the same `background-color` transition `DataTable`
+already had — kept the hover itself (rather than making it
+click-only like `DataTable`'s `.rowClickable`) since none of
+`TableContainer`'s 5 consumers have row-level `onClick` today and
+removing the affordance would be a behavior change beyond "harmonize."
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome: `LeadsPage` renders correctly (12 real
+unassigned leads, below the 20-per-page threshold so the pagination
+bar correctly stays hidden — the conditional-render gate itself
+confirmed working), `DocumentCenterPage`'s Folders view renders with
+the new `pageSize` prop with zero regressions across its Balance
+Transfer/Employment categories, `EmployeeStatusPage` renders with the
+new sticky/bold header styling, zero console errors on all three.
+Pagination *controls themselves* weren't exercised against a real
+20+-row dataset (none exists in the seeded data for these three
+tables) — the implementation mirrors `DataTable`'s and
+`StaffListPage`'s already-proven pagination math/controls exactly,
+so this is a low-risk, code-reviewed gap, not skipped verification.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-2 of 12 done, see above. Remaining: 3. Tables (pagination,
-shared polish) — 4. Dialogs (standardize on `ConfirmDialog`) — 5.
-Notifications (custom toast system) — 6. Loading experience — 7.
-Micro-interactions — 8. Responsiveness — 9. Accessibility (Modal focus
-trap + Escape, DropdownMenu keyboard nav, contrast) — 10. Branding
-(AuthLayout logo, favicon) — 11. Performance (code-splitting) — 12.
-Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md` (or
-the equivalent project-memory entry). Executing autonomously, one
-sub-phase per implement→verify→commit→push→document cycle, per the
+sub-phases 1-3 of 12 done, see above. Remaining: 4. Dialogs
+(standardize on `ConfirmDialog`) — 5. Notifications (custom toast
+system) — 6. Loading experience — 7. Micro-interactions — 8.
+Responsiveness — 9. Accessibility (Modal focus trap + Escape,
+DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
+favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan
+at `.claude/plans/linear-swinging-squirrel.md` (or the equivalent
+project-memory entry). Executing autonomously, one sub-phase per
+implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on
 architectural/business-logic/breaking-API/security calls.
 

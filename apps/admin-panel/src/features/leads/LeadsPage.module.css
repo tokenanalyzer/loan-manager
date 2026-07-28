@@ -67,3 +67,22 @@
   font-weight: 600;
   color: var(--color-text-primary);
 }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.paginationSummary {
+  font-size: var(--font-size-label-sm);
+  color: var(--color-text-secondary);
+}
+
+.paginationControls {
+  display: flex;
+  gap: var(--space-2);
+}

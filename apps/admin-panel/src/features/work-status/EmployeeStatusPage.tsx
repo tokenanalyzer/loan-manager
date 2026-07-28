@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { TableContainer } from '../../components/ui/TableContainer';
 
+import styles from './EmployeeStatusPage.module.css';
 import { formatElapsed, STATUS_COLORS, STATUS_LABELS } from './status-meta';
 import {
   adminEndBreak,
@@ -23,6 +24,7 @@ type PendingAction =
   | { kind: 'disable'; employeeId: string; name: string };
 
 const REFRESH_INTERVAL_MS = 15_000;
+const PAGE_SIZE = 20;
 
 /**
  * Admin Override — the Admin Portal's live view of every employee's
@@ -36,6 +38,7 @@ export function EmployeeStatusPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<PendingAction | null>(null);
   const [busy, setBusy] = useState(false);
+  const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
     try {
@@ -72,6 +75,9 @@ export function EmployeeStatusPage(): JSX.Element {
     }
   }
 
+  const totalPages = Math.max(1, Math.ceil((employees?.length ?? 0) / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+
   return (
     <PageContainer
       title="Employee Status"
@@ -103,7 +109,7 @@ export function EmployeeStatusPage(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {employees.map((employee) => (
+            {employees.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((employee) => (
               <tr key={employee.id}>
                 <td>
                   {employee.fullName ?? '(no name)'}
@@ -172,6 +178,32 @@ export function EmployeeStatusPage(): JSX.Element {
             ))}
           </tbody>
         </TableContainer>
+      )}
+
+      {employees && employees.length > PAGE_SIZE && (
+        <div className={styles.pagination}>
+          <span className={styles.paginationSummary}>
+            {employees.length} employee{employees.length === 1 ? '' : 's'} — page {currentPage} of {totalPages}
+          </span>
+          <div className={styles.paginationControls}>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
       )}
 
       {action && (
