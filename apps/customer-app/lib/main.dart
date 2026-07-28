@@ -9,6 +9,7 @@ import 'core/app.dart';
 import 'core/bootstrap/app_bootstrap_state.dart';
 import 'core/constants/splash_constants.dart';
 import 'core/di/injection.dart';
+import 'core/firebase/fcm_service.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/router/app_router.dart';
 import 'features/auth/onboarding_repository.dart';
@@ -96,7 +97,16 @@ void main() {
       });
     });
 
-    runApp(const ProviderScope(child: CustomerApp()));
+    // A manually-constructed container (rather than a plain
+    // `ProviderScope`) so `FcmService` can invalidate
+    // `notificationsProvider` from outside the widget tree when a push
+    // arrives while foregrounded — `UncontrolledProviderScope` hands
+    // this exact container to the widget tree instead of creating its
+    // own, so both sides read/write the same provider state.
+    final container = ProviderContainer();
+    unawaited(FcmService(logger: logger, container: container).initialize());
+
+    runApp(UncontrolledProviderScope(container: container, child: const CustomerApp()));
   }, (error, stackTrace) {
     _logUncaughtError('Uncaught zone error', error, stackTrace);
   });

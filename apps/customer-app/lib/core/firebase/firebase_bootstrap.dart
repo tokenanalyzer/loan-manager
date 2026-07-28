@@ -1,7 +1,9 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
 import '../config/env_config.dart';
+import 'fcm_background_handler.dart';
 import 'firebase_options_placeholder.dart';
 
 /// Guarded Firebase bootstrap.
@@ -38,6 +40,10 @@ Future<void> initializeFirebase(AppLogger logger) async {
 
   try {
     await Firebase.initializeApp(options: options);
+    // Registered as early as possible, unconditionally — per Firebase's
+    // own guidance, this must be set before the app needs to receive a
+    // background message, not deferred into feature-specific setup.
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     logger.info('Firebase initialized.');
   } catch (error, stackTrace) {
     logger.error('Firebase initialization failed.', error, stackTrace);

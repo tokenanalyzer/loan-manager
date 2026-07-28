@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
 import '../../core/models/app_notification.dart';
+import '../../core/notifications/notification_deep_link.dart';
 import '../../core/utils/friendly_error.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/fade_slide_in.dart';
@@ -28,32 +29,14 @@ class NotificationsScreen extends ConsumerWidget {
     // 'loan_application' — each needs to land somewhere the customer can
     // actually act on it, not just get marked read with no navigation.
     //
-    // 'document' and 'customer_profile' land on '/documents' and
-    // '/profile' — the *root* paths of two of the persistent bottom-nav
-    // tabs (`StatefulShellRoute.indexedStack` in app_router.dart), which
-    // are always mounted inside the shell's `IndexedStack`, never torn
-    // down. Reproduced live: `context.push(...)` to one of those paths
-    // adds a *second*, competing Page for a route the shell already owns
-    // — corrupting Navigator's page-key bookkeeping immediately, though
-    // the resulting "Failed assertion: '!keyReservation.contains(key)'
-    // is not true" only surfaces on whatever unrelated rebuild happens
-    // next (an upload completing, a timer, an auth refresh — which is
-    // why it looked like a random, unrelated crash). `context.go(...)`
-    // is the correct way to navigate to an existing shell tab from
-    // outside the shell: it reactivates that branch instead of pushing
-    // a duplicate. '/loans/:id' below is a genuinely separate top-level
-    // route (the application detail screen, not a tab root), so `push`
-    // there is correct and unchanged.
-    switch (notification.relatedEntityType) {
-      case 'loan_application':
-        if (notification.relatedEntityId != null) {
-          context.push('/loans/${notification.relatedEntityId}');
-        }
-      case 'document':
-        context.go('/documents');
-      case 'customer_profile':
-        context.go('/profile');
-    }
+    // Shared with FCM's tap-to-open handlers (`FcmService`) — see
+    // `navigateToNotificationTarget`'s doc comment for the live-
+    // reproduced crash this distinction (`go` vs `push`) fixes.
+    navigateToNotificationTarget(
+      GoRouter.of(context),
+      relatedEntityType: notification.relatedEntityType,
+      relatedEntityId: notification.relatedEntityId,
+    );
   }
 
   @override

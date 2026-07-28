@@ -14,4 +14,14 @@ class UserRepository extends BaseRepository {
       mapper: (data) => UserProfile.fromJson(data as Map<String, dynamic>),
     );
   }
+
+  /// Registers/refreshes this device's FCM token — idempotent, safe to
+  /// call on every app foreground and on `onTokenRefresh`.
+  Future<ApiResult<void>> updateDeviceToken(String token) {
+    return post<void>(
+      '/v1/auth/me/device-token',
+      body: {'token': token},
+      mapper: (_) {},
+    );
+  }
 }
