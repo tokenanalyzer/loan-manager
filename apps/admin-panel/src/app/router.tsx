@@ -31,6 +31,9 @@ const EmployeeDashboardPage = lazy(() =>
 const MyCustomersPage = lazy(() =>
   import('../features/employee/MyCustomersPage').then((m) => ({ default: m.MyCustomersPage })),
 );
+const MyFollowUpsPage = lazy(() =>
+  import('../features/employee/MyFollowUpsPage').then((m) => ({ default: m.MyFollowUpsPage })),
+);
 const LeadsPage = lazy(() => import('../features/leads/LeadsPage').then((m) => ({ default: m.LeadsPage })));
 const NotificationsPage = lazy(() =>
   import('../features/notifications/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
@@ -312,7 +315,7 @@ const router = createBrowserRouter([
         path: 'employee/follow-ups',
         element: (
           <ProtectedRoute roles={['employee']}>
-            <ComingSoonPage title="Follow-ups" />
+            <MyFollowUpsPage />
           </ProtectedRoute>
         ),
       },

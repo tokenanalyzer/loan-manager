@@ -13,9 +13,12 @@ import { LoadingState } from '../../components/states/LoadingState';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PageContainer } from '../../components/ui/PageContainer';
+import { useToast } from '../../components/ui/Toast';
 import { useAuth } from '../../core/auth-context';
 import { describeAuditAction } from '../../lib/audit-trail-meta';
 import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
+import { createFollowUp } from '../employee/follow-ups-api';
+import { LogFollowUpModal } from '../employee/LogFollowUpModal';
 
 import { DisburseModal } from './DisburseModal';
 import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS, REVIEWABLE_STATUSES } from './lead-status-meta';
@@ -140,6 +143,7 @@ export function LeadDetailPage(): JSX.Element {
   const location = useLocation();
   const { profile: authProfile } = useAuth();
   const isEmployee = authProfile?.role === 'employee';
+  const toast = useToast();
   // Reachable from more than one list now (`/leads`, `/employee/my-leads`,
   // `/applications`) — the linking page passes `state: { from }` so
   // "back" returns where the admin actually came from, falling back to
@@ -164,6 +168,8 @@ export function LeadDetailPage(): JSX.Element {
   const [disbursing, setDisbursing] = useState(false);
   const [disburseBusy, setDisburseBusy] = useState(false);
   const [disburseError, setDisburseError] = useState<string | null>(null);
+  const [loggingFollowUp, setLoggingFollowUp] = useState(false);
+  const [followUpBusy, setFollowUpBusy] = useState(false);
 
   async function load(): Promise<void> {
     if (!id) return;
@@ -241,6 +247,20 @@ export function LeadDetailPage(): JSX.Element {
       setDisburseError(data?.message ?? 'That action failed. Please try again.');
     } finally {
       setDisburseBusy(false);
+    }
+  }
+
+  async function handleLogFollowUpSubmit(payload: { note: string; dueAt: string }): Promise<void> {
+    if (!id) return;
+    setFollowUpBusy(true);
+    try {
+      await createFollowUp({ loanApplicationId: id, note: payload.note, dueAt: payload.dueAt });
+      toast.success('Follow-up logged.');
+      setLoggingFollowUp(false);
+    } catch {
+      toast.error('Could not log the follow-up. Please try again.');
+    } finally {
+      setFollowUpBusy(false);
     }
   }
 
@@ -463,6 +483,18 @@ export function LeadDetailPage(): JSX.Element {
             </div>
           </Card>
 
+          {isEmployee && (
+            <Card>
+              <h2 className={styles.sectionTitle}>Follow-ups</h2>
+              <p style={{ margin: '0 0 12px', color: 'var(--color-text-secondary)' }}>
+                Log a call or touchpoint and when you&apos;ll follow up next.
+              </p>
+              <Button size="sm" onClick={() => setLoggingFollowUp(true)}>
+                Log follow-up
+              </Button>
+            </Card>
+          )}
+
           <Card>
             <h2 className={styles.sectionTitle}>Timeline &amp; activity history</h2>
             <div className={styles.timeline}>
@@ -520,6 +552,14 @@ export function LeadDetailPage(): JSX.Element {
           busy={disburseBusy}
           onSubmit={(payload) => void handleDisburseSubmit(payload)}
           onClose={() => setDisbursing(false)}
+        />
+      )}
+
+      {loggingFollowUp && (
+        <LogFollowUpModal
+          busy={followUpBusy}
+          onSubmit={(payload) => void handleLogFollowUpSubmit(payload)}
+          onClose={() => setLoggingFollowUp(false)}
         />
       )}
     </PageContainer>

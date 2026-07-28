@@ -14,6 +14,7 @@ export * from './auth';
 export * from './customers';
 export * from './documents';
 export * from './employee-dashboard';
+export * from './follow-ups';
 export * from './lead-assignment';
 export * from './notifications';
 export * from './search';
