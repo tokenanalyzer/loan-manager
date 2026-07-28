@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { useAuth } from '../../core/auth-context';
+import { getLeadDetailRoute } from '../workspace/lead-routes';
 import { formatDateTime } from '../workspace/lead-status-meta';
 
 import { notificationTypeColor, notificationTypeLabel } from './notification-meta';
@@ -16,11 +17,9 @@ import { fetchMyNotifications, markAllAsRead, markNotificationAsRead } from './n
 import styles from './NotificationsPage.module.css';
 
 /**
- * A loan-application notification's deep link — role-dependent since
- * Admin and Employee land on different application-detail routes
- * (`/applications/:id` vs `/employee/my-leads/:id`). `null` means "mark as read
- * only, nothing to navigate to" (KYC/break notifications, or anything
- * without a role-appropriate detail screen).
+ * A loan-application notification's deep link. `null` means "mark as
+ * read only, nothing to navigate to" (KYC/break notifications, or
+ * anything without a role-appropriate detail screen).
  */
 function resolveNotificationRoute(
   notification: AppNotification,
@@ -29,13 +28,7 @@ function resolveNotificationRoute(
   if (notification.relatedEntityType !== 'loan_application' || !notification.relatedEntityId) {
     return null;
   }
-  if (role === 'admin') {
-    return `/applications/${notification.relatedEntityId}`;
-  }
-  if (role === 'employee') {
-    return `/employee/my-leads/${notification.relatedEntityId}`;
-  }
-  return null;
+  return getLeadDetailRoute(role, notification.relatedEntityId);
 }
 
 /**

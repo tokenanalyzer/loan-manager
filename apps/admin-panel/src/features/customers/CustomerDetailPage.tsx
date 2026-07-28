@@ -11,9 +11,11 @@ import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { PageContainer } from '../../components/ui/PageContainer';
 import { StatCard } from '../../components/ui/StatCard';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { useAuth } from '../../core/auth-context';
 import { describeAuditAction } from '../../lib/audit-trail-meta';
 import { formatInr } from '../../lib/currency';
 import { DocumentManagementCenter } from '../documents/DocumentManagementCenter';
+import { getLeadDetailRoute } from '../workspace/lead-routes';
 import { formatDateTime, getDisplayStatus, REVIEWABLE_STATUSES } from '../workspace/lead-status-meta';
 
 import { buildCustomerTimeline } from './customer-timeline';
@@ -44,6 +46,8 @@ function initialsFor(fullName: string | null): string {
 export function CustomerDetailPage(): JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const isEmployee = profile?.role === 'employee';
 
   const [overview, setOverview] = useState<CustomerOverview | null>(null);
   const [overviewError, setOverviewError] = useState<string | null>(null);
@@ -285,7 +289,12 @@ export function CustomerDetailPage(): JSX.Element {
           columns={applicationColumns}
           data={applications}
           keyExtractor={(row) => row.id}
-          onRowClick={(row) => navigate(`/applications/${row.id}`, { state: { from: `/customers/${overview.id}` } })}
+          onRowClick={(row) => {
+            const route = getLeadDetailRoute(profile?.role, row.id);
+            if (!route) return;
+            const from = isEmployee ? `/employee/my-customers/${overview.id}` : `/customers/${overview.id}`;
+            navigate(route, { state: { from } });
+          }}
           emptyMessage="No applications yet."
         />
       </div>
