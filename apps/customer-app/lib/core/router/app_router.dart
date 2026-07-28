@@ -7,6 +7,7 @@ import '../../features/auth/otp_verification_screen.dart';
 import '../../features/auth/phone_entry_screen.dart';
 import '../../features/auth/splash_screen.dart';
 import '../../features/documents/document_preview_screen.dart';
+import '../../features/documents/document_version_history_screen.dart';
 import '../../features/documents/documents_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/legal/about_company_screen.dart';
@@ -247,6 +248,15 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => fadeThroughPage(
         key: state.pageKey,
         child: DocumentPreviewScreen(document: state.extra as AppDocument),
+      ),
+    ),
+    GoRoute(
+      path: '/documents/:id/versions',
+      name: 'document-version-history',
+      redirect: (context, state) => state.extra is AppDocument ? null : '/documents',
+      pageBuilder: (context, state) => fadeThroughPage(
+        key: state.pageKey,
+        child: DocumentVersionHistoryScreen(document: state.extra as AppDocument),
       ),
     ),
 

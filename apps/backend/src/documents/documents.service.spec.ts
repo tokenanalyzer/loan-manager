@@ -459,6 +459,57 @@ describe('DocumentsService — Document Versioning', () => {
     });
   });
 
+  describe('getVersionsForOwner', () => {
+    it("returns the owner's own version history, omitting staff identity fields", async () => {
+      const findAllByDocument = jest.fn().mockResolvedValue([
+        {
+          id: 'version-1',
+          versionNumber: 1,
+          originalFileName: 'pan.pdf',
+          uploadedAt: new Date('2026-01-01'),
+          uploadedById: 'staff-1',
+          uploadedBy: { fullName: 'Staff Member' },
+          verificationStatus: 'verified',
+          verifiedById: 'staff-1',
+          verifiedBy: { fullName: 'Staff Member' },
+          verifiedAt: new Date('2026-01-02'),
+          supersededAt: null,
+        },
+      ]);
+      const { service, documents } = buildService({ findAllByDocument });
+      documents.set('doc-1', { id: 'doc-1', ownerId: 'owner-1' });
+
+      const result = await service.getVersionsForOwner('doc-1', { id: 'owner-1' } as never);
+
+      expect(findAllByDocument).toHaveBeenCalledWith('doc-1');
+      expect(result).toEqual([
+        {
+          id: 'version-1',
+          versionNumber: 1,
+          originalFileName: 'pan.pdf',
+          mimeType: null,
+          fileSizeBytes: null,
+          uploadedAt: new Date('2026-01-01'),
+          verificationStatus: 'verified',
+          verificationNote: null,
+          verifiedAt: new Date('2026-01-02'),
+          supersededAt: null,
+        },
+      ]);
+      expect(result[0]).not.toHaveProperty('uploadedByName');
+      expect(result[0]).not.toHaveProperty('verifiedByName');
+    });
+
+    it("rejects a document that doesn't belong to the caller", async () => {
+      const { service, documents } = buildService({});
+      documents.set('doc-1', { id: 'doc-1', ownerId: 'someone-else' });
+
+      await expect(
+        service.getVersionsForOwner('doc-1', { id: 'owner-1' } as never),
+      ).rejects.toThrow('You do not have access to this document.');
+    });
+  });
+
   describe('delete', () => {
     it('deletes every version storage file, not just the current one', async () => {
       const findAllByDocument = jest.fn().mockResolvedValue([

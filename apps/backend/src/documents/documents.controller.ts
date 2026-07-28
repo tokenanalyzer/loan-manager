@@ -27,6 +27,7 @@ import { DocumentsService } from './documents.service';
 import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentCenterEntryDto } from './dto/document-center-entry.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
+import { DocumentVersionCustomerResponseDto } from './dto/document-version-customer-response.dto';
 import { DocumentVersionResponseDto } from './dto/document-version-response.dto';
 import { DocumentsOverviewResponseDto } from './dto/documents-overview-response.dto';
 import { UpdateDocumentVerificationDto } from './dto/update-document-verification.dto';
@@ -141,6 +142,16 @@ export class DocumentsController {
   ): Promise<{ deleted: true }> {
     await this.documentsService.deleteForStaff(id, staff);
     return { deleted: true };
+  }
+
+  /** Customer-facing mirror of `staff/:id/versions` — see DocumentsService.getVersionsForOwner. */
+  @Get(':id/versions')
+  @Auth(UserRole.CUSTOMER)
+  async getVersionsForOwner(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentAppUser() user: UserEntity,
+  ): Promise<DocumentVersionCustomerResponseDto[]> {
+    return this.documentsService.getVersionsForOwner(id, user);
   }
 
   @Get(':id/content')

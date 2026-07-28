@@ -34,6 +34,60 @@ class AppDocument {
   }
 }
 
+/// One entry in a document's immutable upload history — mirrors the
+/// backend's `DocumentVersionCustomerResponseDto` (the customer-facing
+/// mirror of the staff-only version-history endpoint; deliberately
+/// omits which staff member uploaded/verified each version, matching
+/// how no other customer-facing surface names an internal reviewer).
+class DocumentVersion {
+  const DocumentVersion({
+    required this.id,
+    required this.versionNumber,
+    required this.originalFileName,
+    required this.uploadedAt,
+    required this.verificationStatus,
+    this.mimeType,
+    this.fileSizeBytes,
+    this.verificationNote,
+    this.verifiedAt,
+    this.supersededAt,
+  });
+
+  final String id;
+  final int versionNumber;
+  final String originalFileName;
+  final String? mimeType;
+  final String? fileSizeBytes;
+  final DateTime uploadedAt;
+  final String verificationStatus;
+  final String? verificationNote;
+  final DateTime? verifiedAt;
+
+  /// Null = this is the current version (or was never superseded).
+  final DateTime? supersededAt;
+
+  bool get isCurrent => supersededAt == null;
+
+  factory DocumentVersion.fromJson(Map<String, dynamic> json) {
+    return DocumentVersion(
+      id: json['id'] as String,
+      versionNumber: json['versionNumber'] as int,
+      originalFileName: json['originalFileName'] as String,
+      mimeType: json['mimeType'] as String?,
+      fileSizeBytes: json['fileSizeBytes'] as String?,
+      uploadedAt: DateTime.parse(json['uploadedAt'] as String),
+      verificationStatus: json['verificationStatus'] as String,
+      verificationNote: json['verificationNote'] as String?,
+      verifiedAt: json['verifiedAt'] != null
+          ? DateTime.parse(json['verifiedAt'] as String)
+          : null,
+      supersededAt: json['supersededAt'] != null
+          ? DateTime.parse(json['supersededAt'] as String)
+          : null,
+    );
+  }
+}
+
 /// One upload slot for a document type — mirrors `DocumentSlotDto`.
 class DocumentSlot {
   const DocumentSlot({required this.slotIndex, required this.isUploaded, this.document});

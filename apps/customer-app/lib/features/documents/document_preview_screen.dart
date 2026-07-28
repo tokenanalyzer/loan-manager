@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:shared_flutter/shared_flutter.dart';
 
@@ -31,7 +32,17 @@ class DocumentPreviewScreen extends ConsumerWidget {
     final documentRepository = ref.watch(documentRepositoryProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text(document.originalFileName)),
+      appBar: AppBar(
+        title: Text(document.originalFileName),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_outlined),
+            tooltip: 'Version history',
+            onPressed: () =>
+                context.push('/documents/${document.id}/versions', extra: document),
+          ),
+        ],
+      ),
       body: FutureBuilder<ApiResult<Uint8List>>(
         future: documentRepository.fetchContent(document.id),
         builder: (context, snapshot) {

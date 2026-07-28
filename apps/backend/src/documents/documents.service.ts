@@ -32,6 +32,7 @@ import {
 } from './dto/blocking-required-document.dto';
 import { DocumentAuditEntryDto } from './dto/document-audit-response.dto';
 import { DocumentResponseDto } from './dto/document-response.dto';
+import { DocumentVersionCustomerResponseDto } from './dto/document-version-customer-response.dto';
 import { DocumentVersionResponseDto } from './dto/document-version-response.dto';
 import {
   DocumentCategoryGroupDto,
@@ -761,6 +762,23 @@ export class DocumentsService {
 
     const versions = await this.documentVersionRepository.findAllByDocument(documentId);
     return versions.map((version) => DocumentVersionResponseDto.fromEntity(version));
+  }
+
+  /**
+   * Customer-facing mirror of `getVersionsForDocument` — same
+   * immutable-upload-history data, ownership-checked via
+   * `getOwnedDocumentOrThrow` instead of the staff access check, mapped
+   * through `DocumentVersionCustomerResponseDto` (omits staff identity
+   * fields, see that DTO's doc comment).
+   */
+  async getVersionsForOwner(
+    documentId: string,
+    user: UserEntity,
+  ): Promise<DocumentVersionCustomerResponseDto[]> {
+    await this.getOwnedDocumentOrThrow(user, documentId);
+
+    const versions = await this.documentVersionRepository.findAllByDocument(documentId);
+    return versions.map((version) => DocumentVersionCustomerResponseDto.fromEntity(version));
   }
 
   /**

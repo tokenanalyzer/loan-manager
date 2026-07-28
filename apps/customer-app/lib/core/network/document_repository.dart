@@ -52,6 +52,18 @@ class DocumentRepository extends BaseRepository {
     return delete<void>('/v1/documents/$documentId', mapper: (_) {});
   }
 
+  /// Immutable upload history for one of the customer's own documents,
+  /// newest first — the customer-facing mirror of the staff Document
+  /// Versioning view.
+  Future<ApiResult<List<DocumentVersion>>> getVersions(String documentId) {
+    return get<List<DocumentVersion>>(
+      '/v1/documents/$documentId/versions',
+      mapper: (data) => (data as List<dynamic>)
+          .map((item) => DocumentVersion.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
   /// URL for previewing/downloading a document's content — used
   /// directly by an `Image.network`/webview-style preview widget.
   String contentUrl(String documentId) =>

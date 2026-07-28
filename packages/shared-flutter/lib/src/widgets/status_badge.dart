@@ -54,6 +54,17 @@ class StatusBadge extends StatelessWidget {
     return StatusBadge(label: label, color: color);
   }
 
+  factory StatusBadge.forDocumentVerificationStatus(String status) {
+    final (label, color) = switch (status) {
+      'pending' => ('Pending review', AppColors.warning),
+      'verified' => ('Verified', AppColors.success),
+      'rejected' => ('Rejected', AppColors.error),
+      'reupload_requested' => ('Re-upload requested', AppColors.accentGold),
+      _ => (status, AppColors.textTertiary),
+    };
+    return StatusBadge(label: label, color: color);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
