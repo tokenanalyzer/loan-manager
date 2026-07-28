@@ -28,7 +28,7 @@
   height: 48px;
   border-radius: var(--radius-control);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;

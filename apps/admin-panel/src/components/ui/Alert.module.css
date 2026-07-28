@@ -40,6 +40,12 @@
   background: color-mix(in srgb, currentColor 14%, transparent);
 }
 
+.dismiss:focus-visible {
+  opacity: 1;
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}
+
 .info {
   color: var(--color-info);
   background: color-mix(in srgb, var(--color-info) 8%, var(--color-surface));

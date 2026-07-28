@@ -1,6 +1,7 @@
 import type { ApprovalRequest } from '@loan-manager/shared-types';
 import { useState } from 'react';
 
+import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { FormActions, FormField, FormInput } from '../../components/ui/FormLayout';
 import { Modal } from '../../components/ui/Modal';
@@ -95,11 +96,7 @@ export function ApprovalDecisionModal({
         </FormField>
       )}
 
-      {error && (
-        <p role="alert" style={{ color: 'var(--color-error)' }}>
-          {error}
-        </p>
-      )}
+      {error && <Alert variant="error" message={error} />}
 
       <FormActions>
         <Button variant="secondary" onClick={onClose} disabled={submitting}>

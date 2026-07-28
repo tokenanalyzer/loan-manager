@@ -16,7 +16,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  z-index: 100;
+  z-index: var(--z-modal);
 }
 
 .panel {
@@ -69,4 +69,9 @@
 .closeButton:hover {
   background: var(--color-background);
   color: var(--color-accent-electric);
+}
+
+.closeButton:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }

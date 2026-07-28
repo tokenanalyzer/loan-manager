@@ -12,3 +12,22 @@
 .noPadding {
   padding: 0;
 }
+
+/**
+ * Opt-in hover treatment for a Card used as (or wrapped by) an
+ * interactive element — e.g. `SettingsHubPage`'s link-cards. Focus
+ * styling isn't applied here: the actual focusable element is
+ * whatever native control wraps the Card (a `<Link>`/`<button>`), so
+ * that wrapper should style its own `:focus-visible` with
+ * `var(--focus-ring-color)` rather than this div trying to react to a
+ * focus state it never receives.
+ */
+.interactive {
+  cursor: pointer;
+}
+
+.interactive:hover {
+  box-shadow: var(--shadow-elevated);
+  border-color: var(--color-accent-electric-light);
+  transform: translateY(-1px);
+}

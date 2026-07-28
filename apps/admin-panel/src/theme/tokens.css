@@ -97,6 +97,26 @@
   --shadow-card: 0 2px 8px rgba(43, 46, 122, 0.08), 0 8px 24px rgba(43, 46, 122, 0.1);
   --shadow-elevated: 0 4px 16px rgba(43, 46, 122, 0.12), 0 12px 32px rgba(43, 46, 122, 0.14);
 
+  /*
+   * Focus ring — Design System Phase 3: standardizes what
+   * Button.module.css already did ad hoc (outline: 2px solid
+   * var(--color-accent-electric); outline-offset: 2px) so every
+   * interactive element shares one definition instead of re-deriving
+   * it. Additive, admin-panel-only — no Flutter equivalent.
+   */
+  --focus-ring-color: var(--color-accent-electric);
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+
+  /*
+   * Z-index scale — Design System Phase 3: replaces hardcoded values
+   * previously duplicated across Modal.module.css (100) and
+   * DropdownMenu.module.css (90). Additive, admin-panel-only.
+   */
+  --z-dropdown: 90;
+  --z-modal: 100;
+  --z-toast: 200;
+
   /* Layout */
   --layout-sidebar-width: 264px;
   --layout-sidebar-width-collapsed: 76px;

@@ -934,15 +934,101 @@ correctly on a fresh reload with zero console errors.
 
 ---
 
+## Module 11 — Enterprise CRM Modules, Phase 8 (Settings) ✅ 2026-07-28
+
+The final piece of the Phase 3-8 roadmap. `/settings` is now a real hub
+(`SettingsHubPage.tsx`, links to Profile/Team/Approvals/Document Types)
+replacing the Phase 1 "Coming Soon" placeholder.
+
+**Document Types** (`/settings/document-types`, admin-only): full CRUD
+UI (`DocumentTypesPage.tsx` + `DocumentTypeFormModal.tsx`) wired to the
+already-built `DocumentTypesController` — list/create/edit/deactivate,
+no delete endpoint by design (soft-disable via `isActive`, matching
+`DocumentTypeEntity`'s doc comment).
+
+**Profile** (`/settings/profile`, any authenticated staff role): a new
+backend endpoint, `PATCH /v1/auth/me` (`UpdateProfileDto`,
+`AuthService.updateProfile`), since only a read-only `GET /v1/auth/me`
+existed before. Deliberately excludes Email/Role (Firebase-identity-tied
+/ admin-controlled). `useAuth()` gained `refreshProfile()` so the
+Topbar/Sidebar identity updates immediately after a self-edit. Added a
+"My Profile" link to `UserMenu`'s dropdown, since employees have no
+Settings sidebar entry — this also surfaced and fixed a `DropdownMenu`
+bug (internal item clicks never closed the panel; fixed by closing on
+any click inside it).
+
+**Verified:** backend — 147/147 tests pass (4 new). Frontend —
+typecheck/lint/build clean. Live in Chrome: created/edited/deactivated a
+real document type, edited-and-reverted the real seeded admin's profile
+name with the topbar updating live, confirmed the "My Profile" link and
+dropdown auto-close.
+
+---
+
+## Module 12 — Design System Phase 3-4, Sub-phase 1 (Foundation: tokens, focus states, dedupe) ✅ 2026-07-28
+
+First sub-phase of the post-Phase-8 enterprise UI polish initiative — a
+full audit-driven pass making every screen read as one product, without
+redesigning anything or touching business logic. A pre-implementation
+audit (3 parallel `Explore` agents) surveyed the real codebase state;
+every fix below is evidence-based, not speculative.
+
+**Tokens** (`theme/tokens.css`): added `--focus-ring-color/width/offset`
+(standardizes what `Button.module.css` already did ad hoc) and a
+`--z-dropdown`/`--z-modal`/`--z-toast` scale (replaces hardcoded
+`z-index: 100`/`90` in `Modal`/`DropdownMenu`). Additive,
+admin-panel-only, same precedent as Phase 1's `--glass-*`/`--motion-*`
+tokens.
+
+**Focus-visible states** added (using the new token) to every
+interactive shared element that was missing one: `Card`'s new opt-in
+`.interactive` variant (consumed by `SettingsHubPage`'s link-cards, with
+the actual focus ring correctly placed on the wrapping `<Link>`, not the
+inert `<div>`), `Alert`'s dismiss button, `DataTable`'s sort button,
+`Modal`'s close button, and the `.menuItem` pattern in both `UserMenu`
+and `DocumentCenterPage`.
+
+**Dedup:** `features/leads/ModalOverlay.tsx` — a fully hand-rolled Modal
+clone (inline hex colors, `border-radius: 8` instead of the token, no
+motion, no focus styling) — is deleted; its two consumers
+(`EmployeePickerModal.tsx`, `AssignmentHistoryModal.tsx`) now use the
+shared `Modal`/`Button`/`FormActions`/`EmptyState`/`ErrorState`/`LoadingState`.
+The 5 files repeating `style={{ color: 'var(--color-error)' }}` for a
+bottom-line submit error now render `<Alert variant="error" message={error} />`
+instead — realizing the migration `Alert.tsx`'s own doc comment already
+called out as "Phase 3/4" work. 4 hardcoded `#fff`/`#ffffff` occurrences
+replaced with `var(--color-text-on-primary)`.
+
+**Found, not yet fixed (queued for sub-phase 9 — Accessibility):**
+`Modal.tsx` has no Escape-to-close handler, confirmed live (DropdownMenu
+already has one).
+
+**Verified:** frontend typecheck/lint/build clean (no backend touched).
+Live in Chrome: focus ring confirmed via real keyboard Tab navigation on
+the Settings hub card and the Document Types modal's close button; the
+migrated `Alert`-based error confirmed by triggering a real backend 409
+conflict (duplicate `pan_card` code); both migrated Lead Assignment
+modals (`Assign`, `History`) confirmed rendering through the shared
+`Modal` with zero console errors.
+
+---
+
 ## Up next
 
-Per the confirmed Phase 3–8 roadmap, the entire original scope is now
-complete except Phase 8 (Settings) — Document Types + Profile only,
-since `DocumentTypesController` already exists fully built and unused.
-Task Management, Branch Management, Revenue/Finance, Loan Products,
-dynamic RBAC, and Email Templates remain explicitly deferred — no
-backend domain exists for any
-of them yet, and none should be fabricated. Design System Phase 3
-(forms/dialogs polish) and Phase 4 (remaining screens) stay queued
-behind this work, per the user's explicit re-prioritization toward real
-modules over further visual polish.
+Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
+sub-phase 1 of 12 done, see above. Remaining: 2. Forms (validation UX,
+dirty-state, unsaved-changes) — 3. Tables (pagination, shared polish) —
+4. Dialogs (standardize on `ConfirmDialog`) — 5. Notifications (custom
+toast system) — 6. Loading experience — 7. Micro-interactions — 8.
+Responsiveness — 9. Accessibility (Modal focus trap + Escape,
+DropdownMenu keyboard nav, contrast) — 10. Branding (AuthLayout logo,
+favicon) — 11. Performance (code-splitting) — 12. Final QA. Full plan at
+`.claude/plans/linear-swinging-squirrel.md` (or the equivalent
+project-memory entry). Executing autonomously, one sub-phase per
+implement→verify→commit→push→document cycle, per the user's explicit
+instruction — no pause for approval except on architectural/business-logic/
+breaking-API/security calls.
+
+Deferred indefinitely (no backend domain exists): Task Management,
+Branch Management, Revenue/Finance, Loan Products, dynamic RBAC, Email
+Templates.

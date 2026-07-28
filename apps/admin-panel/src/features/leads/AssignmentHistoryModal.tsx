@@ -1,8 +1,15 @@
 import type { LeadAssignmentHistoryEntry } from '@loan-manager/shared-types';
 import { useEffect, useState } from 'react';
 
+import { EmptyState } from '../../components/states/EmptyState';
+import { ErrorState } from '../../components/states/ErrorState';
+import { LoadingState } from '../../components/states/LoadingState';
+import { Button } from '../../components/ui/Button';
+import { FormActions } from '../../components/ui/FormLayout';
+import { Modal } from '../../components/ui/Modal';
+
+import styles from './AssignmentHistoryModal.module.css';
 import { fetchAssignmentHistory } from './leads-api';
-import { ModalOverlay } from './ModalOverlay';
 
 /** Requirement 7: complete assignment history for a single lead. */
 export function AssignmentHistoryModal({
@@ -30,32 +37,33 @@ export function AssignmentHistoryModal({
   }, [applicationId]);
 
   return (
-    <ModalOverlay onClose={onClose}>
-      <h2 style={{ marginTop: 0 }}>Assignment history</h2>
-      {error && <p>{error}</p>}
-      {!error && !history && <p>Loading…</p>}
-      {history && history.length === 0 && <p>No assignment history yet.</p>}
-      {history && history.length > 0 && (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+    <Modal title="Assignment history" onClose={onClose}>
+      {error && <ErrorState message={error} />}
+      {!error && !history && <LoadingState message="Loading assignment history…" />}
+      {!error && history && history.length === 0 && (
+        <EmptyState message="No assignment history yet." />
+      )}
+      {!error && history && history.length > 0 && (
+        <ul className={styles.list}>
           {history.map((entry) => (
-            <li key={entry.id} style={{ borderBottom: '1px solid #eee', padding: '8px 0' }}>
-              <div>
-                <strong>{actionLabel(entry.action)}</strong> —{' '}
-                {new Date(entry.createdAt).toLocaleString()}
+            <li key={entry.id} className={styles.item}>
+              <div className={styles.itemHeader}>
+                <strong>{actionLabel(entry.action)}</strong>
+                <span className={styles.itemDate}>{new Date(entry.createdAt).toLocaleString()}</span>
               </div>
-              <div>Assigned by: {entry.assignedByName ?? 'Unknown'}</div>
-              <div>Previous employee: {entry.previousEmployeeName ?? 'Unassigned'}</div>
-              <div>New employee: {entry.newEmployeeName ?? entry.newEmployeeId}</div>
+              <div className={styles.itemDetail}>Assigned by: {entry.assignedByName ?? 'Unknown'}</div>
+              <div className={styles.itemDetail}>Previous employee: {entry.previousEmployeeName ?? 'Unassigned'}</div>
+              <div className={styles.itemDetail}>New employee: {entry.newEmployeeName ?? entry.newEmployeeId}</div>
             </li>
           ))}
         </ul>
       )}
-      <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-        <button type="button" onClick={onClose}>
+      <FormActions>
+        <Button variant="secondary" onClick={onClose}>
           Close
-        </button>
-      </div>
-    </ModalOverlay>
+        </Button>
+      </FormActions>
+    </Modal>
   );
 }
 

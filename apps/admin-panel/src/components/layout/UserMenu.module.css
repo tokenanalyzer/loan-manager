@@ -19,7 +19,7 @@
   height: 34px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-primary), var(--color-accent-electric));
-  color: #fff;
+  color: var(--color-text-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -72,4 +72,9 @@
 .menuItem:hover {
   background: color-mix(in srgb, var(--color-accent-electric) 10%, transparent);
   color: var(--color-accent-electric);
+}
+
+.menuItem:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
 }

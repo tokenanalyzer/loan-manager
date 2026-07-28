@@ -149,6 +149,11 @@
   color: var(--color-accent-electric);
 }
 
+.menuItem:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
 .menuItemDanger {
   composes: menuItem;
   color: var(--color-error);

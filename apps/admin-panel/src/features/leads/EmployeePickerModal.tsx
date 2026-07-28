@@ -1,7 +1,11 @@
 import type { EmployeeWorkload } from '@loan-manager/shared-types';
 
+import { LoadingState } from '../../components/states/LoadingState';
+import { Button } from '../../components/ui/Button';
+import { FormActions } from '../../components/ui/FormLayout';
+import { Modal } from '../../components/ui/Modal';
+
 import { EmployeeWorkloadTable } from './EmployeeWorkloadTable';
-import { ModalOverlay } from './ModalOverlay';
 
 /**
  * Modal shown before every assign/reassign/transfer action — shows
@@ -26,21 +30,20 @@ export function EmployeePickerModal({
   onClose: () => void;
 }): JSX.Element {
   return (
-    <ModalOverlay onClose={onClose}>
-      <h2 style={{ marginTop: 0 }}>{title}</h2>
+    <Modal title={title} onClose={onClose}>
       {busy ? (
-        <p>Working…</p>
+        <LoadingState message="Working…" />
       ) : (
         <EmployeeWorkloadTable
           employees={employees}
           action={{ mode: 'select', label: confirmLabel, onSelect, excludeId }}
         />
       )}
-      <div style={{ marginTop: '1rem', textAlign: 'right' }}>
-        <button type="button" onClick={onClose} disabled={busy}>
+      <FormActions>
+        <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
-        </button>
-      </div>
-    </ModalOverlay>
+        </Button>
+      </FormActions>
+    </Modal>
   );
 }
