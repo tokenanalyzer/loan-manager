@@ -220,9 +220,62 @@ v1.0-network-stability arc plus its two follow-on content fixes (About
 Us, Grievance Officer) and the app-title fix — everything is verified
 on a genuinely signed release artifact, not just in code review.
 
-## Customer App re-frozen
+## Customer App re-frozen (2026-07-25)
 
-With the checklist above fully passed, the Customer App is frozen
-again — no further code changes without an explicit new decision to
-unfreeze. Same posture as the original 2026-07-24 freeze, now covering
-this session's additions too.
+With the checklist above fully passed, the Customer App was frozen —
+no further code changes without an explicit new decision to unfreeze.
+Same posture as the original 2026-07-24 freeze. Superseded by the
+2026-07-28 unfreeze below.
+
+---
+
+# Customer App Backend Integration (2026-07-28 — in progress)
+
+**Unfrozen** for a new initiative: the Admin Panel side of the product
+reached a natural completion point and is now frozen instead (see
+`admin_panel_frozen` project memory); development focus moved to the
+Customer App with an explicit mandate to integrate it completely with
+backend capability that's grown since the app was last touched
+(2026-07-25). A pre-planning audit (full codebase read, both sides)
+found real backend data already traveling to the app over the wire and
+being silently dropped by the Flutter model layer, plus one declared
+dependency (`firebase_messaging`) with zero implementation. Full plan
+in `.claude/plans/linear-swinging-squirrel.md`. Same phase-by-phase
+cadence as the completed Admin Panel initiatives: implement → verify →
+commit → push → document → report, continuing autonomously between
+phases.
+
+## Phase 1 — Case Number + waiting-for-customer status ✅ 2026-07-28
+
+**What:** `LoanApplicationResponseDto` has included `caseNumber` and
+`waitingForCustomer`/`waitingForCustomerSince` since the Case Number
+and Document Versioning backend work landed — sent over the exact same
+`GET /v1/loan-applications`/`GET /v1/loan-applications/:id` endpoints
+the app already calls, gated by no extra permission. The Flutter model
+just never parsed them. No backend change needed for this phase.
+
+- `LoanApplication` (`lib/core/models/loan_application.dart`) gained
+  `caseNumber` (required), `waitingForCustomer` (default false),
+  `waitingForCustomerSince`.
+- `caseNumber` now shown on `my_applications_screen.dart`'s list rows
+  and `application_detail_screen.dart`'s header — the same
+  `LM-2026-XXXXXX` reference format staff already see and customers
+  already quote to support.
+- `waitingForCustomer` is a document-level re-upload flag, deliberately
+  distinct from the existing `status == 'query_raised'` banner (an
+  application-level query) — per the backend's own doc comment on
+  `LoanApplicationsService.setWaitingForCustomer`, the two can be true
+  at the same time without contradiction. Added a second, separately
+  worded banner on the detail screen so both signals stay visible and
+  distinguishable rather than collapsing into one ambiguous message.
+
+**Verified:** `flutter analyze` clean (both the 3 touched files and
+the full project). `flutter build apk --debug` compiled successfully.
+`flutter test` has exactly one pre-existing failure
+(`test/app_smoke_test.dart`, a `pumpAndSettle` timeout) — confirmed via
+`git stash` to fail identically on the commit before this change, not
+a regression introduced here. No live device available in this
+environment to visually confirm the new UI; the change is a
+straightforward, analyzer-clean data/text addition to already-proven
+screens, so this is a real, disclosed verification gap, not a claim
+this was seen rendered.
