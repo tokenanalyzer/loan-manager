@@ -1699,14 +1699,52 @@ be seen rendering — no employee test credentials in this environment.
 
 ---
 
+## Module 28 — Employee CRM, sub-phase 4 (Status Updates polish) ✅ 2026-07-28
+
+**What:** `StatusBadge` adoption across `MyLeadsPage`/`CustomerDetailPage`/
+`EmployeeStatusPage` was already completed as part of sub-phase 0's
+route restructuring — the only work remaining for this sub-phase was
+the other half: fixing a pre-existing bug found during the original
+audit.
+
+**The bug:** `CustomerDetailPage`'s Application History table hardcoded
+`onRowClick` to `navigate(\`/applications/${row.id}\`, ...)` — the
+admin-only route. An employee viewing Customer 360 at
+`/employee/my-customers/:id` and clicking an application row would hit
+a 403.
+
+**The fix:** extracted the role→route mapping `NotificationsPage`
+already had inline (`resolveNotificationRoute`'s admin/employee branch)
+into a new shared `features/workspace/lead-routes.ts` helper,
+`getLeadDetailRoute(role, leadId)` — admin → `/applications/:id`,
+employee → `/employee/my-leads/:id`, anything else → `null` (no
+role-appropriate screen, don't navigate). `NotificationsPage` now
+delegates to it instead of duplicating the branch; `CustomerDetailPage`
+now uses it for the row-click target too, with a role-aware `from`
+back-state (`/employee/my-customers/:id` vs `/customers/:id`).
+
+**Verified:** frontend `tsc -b`/eslint/build all clean. Backend
+171/171 tests unaffected (no backend changes this sub-phase). Dev
+servers still running from earlier sub-phases; live-checked in Chrome
+as admin: Customer 360 (`/customers/6badf8fe-...`) Application History
+row click still lands on `/applications/:id` exactly as before (now
+via the shared helper, behaviorally identical), `/notifications` still
+resolves and marks-as-read correctly, zero console errors on either
+page. Same disclosed gap as every prior sub-phase: the employee branch
+itself (`/employee/my-leads/:id` target) is code-complete and
+typecheck/lint/build verified but has not been seen rendering — no
+employee test credentials in this environment.
+
+---
+
 ## Up next
 
-Employee CRM sub-phases 0-3 done. Remaining: 4 (Status Updates
-polish), 5 (Profile + Performance Summary) — see
-`.claude/plans/linear-swinging-squirrel.md` for the full plan.
-Executing autonomously, one sub-phase per implement→verify→commit→
-push→document cycle, per the user's explicit instruction — no pause
-for approval except on architectural/security decisions.
+Employee CRM sub-phases 0-4 done. Remaining: 5 (Profile + Performance
+Summary) — see `.claude/plans/linear-swinging-squirrel.md` for the
+full plan. Executing autonomously, one sub-phase per
+implement→verify→commit→push→document cycle, per the user's explicit
+instruction — no pause for approval except on architectural/security
+decisions.
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
 is complete — all 12 sub-phases done. Admin Panel and backend business
