@@ -67,6 +67,7 @@ class LoanApplication {
   const LoanApplication({
     required this.id,
     required this.applicantId,
+    required this.caseNumber,
     required this.requestedAmount,
     required this.requestedTermMonths,
     required this.status,
@@ -79,6 +80,8 @@ class LoanApplication {
     this.queryMessage,
     this.queryRaisedAt,
     this.queryRespondedAt,
+    this.waitingForCustomer = false,
+    this.waitingForCustomerSince,
     this.loanId,
     this.loan,
     this.propertyType,
@@ -91,6 +94,12 @@ class LoanApplication {
 
   final String id;
   final String applicantId;
+
+  /// Permanent human-readable business ID (e.g. `LM-2026-000001`) — the
+  /// reference number customers should quote to support, matching what
+  /// staff see in the Admin Panel.
+  final String caseNumber;
+
   final String? reviewedById;
   final String requestedAmount;
   final int requestedTermMonths;
@@ -106,6 +115,14 @@ class LoanApplication {
   final String? queryMessage;
   final DateTime? queryRaisedAt;
   final DateTime? queryRespondedAt;
+
+  /// A document tied to this customer has been flagged for re-upload —
+  /// independent of [status]/[queryMessage] (that's an application-level
+  /// query; this is document-level). The two can both be true at once.
+  /// See `LoanApplicationsService.setWaitingForCustomer` on the backend.
+  final bool waitingForCustomer;
+  final DateTime? waitingForCustomerSince;
+
   final String? loanId;
   final LoanDetails? loan;
 
@@ -121,6 +138,7 @@ class LoanApplication {
     return LoanApplication(
       id: json['id'] as String,
       applicantId: json['applicantId'] as String,
+      caseNumber: json['caseNumber'] as String,
       reviewedById: json['reviewedById'] as String?,
       requestedAmount: json['requestedAmount'] as String,
       requestedTermMonths: json['requestedTermMonths'] as int,
@@ -138,6 +156,10 @@ class LoanApplication {
           : null,
       queryRespondedAt: json['queryRespondedAt'] != null
           ? DateTime.parse(json['queryRespondedAt'] as String)
+          : null,
+      waitingForCustomer: json['waitingForCustomer'] as bool? ?? false,
+      waitingForCustomerSince: json['waitingForCustomerSince'] != null
+          ? DateTime.parse(json['waitingForCustomerSince'] as String)
           : null,
       loanId: json['loanId'] as String?,
       loan: json['loan'] != null

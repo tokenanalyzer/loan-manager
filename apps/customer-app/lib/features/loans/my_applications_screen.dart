@@ -124,6 +124,13 @@ class _MyApplicationsScreenState extends State<MyApplicationsScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Text(
+                                      application.caseNumber,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(fontWeight: FontWeight.w600),
+                                    ),
                                     if (category != null)
                                       Text(category.title,
                                           style: Theme.of(context).textTheme.labelSmall),

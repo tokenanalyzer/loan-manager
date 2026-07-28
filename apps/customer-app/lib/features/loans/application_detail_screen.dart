@@ -91,6 +91,11 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            application.caseNumber,
+                            style: textTheme.labelMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
                           if (application.categoryId != null)
                             Text(
                               findLoanCategory(application.categoryId!)
@@ -148,6 +153,38 @@ class _ApplicationDetailScreenState extends State<ApplicationDetailScreen> {
                         const SizedBox(height: 16),
                         PrimaryButton(
                           label: 'Re-upload documents',
+                          onPressed: () => context.go('/documents'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              if (application.waitingForCustomer) ...[
+                const SizedBox(height: 20),
+                FadeSlideIn(
+                  child: AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.upload_file_outlined,
+                                color: AppColors.accentGold),
+                            const SizedBox(width: 8),
+                            Text('Document needs re-upload',
+                                style: textTheme.titleMedium),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'One of your documents was flagged by our team and '
+                          'needs to be re-uploaded before we can continue.',
+                          style: textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+                        PrimaryButton(
+                          label: 'Go to Documents',
                           onPressed: () => context.go('/documents'),
                         ),
                       ],
