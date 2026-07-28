@@ -401,3 +401,63 @@ analyzer-clean and compile-verified only, not seen running. A real
 device is needed to confirm push notifications actually work
 end-to-end; this is the last remaining gap before the initiative's
 Final QA phase.
+
+## Phase 5 — Cleanup + Final QA ✅ 2026-07-28 — initiative complete
+
+**What:** closes the 5-phase Customer App Backend Integration
+initiative. No new features this phase — cleanup and full
+verification only.
+
+- Removed `apps/customer-app/lib/features/loans/loan_details_screen.dart`
+  — its own doc comment confirmed it unreachable since the
+  pre-application-calculator removal; re-confirmed via a fresh grep
+  immediately before deleting that nothing still referenced it.
+- Full verification pass across everything touched by all 5 phases:
+  backend `tsc --noEmit` clean, `npx jest` 159/159 across 18 suites.
+  `flutter analyze` clean across `shared-flutter` and
+  `apps/customer-app` (zero issues, not just zero *new* issues).
+  `flutter test` — the same single pre-existing `app_smoke_test.dart`
+  `pumpAndSettle` timeout as every phase (confirmed via `git stash`
+  back in Phase 1 to predate this initiative entirely; still present
+  and still the *only* failure). `flutter build apk --debug` compiled
+  successfully.
+
+**What this initiative shipped, end to end:**
+1. Case Number + a document-level "waiting for you" signal now
+   surface in the app (data the backend was already sending, silently
+   dropped before).
+2. Customers can see their own document version/re-upload history for
+   the first time (`GET /v1/documents/:id/versions`, new both sides).
+3. Push notification infrastructure exists start to finish: FCM token
+   storage, best-effort send wired into every one of the 16 existing
+   notification-creation call sites with zero call-site changes,
+   Customer App permission/registration/foreground/background/tap
+   handling.
+4. One dead screen removed.
+
+**What's explicitly still open, not silently dropped:**
+- **Push notifications have never run on a real device.** Everything
+  is analyzer-clean and compile-verified, and the backend half was
+  live-verified (endpoints correctly guarded, real migration
+  run/revert/run cycle) — but permission prompts, actual token
+  delivery, a real push arriving in any of the three app states
+  (foreground/background/terminated), and tap-to-deep-link have only
+  been reasoned through in code review. **The next real step for this
+  feature is installing a debug build on an actual Android device (or
+  emulator with Play Services) and walking through all three delivery
+  states.**
+- Deferred, no backend domain exists to integrate with (unchanged from
+  the plan): `GET /v1/lending-partners`, a real loan-products catalog,
+  repayment-schedule tracking, third-party PAN/Aadhaar KYC
+  verification.
+
+## Customer App remains unfrozen
+
+Unlike every prior arc in this document, the Customer App is **not**
+being re-frozen at the close of this initiative — the user's own
+framing ("start development of the Customer App") was a general
+reopening, not a scoped one-off fix, and the one concrete gap
+(on-device push verification) is exactly the kind of follow-up that
+belongs in continued active development, not a freeze-then-reopen
+cycle. See `project_customer_app_backend_integration` (session memory)
+for the full phase-by-phase record.
