@@ -7,6 +7,7 @@ import { UserEntity } from '../database/entities';
 import { AuthService } from './auth.service';
 import { Auth } from './decorators/auth.decorator';
 import { CurrentAppUser } from './decorators/current-app-user.decorator';
+import { UpdateDeviceTokenDto } from './dto/update-device-token.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto';
 
@@ -67,5 +68,16 @@ export class AuthController {
   ): Promise<UserProfileResponseDto> {
     const updated = await this.authService.updateProfile(user, dto);
     return UserProfileResponseDto.fromEntity(updated);
+  }
+
+  /** Push Notifications: registers/refreshes the caller's FCM device token. See `AuthService.updateDeviceToken`. */
+  @Post('me/device-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Auth()
+  async updateDeviceToken(
+    @CurrentAppUser() user: UserEntity,
+    @Body() dto: UpdateDeviceTokenDto,
+  ): Promise<void> {
+    await this.authService.updateDeviceToken(user, dto.token);
   }
 }

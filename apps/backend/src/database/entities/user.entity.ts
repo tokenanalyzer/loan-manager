@@ -119,6 +119,13 @@ export class UserEntity extends AbstractEntity {
   @Column({ type: 'varchar', length: 512, nullable: true })
   lastDevice?: string | null;
 
+  /** FCM device token for push delivery — single value per user (see the `AddFcmTokenToUsers` migration doc comment for why). Set via `POST /v1/auth/me/device-token`. */
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  fcmToken?: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  fcmTokenUpdatedAt?: Date | null;
+
   @OneToOne('CustomerProfileEntity', (profile: CustomerProfileEntity) => profile.user)
   customerProfile?: CustomerProfileEntity;
 

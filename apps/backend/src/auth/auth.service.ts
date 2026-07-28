@@ -242,4 +242,16 @@ export class AuthService {
     const updated = await this.userRepository.update(user.id, patch);
     return updated ?? user;
   }
+
+  /**
+   * Registers/refreshes the caller's FCM device token
+   * (`POST /v1/auth/me/device-token`) — any authenticated role, called
+   * on every app foreground/token-refresh, idempotent. Single value
+   * per user (see the `AddFcmTokenToUsers` migration doc comment);
+   * `NotificationsService.createForUser` reads it to send a push
+   * alongside every in-app notification it already creates.
+   */
+  async updateDeviceToken(user: UserEntity, token: string): Promise<void> {
+    await this.userRepository.update(user.id, { fcmToken: token, fcmTokenUpdatedAt: new Date() });
+  }
 }

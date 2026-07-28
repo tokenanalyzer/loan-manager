@@ -1,10 +1,12 @@
 import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import { getAuth } from 'firebase-admin/auth';
+import { getMessaging } from 'firebase-admin/messaging';
 import type { PinoLogger } from 'nestjs-pino';
 
 import { FirebaseAdminService } from './firebase-admin.service';
 
 jest.mock('firebase-admin/auth', () => ({ getAuth: jest.fn() }));
+jest.mock('firebase-admin/messaging', () => ({ getMessaging: jest.fn() }));
 
 describe('FirebaseAdminService', () => {
   function buildLogger(): PinoLogger {
@@ -160,6 +162,61 @@ describe('FirebaseAdminService', () => {
       const service = new FirebaseAdminService({} as never, buildLogger());
 
       await expect(service.revokeSessions('some-uid')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('sendPushNotification', () => {
+    function mockMessaging(overrides: { send?: jest.Mock } = {}) {
+      const messaging = { send: overrides.send ?? jest.fn().mockResolvedValue('message-id') };
+      (getMessaging as jest.Mock).mockReturnValue(messaging);
+      return messaging;
+    }
+
+    it('sends via the messaging SDK and reports the token as not stale', async () => {
+      const messaging = mockMessaging();
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      const result = await service.sendPushNotification(
+        'device-token',
+        { title: 'Hi', body: 'There' },
+        { relatedEntityType: 'loan_application', relatedEntityId: 'app-1' },
+      );
+
+      expect(messaging.send).toHaveBeenCalledWith({
+        token: 'device-token',
+        notification: { title: 'Hi', body: 'There' },
+        data: { relatedEntityType: 'loan_application', relatedEntityId: 'app-1' },
+      });
+      expect(result).toEqual({ staleToken: false });
+    });
+
+    it('is a silent no-op when Firebase Admin is not configured', async () => {
+      const service = new FirebaseAdminService(null, buildLogger());
+
+      const result = await service.sendPushNotification('device-token', { title: 'Hi', body: 'There' });
+
+      expect(result).toEqual({ staleToken: false });
+      expect(getMessaging).not.toHaveBeenCalled();
+    });
+
+    it('reports a stale token instead of throwing when FCM rejects it as unregistered', async () => {
+      mockMessaging({
+        send: jest.fn().mockRejectedValue({ code: 'messaging/registration-token-not-registered' }),
+      });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      const result = await service.sendPushNotification('device-token', { title: 'Hi', body: 'There' });
+
+      expect(result).toEqual({ staleToken: true });
+    });
+
+    it('swallows any other error rather than throwing', async () => {
+      mockMessaging({ send: jest.fn().mockRejectedValue(new Error('FCM outage')) });
+      const service = new FirebaseAdminService({} as never, buildLogger());
+
+      await expect(
+        service.sendPushNotification('device-token', { title: 'Hi', body: 'There' }),
+      ).resolves.toEqual({ staleToken: false });
     });
   });
 });

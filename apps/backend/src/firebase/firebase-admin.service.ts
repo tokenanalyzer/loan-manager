@@ -1,6 +1,7 @@
 import { ConflictException, Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getMessaging } from 'firebase-admin/messaging';
 import { PinoLogger } from 'nestjs-pino';
 
 import { FIREBASE_ADMIN_APP } from './firebase-admin.provider';
@@ -151,6 +152,37 @@ export class FirebaseAdminService {
       await getAuth(this.firebaseApp).revokeRefreshTokens(firebaseUid);
     } catch (error) {
       this.logger.warn({ err: error, firebaseUid }, 'Failed to revoke Firebase sessions — proceeding anyway.');
+    }
+  }
+
+  /**
+   * Push delivery for `NotificationsService.createForUser` — best
+   * effort, exactly like `revokeSessions`: never throws, since a push
+   * failure (stale token, FCM outage, Firebase Admin not configured in
+   * this environment) must never fail the business transaction that
+   * triggered the underlying in-app notification. Uses the same
+   * service-account credential already loaded for Auth — no separate
+   * `FCM_SERVER_KEY` config (that's the legacy pre-v1 HTTP API, unused
+   * here). Returns whether the token is stale so the caller can clear
+   * it and stop retrying a token FCM will never accept again.
+   */
+  async sendPushNotification(
+    token: string,
+    notification: { title: string; body: string },
+    data?: Record<string, string>,
+  ): Promise<{ staleToken: boolean }> {
+    if (!this.firebaseApp) {
+      return { staleToken: false };
+    }
+    try {
+      await getMessaging(this.firebaseApp).send({ token, notification, data });
+      return { staleToken: false };
+    } catch (error) {
+      if (this.isFirebaseErrorCode(error, 'messaging/registration-token-not-registered')) {
+        return { staleToken: true };
+      }
+      this.logger.warn({ err: error }, 'Failed to send push notification — proceeding anyway.');
+      return { staleToken: false };
     }
   }
 
