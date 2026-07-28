@@ -32,6 +32,13 @@
   overflow: auto;
 }
 
+/* The panel itself is only ever a focus-trap fallback anchor (no
+   focusable child exists), not a real interactive target — no visible
+   ring needed for it specifically. */
+.panel:focus {
+  outline: none;
+}
+
 .panelFullscreen {
   max-width: 95vw;
   width: 95vw;

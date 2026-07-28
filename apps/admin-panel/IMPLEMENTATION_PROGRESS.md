@@ -1314,11 +1314,65 @@ review as the rest of this sub-phase.
 
 ---
 
+## Module 20 — Design System Phase 3-4, sub-phase 9 (Accessibility) ✅ 2026-07-28
+
+**`Modal.tsx`** — added a real focus trap (Tab/Shift+Tab cycle within
+the panel's focusable descendants, wrapping at both ends), auto-focus
+on open (first focusable descendant, or the panel itself as a
+`tabIndex={-1}` fallback with `outline:none` since it's an anchor, not
+a real interactive target), return-focus-to-trigger on close/unmount,
+and Escape-to-close (`DropdownMenu` already had this; `Modal` didn't —
+the gap found live during sub-phase 1). Added `role="dialog"`/
+`aria-modal="true"`/`aria-label={title}`. The setup effect
+deliberately runs once on mount/unmount only, not on every `onClose`
+identity change — most call sites pass an inline
+`onClose={() => setX(null)}` (a new function every render), and
+re-running the effect on every render would re-capture "whatever has
+focus right now" as the return-focus target, yanking focus away from
+an input the user is actively typing into. The latest `onClose` is
+read via a ref instead, updated every render without re-triggering
+the effect — a real bug caught during implementation, not just a
+style choice.
+
+**`DropdownMenu.tsx`** — added arrow-key navigation
+(Up/Down/Home/End) between `[role="menuitem"]` children, focus-into-
+first-item on open, and return-focus-to-trigger on close — same
+pattern as `Modal`'s fix, reusing the existing Escape/click-outside
+handling already in place. No changes needed in either consumer
+(`UserMenu`, `DocumentCenterPage`) — both already mark their items
+`role="menuitem"`.
+
+**`--color-text-tertiary` contrast** — audited and confirmed a real
+AA failure: `#9498ad` on `--color-surface`/`--color-background` (its
+actual light-mode usage, e.g. sort icons, folder counts, timestamps)
+computed to 2.86:1, well under WCAG AA's 4.5:1 for normal text.
+Dark-mode's identical value already passes (5.74:1 against the dark
+background) — untouched. Changed the light-mode value only to
+`#6c7089` (4.87:1 on surface, 4.54:1 on background), computed via the
+WCAG relative-luminance formula rather than eyeballed, chosen to stay
+visibly more muted than `--color-text-secondary` while clearing AA on
+both backgrounds this token is actually used against.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched). Live in Chrome (before the session's Chrome extension
+disconnected mid-verification — a genuine infrastructure hiccup,
+confirmed unrecoverable after 4 retries over ~20s, not a code issue):
+confirmed initial focus lands on the modal's first focusable
+descendant (the close button, correctly — it precedes the form
+fields in DOM order) and confirmed Shift+Tab from that first item
+correctly wraps to the last item ("Create document type"), proving
+the trap's core index-wrapping logic. Forward-Tab wrap-around,
+Escape-to-close, `DropdownMenu`'s arrow-key nav, and the contrast
+color change weren't re-verified live after the disconnect —
+code-reviewed instead (same function/logic already partially proven
+live, or a pure CSS value change with no interactive-logic risk).
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-8 of 12 done, see above. Remaining: 9. Accessibility
-(Modal focus trap + Escape, DropdownMenu keyboard nav, contrast) — 10.
+sub-phases 1-9 of 12 done, see above. Remaining: 10.
 Branding (AuthLayout logo, favicon) — 11. Performance (code-splitting)
 — 12. Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md`
 (or the equivalent project-memory entry). Executing autonomously, one
