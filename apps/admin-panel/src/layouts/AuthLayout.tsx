@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import type { ReactNode } from 'react';
 
+import logoMark from '../assets/branding/app_icon.png';
 import { Card } from '../components/ui/Card';
 import { APP_NAME } from '../core/constants';
 import { slideUpVariants } from '../theme/motion';
@@ -19,7 +20,7 @@ export function AuthLayout({
     <div className={styles.page}>
       <motion.div className={styles.card} variants={slideUpVariants} initial="initial" animate="animate">
         <div className={styles.brand}>
-          <span className={styles.brandMark}>{APP_NAME.charAt(0)}</span>
+          <img src={logoMark} alt={APP_NAME} className={styles.brandMark} />
           <h1 className={styles.title}>{APP_NAME}</h1>
           {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         </div>

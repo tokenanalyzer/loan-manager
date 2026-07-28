@@ -1369,14 +1369,51 @@ live, or a pure CSS value change with no interactive-logic risk).
 
 ---
 
+## Module 21 — Design System Phase 3-4, sub-phase 10 (Branding) ✅ 2026-07-28
+
+**`AuthLayout.tsx`** — replaced the bare `{APP_NAME.charAt(0)}` "L"
+placeholder (the last one in the app; `Sidebar.tsx` already used the
+real asset since the earlier Admin Panel branding fix) with the same
+real logo asset, mirroring `Sidebar.tsx`'s exact proven pattern
+(`import logoMark from '.../app_icon.png'` → `<img src={logoMark}
+alt={APP_NAME} className={styles.brandMark} />`). Updated
+`AuthLayout.module.css`'s `.brandMark` to match `Sidebar.module.css`'s
+image-display treatment (`object-fit: cover`, a white backing in case
+of transparency, subtle shadow) instead of the old flex-centered-text
+styling that no longer applies to an `<img>`.
+
+**Favicon** — `index.html` had none at all. Added
+`<link rel="icon" type="image/png" href="/src/assets/branding/app_icon.png" />`,
+reusing the same already-imported asset rather than adding a new file.
+Confirmed via the production build that Vite's HTML asset pipeline
+correctly rewrites this to the hashed `dist/assets/app_icon-*.png` —
+the exact same hash Sidebar's module-imported copy already produces,
+i.e. Vite deduplicated it rather than emitting a second copy.
+
+**Verified:** frontend typecheck/lint/build clean (no backend
+touched); confirmed the favicon `<link>` resolves (200) in both dev
+and the production build output, and is present site-wide (checked on
+the dashboard page, not just conceptually on login), zero console
+errors. `AuthLayout` itself wasn't re-rendered live in Chrome — doing
+so requires signing out, which risks losing the persisted admin
+session this whole initiative's live verification has depended on
+across all 10 sub-phases so far — verified instead via: (1) the change
+is a mechanical, syntactically identical copy of `Sidebar.tsx`'s
+`<img>` pattern, which has rendered correctly in every single
+screenshot taken this session; (2) typecheck/build passing confirms
+the image import itself resolves at compile time; (3) the dev server
+directly serving the referenced asset path at 200.
+
+---
+
 ## Up next
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness) —
-sub-phases 1-9 of 12 done, see above. Remaining: 10.
-Branding (AuthLayout logo, favicon) — 11. Performance (code-splitting)
-— 12. Final QA. Full plan at `.claude/plans/linear-swinging-squirrel.md`
-(or the equivalent project-memory entry). Executing autonomously, one
-sub-phase per implement→verify→commit→push→document cycle, per the
+sub-phases 1-10 of 12 done, see above. Remaining: 11. Performance
+(code-splitting) — 12. Final QA. Full plan at
+`.claude/plans/linear-swinging-squirrel.md` (or the equivalent
+project-memory entry). Executing autonomously, one sub-phase per
+implement→verify→commit→push→document cycle, per the
 user's explicit instruction — no pause for approval except on
 architectural/business-logic/breaking-API/security calls.
 
