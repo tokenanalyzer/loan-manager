@@ -1737,14 +1737,72 @@ employee test credentials in this environment.
 
 ---
 
+## Module 29 — Employee CRM, sub-phase 5 (Profile + Performance Summary) ✅ 2026-07-28
+
+**What:** the final sub-phase of the Employee CRM plan
+(`.claude/plans/linear-swinging-squirrel.md`) — self-service employee
+profile fields and a client-side performance summary.
+
+**Backend:** `GET /v1/auth/me` and `POST /v1/auth/session` (via a new
+shared `AuthController.buildProfileResponse` helper, so the two never
+drift) now include an optional `employeeProfile` block
+(`employeeCode`/`department`/`branch`/`hireDate`) for `EMPLOYEE`
+callers only — `null`/omitted for every other role. `EmployeeProfileRepository`
+is provided again in `AuthModule` (the established duplicated
+lightweight-repository pattern from sub-phases 0-1) rather than
+importing `WorkStatusModule`.
+
+**Admin Panel:** `ProfilePage` (already mounted at both
+`/settings/profile` and `/employee/profile` since sub-phase 0) shows
+the new employee fields read-only in an "Employee details" section,
+plus a "Performance summary" section — 4 `StatCard`s (Assigned/
+Approved/Rejected/Disbursed + approval rate) computed client-side by a
+new `computeMyPerformanceSummary` from the employee's own
+already-fetched `GET /v1/loan-applications` list. Mirrors
+`reports-data.ts`'s bucketing approach, not its `computeEmployeePerformance`
+function directly — that one needs admin-only inputs (the unfiltered
+lead list + workload roster) an employee can't fetch. Both new
+sections are gated to `profile.role === 'employee'`, invisible to
+admin.
+
+**Verified:** backend `tsc --noEmit`/`jest` clean (172/172, +1 new for
+`findEmployeeProfile`). Frontend `tsc -b`/eslint/build clean.
+Live-checked in Chrome as admin: `/settings/profile` renders with zero
+console errors, neither new section appears (role gate confirmed),
+`POST /v1/auth/session` (same code path as `GET /v1/auth/me`) still
+returns `200`. Same disclosed gap as every prior sub-phase: the new
+employee-only fields/section are code-complete but unverified live —
+no employee test credentials in this environment.
+
+---
+
+## Employee CRM — plan complete (sub-phases 0-5, 2026-07-28)
+
+All 6 sub-phases of `.claude/plans/linear-swinging-squirrel.md` are
+done: Foundation, Employee Dashboard, My Customers, Follow-up
+Management, Status Updates polish, Profile + Performance Summary.
+Commits: `1e64272`, `8c593a1`, `590b23a`, `b866d9c`, `3ad9b7a`,
+`1904784`. See [[project_employee_crm]] for the full narrative.
+
+**Standing gap, not yet closed:** every `/employee/*` route is
+code-complete, typecheck/lint/build verified, and (where it reuses an
+existing component) confirmed not to have broken the admin equivalent
+— but none of it has been seen actually rendering for an employee. No
+employee test credentials exist in this environment (staff accounts
+are Firebase invite-link provisioned). **Recommended next step:**
+either the user provisions/shares real employee credentials, or walks
+through `/employee/dashboard` → `/employee/my-leads` →
+`/employee/my-customers` → `/employee/follow-ups` →
+`/employee/profile` directly, since that's the only way to close this
+gap.
+
 ## Up next
 
-Employee CRM sub-phases 0-4 done. Remaining: 5 (Profile + Performance
-Summary) — see `.claude/plans/linear-swinging-squirrel.md` for the
-full plan. Executing autonomously, one sub-phase per
-implement→verify→commit→push→document cycle, per the user's explicit
-instruction — no pause for approval except on architectural/security
-decisions.
+No queued Employee CRM work remains. Admin Panel and backend business
+logic stay frozen (bug fixes only) per the standing system-wide
+freeze — see [[admin_panel_frozen]]/[[customer_app_frozen]]. Awaiting
+user direction on the next initiative, or on closing the employee
+live-verification gap above.
 
 Design System Phase 3-4 (Enterprise UI Polish & Production Readiness)
 is complete — all 12 sub-phases done. Admin Panel and backend business
